@@ -1,0 +1,339 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+header h1 {
+    color: white;
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.search-container {
+    margin-bottom: 20px;
+}
+
+#searchInput {
+    width: 300px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    outline: none;
+    transition: box-shadow 0.3s ease;
+}
+
+#searchInput:focus {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.bookmark-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.bookmark-folder {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+}
+
+.bookmark-folder:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+}
+
+.folder-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f0f0f0;
+    transition: background-color 0.2s ease;
+}
+
+.folder-header:hover {
+    background-color: rgba(102, 126, 234, 0.05);
+    border-radius: 8px;
+    padding: 8px;
+    margin: -8px -8px 7px -8px;
+}
+
+.folder-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
+.expand-icon {
+    font-size: 1.2rem;
+    margin-right: 8px;
+    transition: transform 0.3s ease;
+    user-select: none;
+}
+
+.expand-icon.expanded {
+    transform: rotate(90deg);
+}
+
+.folder-icon {
+    font-size: 1.2rem;
+    margin-right: 8px;
+}
+
+.subfolder-count {
+    font-size: 0.8rem;
+    color: #888;
+    margin-left: 8px;
+    background: rgba(102, 126, 234, 0.1);
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+.folder-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.bookmark-count {
+    background: #667eea;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.subfolders-container {
+    margin-top: 15px;
+    padding-left: 15px;
+    border-left: 2px solid rgba(102, 126, 234, 0.2);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.subfolders-container.collapsed {
+    max-height: 0;
+    margin-top: 0;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.subfolders-container.expanded {
+    max-height: none;
+    opacity: 1;
+    visibility: visible;
+}
+
+.subfolders-container .bookmark-folder {
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+    border: 1px solid rgba(102, 126, 234, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.subfolders-container .bookmark-folder.hidden {
+    display: none;
+}
+
+.subfolder-list {
+    margin-top: 15px;
+    padding: 8px 12px 12px 12px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.subfolder-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.subfolder-item {
+    margin-bottom: 4px;
+}
+
+.subfolder-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.subfolder-header:hover {
+    background-color: rgba(102, 126, 234, 0.1);
+}
+
+.subfolder-expand-icon {
+    font-size: 0.9rem;
+    margin-right: 6px;
+    transition: transform 0.2s ease;
+}
+
+.subfolder-expand-icon.expanded {
+    transform: rotate(90deg);
+}
+
+.subfolder-name {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #555;
+}
+
+.subfolder-bookmark-count {
+    font-size: 0.8rem;
+    background: #667eea;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 16px;
+    text-align: center;
+}
+
+.bookmark-list {
+    list-style: none;
+}
+
+.bookmark-item {
+    margin-bottom: 8px;
+}
+
+.bookmark-link {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: #555;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.bookmark-link:hover {
+    background-color: #f8f9ff;
+    color: #667eea;
+}
+
+.bookmark-favicon {
+    width: 16px;
+    height: 16px;
+    margin-right: 10px;
+    border-radius: 2px;
+}
+
+.bookmark-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bookmark-url {
+    font-size: 0.8rem;
+    color: #999;
+    margin-left: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 150px;
+}
+
+.loading {
+    text-align: center;
+    color: white;
+    font-size: 1.2rem;
+    padding: 50px;
+}
+
+.empty-folder {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 20px;
+}
+
+.no-results {
+    text-align: center;
+    color: white;
+    font-size: 1.2rem;
+    padding: 50px;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    
+    header h1 {
+        font-size: 2rem;
+    }
+    
+    #searchInput {
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .bookmark-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .subfolders-container {
+        padding-left: 10px;
+    }
+    
+    .folder-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .bookmark-count {
+        align-self: flex-end;
+    }
+    
+    .subfolder-count {
+        font-size: 0.7rem;
+        padding: 1px 5px;
+    }
+    
+    /* モバイルでサブフォルダリストのフォントサイズを調整 */
+    .subfolder-name {
+        font-size: 0.85rem;
+    }
+    
+    .subfolder-bookmark-count {
+        font-size: 0.7rem;
+        padding: 1px 4px;
+    }
+}
