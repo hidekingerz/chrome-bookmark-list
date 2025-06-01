@@ -5,17 +5,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     let allBookmarks = [];
     
+    // Favicon キャッシュの初期化
+    await initFaviconCache();
+    
     try {
         // Chromeのブックマークを取得
         const bookmarkTree = await chrome.bookmarks.getTree();
         allBookmarks = processBookmarkTree(bookmarkTree);
-        displayBookmarks(allBookmarks);
+        await displayBookmarks(allBookmarks);
         
         // 検索機能
-        searchInput.addEventListener('input', (e) => {
+        searchInput.addEventListener('input', async (e) => {
             const searchTerm = e.target.value.toLowerCase();
             const filteredBookmarks = filterBookmarks(allBookmarks, searchTerm);
-            displayBookmarks(filteredBookmarks);
+            await displayBookmarks(filteredBookmarks);
         });
         
     } catch (error) {
@@ -24,17 +27,106 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// Favicon キャッシュ管理
+const faviconCache = new Map();
+const FAVICON_CACHE_KEY = 'bookmark_favicon_cache';
+const CACHE_EXPIRY_DAYS = 7;
+
+// Favicon キャッシュの初期化
+async function initFaviconCache() {
+    try {
+        const stored = localStorage.getItem(FAVICON_CACHE_KEY);
+        if (stored) {
+            const { data, timestamp } = JSON.parse(stored);
+            const isExpired = Date.now() - timestamp > (CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+            
+            if (!isExpired) {
+                Object.entries(data).forEach(([url, favicon]) => {
+                    faviconCache.set(url, favicon);
+                });
+            } else {
+                localStorage.removeItem(FAVICON_CACHE_KEY);
+            }
+        }
+    } catch (error) {
+        console.warn('Favicon キャッシュの読み込みに失敗:', error);
+    }
+}
+
+// Favicon キャッシュの保存
+function saveFaviconCache() {
+    try {
+        const data = Object.fromEntries(faviconCache);
+        const cacheData = {
+            data,
+            timestamp: Date.now()
+        };
+        localStorage.setItem(FAVICON_CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+        console.warn('Favicon キャッシュの保存に失敗:', error);
+    }
+}
+
+// Favicon の取得（キャッシュ機能付き）
+async function getFavicon(url) {
+    // キャッシュから取得を試行
+    if (faviconCache.has(url)) {
+        return faviconCache.get(url);
+    }
+    
+    // 複数のfavicon取得方法を試行
+    const faviconSources = [
+        `chrome://favicon/size/16@2x/${url}`,
+        `chrome://favicon/${url}`,
+        `https://www.google.com/s2/favicons?domain=${getDomain(url)}&sz=32`,
+        `https://${getDomain(url)}/favicon.ico`
+    ];
+    
+    for (const faviconUrl of faviconSources) {
+        try {
+            // favicon の有効性をチェック
+            const isValid = await checkFaviconValidity(faviconUrl);
+            if (isValid) {
+                faviconCache.set(url, faviconUrl);
+                saveFaviconCache();
+                return faviconUrl;
+            }
+        } catch (error) {
+            continue; // 次のソースを試行
+        }
+    }
+    
+    // すべて失敗した場合はデフォルトアイコンを返す
+    const defaultFavicon = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiByeD0iMiIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNOCAzQzUuNzkgMyA0IDQuNzkgNCA3QzQgOS4yMSA1Ljc5IDExIDggMTFDMTAuMjEgMTEgMTIgOS4yMSAxMiA3QzEyIDQuNzkgMTAuMjEgMyA4IDNaTTggOUEyIDIgMCAwIDEgNiA3QTIgMiAwIDAgMSA4IDVBMiAyIDAgMCAxIDEwIDdBMiAyIDAgMCAxIDggOVoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=';
+    faviconCache.set(url, defaultFavicon);
+    saveFaviconCache();
+    return defaultFavicon;
+}
+
+// Favicon の有効性チェック
+function checkFaviconValidity(faviconUrl) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = faviconUrl;
+        
+        // タイムアウト設定（2秒）
+        setTimeout(() => resolve(false), 2000);
+    });
+}
+
 // ブックマークツリーを処理してフォルダ別に整理
 function processBookmarkTree(tree) {
     const folders = [];
     
-    function buildFolderStructure(node) {
+    function buildFolderStructure(node, level = 0) {
         const folder = {
             id: node.id,
             title: node.title,
             bookmarks: [],
             subfolders: [],
-            expanded: false
+            expanded: level < 2 // 0層目（親）、1層目（子）は展開、2層目（孫）以降は折りたたみ
         };
         
         if (node.children) {
@@ -44,11 +136,11 @@ function processBookmarkTree(tree) {
                     folder.bookmarks.push({
                         title: child.title,
                         url: child.url,
-                        favicon: `chrome://favicon/${child.url}`
+                        favicon: null // 後で非同期で取得
                     });
                 } else if (child.children) {
                     // サブフォルダの場合
-                    const subfolder = buildFolderStructure(child);
+                    const subfolder = buildFolderStructure(child, level + 1);
                     folder.subfolders.push(subfolder);
                 }
             });
@@ -65,8 +157,8 @@ function processBookmarkTree(tree) {
                     // ブックマークバーの直下の各フォルダを処理
                     topLevelNode.children.forEach(child => {
                         if (child.children) {
-                            // フォルダの場合
-                            const folder = buildFolderStructure(child);
+                            // フォルダの場合（level 0として開始）
+                            const folder = buildFolderStructure(child, 0);
                             folders.push(folder);
                         } else if (child.url) {
                             // ブックマークバー直下のブックマークがある場合
@@ -76,14 +168,14 @@ function processBookmarkTree(tree) {
                                     title: 'ブックマークバー直下',
                                     bookmarks: [],
                                     subfolders: [],
-                                    expanded: false
+                                    expanded: true // ブックマークバー直下は開いておく
                                 });
                             }
                             const directFolder = folders.find(f => f.title === 'ブックマークバー直下');
                             directFolder.bookmarks.push({
                                 title: child.title,
                                 url: child.url,
-                                favicon: `chrome://favicon/${child.url}`
+                                favicon: null // 後で非同期で取得
                             });
                         }
                     });
@@ -96,14 +188,15 @@ function processBookmarkTree(tree) {
 }
 
 // ブックマークを表示
-function displayBookmarks(folders) {
+async function displayBookmarks(folders) {
     const bookmarkContainer = document.getElementById('bookmarkContainer');
     
     if (folders.length === 0) {
         bookmarkContainer.innerHTML = '<div class="no-results">ブックマークが見つかりませんでした。</div>';
         return;
     }
-    
+
+    // まず基本構造をレンダリング
     function renderFolder(folder, level = 0) {
         const hasSubfolders = folder.subfolders.length > 0;
         const totalBookmarks = folder.bookmarks.length + folder.subfolders.reduce((sum, sub) => sum + getTotalBookmarks(sub), 0);
@@ -124,8 +217,10 @@ function displayBookmarks(folders) {
                         ${folder.bookmarks.map(bookmark => `
                             <li class="bookmark-item">
                                 <a href="#" class="bookmark-link" data-url="${escapeHtml(bookmark.url)}">
-                                    <img src="${bookmark.favicon}" alt="" class="bookmark-favicon" 
-                                         onerror="this.style.display='none'">
+                                    <div class="bookmark-favicon-container">
+                                        <div class="favicon-placeholder">🔗</div>
+                                        <img class="bookmark-favicon hidden" alt="" data-bookmark-url="${escapeHtml(bookmark.url)}">
+                                    </div>
                                     <span class="bookmark-title">${escapeHtml(bookmark.title)}</span>
                                     <span class="bookmark-url">${getDomain(bookmark.url)}</span>
                                 </a>
@@ -161,6 +256,9 @@ function displayBookmarks(folders) {
     
     const html = folders.map(folder => renderFolder(folder)).join('');
     bookmarkContainer.innerHTML = html;
+    
+    // Favicon を非同期で読み込み
+    await loadFavicons();
     
     // フォルダクリックイベントを設定
     bookmarkContainer.addEventListener('click', (e) => {
@@ -239,6 +337,49 @@ function displayBookmarks(folders) {
             }
         }
     });
+}
+
+// Favicon を非同期で読み込む
+async function loadFavicons() {
+    const faviconImages = document.querySelectorAll('.bookmark-favicon');
+    const faviconPlaceholders = document.querySelectorAll('.favicon-placeholder');
+    
+    // プロミスの配列を作成（並列処理のため）
+    const faviconPromises = Array.from(faviconImages).map(async (img, index) => {
+        const url = img.getAttribute('data-bookmark-url');
+        const placeholder = faviconPlaceholders[index];
+        
+        if (url) {
+            try {
+                const faviconUrl = await getFavicon(url);
+                img.src = faviconUrl;
+                img.onload = () => {
+                    img.classList.remove('hidden');
+                    if (placeholder) placeholder.style.display = 'none';
+                };
+                img.onerror = () => {
+                    // エラーの場合はプレースホルダーを表示
+                    if (placeholder) {
+                        placeholder.textContent = '🌐';
+                        placeholder.style.display = 'block';
+                    }
+                };
+            } catch (error) {
+                console.warn('Favicon 読み込みエラー:', url, error);
+                if (placeholder) {
+                    placeholder.textContent = '🌐';
+                    placeholder.style.display = 'block';
+                }
+            }
+        }
+    });
+    
+    // すべてのfavicon読み込みが完了するのを待つ（最大5秒）
+    try {
+        await Promise.allSettled(faviconPromises);
+    } catch (error) {
+        console.warn('一部のfaviconの読み込みに失敗しました:', error);
+    }
 }
 
 // フォルダIDでフォルダを検索するヘルパー関数

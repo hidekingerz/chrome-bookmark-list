@@ -245,11 +245,37 @@ header h1 {
     color: #667eea;
 }
 
-.bookmark-favicon {
+.bookmark-favicon-container {
+    position: relative;
     width: 16px;
     height: 16px;
     margin-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.favicon-placeholder {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    background-color: #e5e7eb;
     border-radius: 2px;
+    color: #6b7280;
+}
+
+.bookmark-favicon {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    transition: opacity 0.3s ease;
+}
+
+.bookmark-favicon.hidden {
+    display: none;
 }
 
 .bookmark-title {

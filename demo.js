@@ -3,97 +3,241 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bookmarkContainer = document.getElementById('bookmarkContainer');
     const searchInput = document.getElementById('searchInput');
     
-    // デモ用のモックブックマークデータ
+    // Favicon キャッシュの初期化（デモ版用）
+    await initFaviconCache();
+    
+    // デモ用のモックブックマークデータ（階層レベルに応じた初期展開状態）
     const mockBookmarks = [
         {
             id: '1',
             title: '開発ツール',
             bookmarks: [
-                { title: 'GitHub', url: 'https://github.com', favicon: 'chrome://favicon/https://github.com' },
-                { title: 'VS Code', url: 'https://code.visualstudio.com', favicon: 'chrome://favicon/https://code.visualstudio.com' }
+                { title: 'GitHub', url: 'https://github.com', favicon: null },
+                { title: 'VS Code', url: 'https://code.visualstudio.com', favicon: null }
             ],
             subfolders: [
                 {
                     id: '1-1',
                     title: 'フロントエンド',
                     bookmarks: [
-                        { title: 'React', url: 'https://reactjs.org', favicon: 'chrome://favicon/https://reactjs.org' },
-                        { title: 'Vue.js', url: 'https://vuejs.org', favicon: 'chrome://favicon/https://vuejs.org' }
+                        { title: 'React', url: 'https://reactjs.org', favicon: null },
+                        { title: 'Vue.js', url: 'https://vuejs.org', favicon: null }
                     ],
                     subfolders: [
                         {
                             id: '1-1-1',
                             title: 'CSS Frameworks',
                             bookmarks: [
-                                { title: 'Tailwind CSS', url: 'https://tailwindcss.com', favicon: 'chrome://favicon/https://tailwindcss.com' },
-                                { title: 'Bootstrap', url: 'https://getbootstrap.com', favicon: 'chrome://favicon/https://getbootstrap.com' }
+                                { title: 'Tailwind CSS', url: 'https://tailwindcss.com', favicon: null },
+                                { title: 'Bootstrap', url: 'https://getbootstrap.com', favicon: null }
                             ],
                             subfolders: [],
-                            expanded: false
+                            expanded: false // 3層目は折りたたみ
                         }
                     ],
-                    expanded: false
+                    expanded: true // 2層目は展開
                 },
                 {
                     id: '1-2',
                     title: 'バックエンド',
                     bookmarks: [
-                        { title: 'Node.js', url: 'https://nodejs.org', favicon: 'chrome://favicon/https://nodejs.org' },
-                        { title: 'Express', url: 'https://expressjs.com', favicon: 'chrome://favicon/https://expressjs.com' }
+                        { title: 'Node.js', url: 'https://nodejs.org', favicon: null },
+                        { title: 'Express', url: 'https://expressjs.com', favicon: null }
                     ],
                     subfolders: [],
-                    expanded: false
+                    expanded: true // 2層目は展開
                 }
             ],
-            expanded: false
+            expanded: true // 1層目は展開
         },
         {
             id: '2',
             title: 'ニュース・メディア',
             bookmarks: [
-                { title: 'NHK NEWS WEB', url: 'https://www3.nhk.or.jp/news/', favicon: 'chrome://favicon/https://www3.nhk.or.jp/news/' },
-                { title: '朝日新聞デジタル', url: 'https://www.asahi.com', favicon: 'chrome://favicon/https://www.asahi.com' }
+                { title: 'NHK NEWS WEB', url: 'https://www3.nhk.or.jp/news/', favicon: null },
+                { title: '朝日新聞デジタル', url: 'https://www.asahi.com', favicon: null }
             ],
             subfolders: [
                 {
                     id: '2-1',
                     title: 'テック系',
                     bookmarks: [
-                        { title: 'TechCrunch', url: 'https://techcrunch.com', favicon: 'chrome://favicon/https://techcrunch.com' },
-                        { title: 'Qiita', url: 'https://qiita.com', favicon: 'chrome://favicon/https://qiita.com' }
+                        { title: 'TechCrunch', url: 'https://techcrunch.com', favicon: null },
+                        { title: 'Qiita', url: 'https://qiita.com', favicon: null }
                     ],
-                    subfolders: [],
-                    expanded: false
+                    subfolders: [
+                        {
+                            id: '2-1-1',
+                            title: 'AI・機械学習',
+                            bookmarks: [
+                                { title: 'Hugging Face', url: 'https://huggingface.co', favicon: null },
+                                { title: 'Papers with Code', url: 'https://paperswithcode.com', favicon: null }
+                            ],
+                            subfolders: [],
+                            expanded: false // 3層目は折りたたみ
+                        }
+                    ],
+                    expanded: true // 2層目は展開
                 }
             ],
-            expanded: false
+            expanded: true // 1層目は展開
         },
         {
             id: '3',
             title: 'エンターテイメント',
             bookmarks: [
-                { title: 'YouTube', url: 'https://youtube.com', favicon: 'chrome://favicon/https://youtube.com' },
-                { title: 'Netflix', url: 'https://netflix.com', favicon: 'chrome://favicon/https://netflix.com' }
+                { title: 'YouTube', url: 'https://youtube.com', favicon: null },
+                { title: 'Netflix', url: 'https://netflix.com', favicon: null }
             ],
             subfolders: [],
-            expanded: false
+            expanded: true // 1層目は展開
         }
     ];
     
     let allBookmarks = mockBookmarks;
     
-    displayBookmarks(allBookmarks);
+    await displayBookmarks(allBookmarks);
     
     // 検索機能
-    searchInput.addEventListener('input', (e) => {
+    searchInput.addEventListener('input', async (e) => {
         const searchTerm = e.target.value.toLowerCase();
         const filteredBookmarks = filterBookmarks(allBookmarks, searchTerm);
-        displayBookmarks(filteredBookmarks);
+        await displayBookmarks(filteredBookmarks);
     });
 });
 
+// Favicon キャッシュ管理（デモ版用）
+const faviconCache = new Map();
+const FAVICON_CACHE_KEY = 'bookmark_favicon_cache_demo';
+const CACHE_EXPIRY_DAYS = 7;
+
+// Favicon キャッシュの初期化
+async function initFaviconCache() {
+    try {
+        const stored = localStorage.getItem(FAVICON_CACHE_KEY);
+        if (stored) {
+            const { data, timestamp } = JSON.parse(stored);
+            const isExpired = Date.now() - timestamp > (CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+            
+            if (!isExpired) {
+                Object.entries(data).forEach(([url, favicon]) => {
+                    faviconCache.set(url, favicon);
+                });
+            } else {
+                localStorage.removeItem(FAVICON_CACHE_KEY);
+            }
+        }
+    } catch (error) {
+        console.warn('Favicon キャッシュの読み込みに失敗:', error);
+    }
+}
+
+// Favicon キャッシュの保存
+function saveFaviconCache() {
+    try {
+        const data = Object.fromEntries(faviconCache);
+        const cacheData = {
+            data,
+            timestamp: Date.now()
+        };
+        localStorage.setItem(FAVICON_CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+        console.warn('Favicon キャッシュの保存に失敗:', error);
+    }
+}
+
+// Favicon の取得（キャッシュ機能付き）
+async function getFavicon(url) {
+    // キャッシュから取得を試行
+    if (faviconCache.has(url)) {
+        return faviconCache.get(url);
+    }
+    
+    // 複数のfavicon取得方法を試行
+    const faviconSources = [
+        `https://www.google.com/s2/favicons?domain=${getDomain(url)}&sz=32`,
+        `https://${getDomain(url)}/favicon.ico`
+    ];
+    
+    for (const faviconUrl of faviconSources) {
+        try {
+            // favicon の有効性をチェック
+            const isValid = await checkFaviconValidity(faviconUrl);
+            if (isValid) {
+                faviconCache.set(url, faviconUrl);
+                saveFaviconCache();
+                return faviconUrl;
+            }
+        } catch (error) {
+            continue; // 次のソースを試行
+        }
+    }
+    
+    // すべて失敗した場合はデフォルトアイコンを返す
+    const defaultFavicon = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiByeD0iMiIgZmlsbD0iIzk0YTNiOCIvPgo8cGF0aCBkPSJNOCAzQzUuNzkgMyA0IDQuNzkgNCA3QzQgOS4yMSA1Ljc5IDExIDggMTFDMTAuMjEgMTEgMTIgOS4yMSAxMiA3QzEyIDQuNzkgMTAuMjEgMyA4IDNaTTggOUEyIDIgMCAwIDEgNiA3QTIgMiAwIDAgMCA4IDVBMiAyIDAgMCAxIDEwIDdBMiAyIDAgMCAxIDggOVoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=';
+    faviconCache.set(url, defaultFavicon);
+    saveFaviconCache();
+    return defaultFavicon;
+}
+
+// Favicon の有効性チェック
+function checkFaviconValidity(faviconUrl) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = faviconUrl;
+        
+        // タイムアウト設定（2秒）
+        setTimeout(() => resolve(false), 2000);
+    });
+}
+
+// Favicon を非同期で読み込む
+async function loadFavicons() {
+    const faviconImages = document.querySelectorAll('.bookmark-favicon');
+    const faviconPlaceholders = document.querySelectorAll('.favicon-placeholder');
+    
+    // プロミスの配列を作成（並列処理のため）
+    const faviconPromises = Array.from(faviconImages).map(async (img, index) => {
+        const url = img.getAttribute('data-bookmark-url');
+        const placeholder = faviconPlaceholders[index];
+        
+        if (url) {
+            try {
+                const faviconUrl = await getFavicon(url);
+                img.src = faviconUrl;
+                img.onload = () => {
+                    img.classList.remove('hidden');
+                    if (placeholder) placeholder.style.display = 'none';
+                };
+                img.onerror = () => {
+                    // エラーの場合はプレースホルダーを表示
+                    if (placeholder) {
+                        placeholder.textContent = '🌐';
+                        placeholder.style.display = 'block';
+                    }
+                };
+            } catch (error) {
+                console.warn('Favicon 読み込みエラー:', url, error);
+                if (placeholder) {
+                    placeholder.textContent = '🌐';
+                    placeholder.style.display = 'block';
+                }
+            }
+        }
+    });
+    
+    // すべてのfavicon読み込みが完了するのを待つ（最大5秒）
+    try {
+        await Promise.allSettled(faviconPromises);
+    } catch (error) {
+        console.warn('一部のfaviconの読み込みに失敗しました:', error);
+    }
+}
+
 // ブックマークを表示
-function displayBookmarks(folders) {
+async function displayBookmarks(folders) {
     const bookmarkContainer = document.getElementById('bookmarkContainer');
     
     if (folders.length === 0) {
@@ -121,8 +265,10 @@ function displayBookmarks(folders) {
                         ${folder.bookmarks.map(bookmark => `
                             <li class="bookmark-item">
                                 <a href="#" class="bookmark-link" data-url="${escapeHtml(bookmark.url)}">
-                                    <img src="${bookmark.favicon}" alt="" class="bookmark-favicon" 
-                                         onerror="this.style.display='none'">
+                                    <div class="bookmark-favicon-container">
+                                        <div class="favicon-placeholder">🔗</div>
+                                        <img class="bookmark-favicon hidden" alt="" data-bookmark-url="${escapeHtml(bookmark.url)}">
+                                    </div>
                                     <span class="bookmark-title">${escapeHtml(bookmark.title)}</span>
                                     <span class="bookmark-url">${getDomain(bookmark.url)}</span>
                                 </a>
@@ -158,6 +304,9 @@ function displayBookmarks(folders) {
     
     const html = folders.map(folder => renderFolder(folder)).join('');
     bookmarkContainer.innerHTML = html;
+    
+    // Favicon を非同期で読み込み
+    await loadFavicons();
     
     // フォルダクリックイベントを設定
     bookmarkContainer.addEventListener('click', (e) => {
