@@ -1,6 +1,8 @@
 # Chrome Bookmark List
 
-新しいタブでブックマークをフォルダ別に美しく表示す
+新しいタブでブックマークをフォルダ別に一覧表示するChrome拡張機能
+
+![Chrome Bookmark List Screenshot](screenshot.png)
 
 ## 機能
 
@@ -11,6 +13,7 @@
 - 🎨 モダンで美しいUI
 - ⚡ 高速なブックマークアクセス
 - 📱 レスポンシブデザイン
+- 🖼️ Favicon表示とキャッシュ機能
 
 ## インストール方法
 
