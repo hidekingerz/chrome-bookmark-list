@@ -2,7 +2,7 @@ import { JSDOM } from 'jsdom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // メイン機能の統合テスト
-describe('Main Integration Tests', () => {
+describe('メイン機能の統合テスト', () => {
   let dom: JSDOM
   let document: Document
   let window: Window
@@ -84,7 +84,7 @@ describe('Main Integration Tests', () => {
     vi.clearAllMocks()
   })
 
-  it('should load and display bookmarks correctly', async () => {
+  it('ブックマークが正しく読み込まれ表示されることを確認', async () => {
     // メイン関数を直接テストするのではなく、
     // コンポーネントの動作をテスト
     const { processBookmarkTree } = await import('../src/utils')
@@ -100,7 +100,7 @@ describe('Main Integration Tests', () => {
     expect(folders[1].bookmarks).toHaveLength(1)
   })
 
-  it('should handle search functionality', async () => {
+  it('検索機能が正しく動作することを確認', async () => {
     const { filterBookmarks, processBookmarkTree } = await import('../src/utils')
     
     const tree = await chrome.bookmarks.getTree()
@@ -112,7 +112,7 @@ describe('Main Integration Tests', () => {
     expect(searchResults[0].bookmarks[0].title).toBe('Google')
   })
 
-  it('should handle empty bookmark tree', async () => {
+  it('空のブックマークツリーを正しく処理することを確認', async () => {
     // 空のブックマークツリーをテスト
     const mockChrome = globalThis.chrome as any
     mockChrome.bookmarks.getTree.mockResolvedValue([])
@@ -124,7 +124,7 @@ describe('Main Integration Tests', () => {
     expect(folders).toHaveLength(0)
   })
 
-  it('should open bookmarks in new tabs', async () => {
+  it('ブックマークが新しいタブで開かれることを確認', async () => {
     const mockChrome = globalThis.chrome as any
     const createTabSpy = vi.spyOn(mockChrome.tabs, 'create')
     
@@ -137,7 +137,7 @@ describe('Main Integration Tests', () => {
     expect(createTabSpy).toHaveBeenCalledWith({ url: bookmarkUrl })
   })
 
-  it('should handle favicon loading gracefully', async () => {
+  it('ファビコンの読み込みが適切に処理されることを確認', async () => {
     const { getDomain } = await import('../src/utils')
     
     const testUrl = 'https://example.com/path'
@@ -146,7 +146,7 @@ describe('Main Integration Tests', () => {
     expect(domain).toBe('example.com')
   })
 
-  it('should expand and collapse folders', async () => {
+  it('フォルダの展開・折りたたみが正しく動作することを確認', async () => {
     const { findFolderById, processBookmarkTree } = await import('../src/utils')
     
     const tree = await chrome.bookmarks.getTree()
