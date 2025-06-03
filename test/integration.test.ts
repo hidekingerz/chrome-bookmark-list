@@ -32,55 +32,51 @@ describe('Main Integration Tests', () => {
     window = dom.window as unknown as Window
 
     // グローバルオブジェクトを設定
-    global.document = document
-    global.window = window
+    Object.defineProperty(globalThis, 'document', {
+      value: document,
+      writable: true,
+      configurable: true
+    })
+    Object.defineProperty(globalThis, 'window', {
+      value: window,
+      writable: true,
+      configurable: true
+    })
 
-    // Chrome API のモック
-    global.chrome = {
-      bookmarks: {
-        getTree: vi.fn().mockResolvedValue([
+    // Chrome API のモック設定（既存のモックを更新）
+    const mockChrome = globalThis.chrome as any
+    mockChrome.bookmarks.getTree.mockResolvedValue([
+      {
+        id: '0',
+        title: 'root',
+        children: [
           {
-            id: '0',
-            title: 'root',
+            id: '1',
+            title: 'Bookmarks Bar',
             children: [
               {
-                id: '1',
-                title: 'Bookmarks Bar',
+                id: '2',
+                title: 'フォルダ1',
                 children: [
                   {
-                    id: '2',
-                    title: 'フォルダ1',
-                    children: [
-                      {
-                        id: '3',
-                        title: 'Google',
-                        url: 'https://google.com'
-                      }
-                    ]
-                  },
-                  {
-                    id: '4',
-                    title: 'GitHub',
-                    url: 'https://github.com'
+                    id: '3',
+                    title: 'Google',
+                    url: 'https://google.com'
                   }
                 ]
+              },
+              {
+                id: '4',
+                title: 'GitHub',
+                url: 'https://github.com'
               }
             ]
           }
-        ])
-      },
-      tabs: {
-        create: vi.fn()
+        ]
       }
-    } as any
+    ])
 
-    // localStorage のモック
-    global.localStorage = {
-      getItem: vi.fn().mockReturnValue(null),
-      setItem: vi.fn(),
-      removeItem: vi.fn(),
-      clear: vi.fn()
-    } as any
+    // localStorage は既にsetup.tsでモックされているため、設定不要
   })
 
   afterEach(() => {
@@ -118,7 +114,8 @@ describe('Main Integration Tests', () => {
 
   it('should handle empty bookmark tree', async () => {
     // 空のブックマークツリーをテスト
-    chrome.bookmarks.getTree = vi.fn().mockResolvedValue([])
+    const mockChrome = globalThis.chrome as any
+    mockChrome.bookmarks.getTree.mockResolvedValue([])
     
     const { processBookmarkTree } = await import('../src/utils')
     const tree = await chrome.bookmarks.getTree()
@@ -128,7 +125,8 @@ describe('Main Integration Tests', () => {
   })
 
   it('should open bookmarks in new tabs', async () => {
-    const createTabSpy = vi.spyOn(chrome.tabs, 'create')
+    const mockChrome = globalThis.chrome as any
+    const createTabSpy = vi.spyOn(mockChrome.tabs, 'create')
     
     // ブックマーククリックのシミュレーション
     const bookmarkUrl = 'https://google.com'
