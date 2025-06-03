@@ -15,7 +15,7 @@ let allBookmarks: BookmarkFolder[] = [];
 
 // ブックマークデータを取得して表示する
 document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
-    const bookmarkContainer = document.getElementById('bookmarkContainer') as HTMLElement;
+    const bookmarkContainer = document.getElementById('bookmark-list') as HTMLElement;
     const searchInput = document.getElementById('search-input') as HTMLInputElement;
     
     // Favicon キャッシュの初期化
