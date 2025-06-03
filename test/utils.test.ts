@@ -12,7 +12,7 @@ import {
   saveFaviconCache
 } from '../src/utils'
 
-describe('Utils Functions', () => {
+describe('ユーティリティ関数', () => {
   beforeEach(() => {
     // 各テスト前にキャッシュをクリア
     faviconCache.clear()
@@ -20,7 +20,7 @@ describe('Utils Functions', () => {
   })
 
   describe('processBookmarkTree', () => {
-    it('should process bookmark tree correctly', () => {
+    it('ブックマークツリーが正しく処理されることを確認', () => {
       const mockTree: ChromeBookmarkNode[] = [
         {
           id: '0',
@@ -75,7 +75,7 @@ describe('Utils Functions', () => {
       expect(result[1].bookmarks[0].title).toBe('Yahoo')
     })
 
-    it('should handle empty tree', () => {
+    it('空のツリーを正しく処理することを確認', () => {
       const result = processBookmarkTree([])
       expect(result).toHaveLength(0)
     })
@@ -100,26 +100,26 @@ describe('Utils Functions', () => {
       }
     ]
 
-    it('should find folder by id at root level', () => {
+    it('ルートレベルでフォルダをIDで検索できることを確認', () => {
       const result = findFolderById(mockFolders, '1')
       expect(result).toBeDefined()
       expect(result?.title).toBe('Folder 1')
     })
 
-    it('should find folder by id in subfolders', () => {
+    it('サブフォルダ内でフォルダをIDで検索できることを確認', () => {
       const result = findFolderById(mockFolders, '2')
       expect(result).toBeDefined()
       expect(result?.title).toBe('Subfolder')
     })
 
-    it('should return null for non-existent id', () => {
+    it('存在しないIDに対してnullを返すことを確認', () => {
       const result = findFolderById(mockFolders, '999')
       expect(result).toBeNull()
     })
   })
 
   describe('getTotalBookmarks', () => {
-    it('should count bookmarks recursively', () => {
+    it('ブックマークを再帰的に数えることを確認', () => {
       const folder: BookmarkFolder = {
         id: '1',
         title: 'Test Folder',
@@ -145,7 +145,7 @@ describe('Utils Functions', () => {
       expect(result).toBe(3) // 2 + 1
     })
 
-    it('should return 0 for empty folder', () => {
+    it('空のフォルダに対して0を返すことを確認', () => {
       const folder: BookmarkFolder = {
         id: '1',
         title: 'Empty Folder',
@@ -173,7 +173,7 @@ describe('Utils Functions', () => {
       }
     ]
 
-    it('should filter bookmarks by title', () => {
+    it('タイトルでブックマークをフィルタリングできることを確認', () => {
       const result = filterBookmarks(mockFolders, 'google')
       expect(result).toHaveLength(1)
       expect(result[0].bookmarks).toHaveLength(1)
@@ -181,51 +181,51 @@ describe('Utils Functions', () => {
       expect(result[0].expanded).toBe(true) // 検索時は自動展開
     })
 
-    it('should filter bookmarks by URL', () => {
+    it('URLでブックマークをフィルタリングできることを確認', () => {
       const result = filterBookmarks(mockFolders, 'yahoo.co.jp')
       expect(result).toHaveLength(1)
       expect(result[0].bookmarks).toHaveLength(1)
       expect(result[0].bookmarks[0].title).toBe('Yahoo Japan')
     })
 
-    it('should return all folders when search term is empty', () => {
+    it('検索語が空の場合は全フォルダを返すことを確認', () => {
       const result = filterBookmarks(mockFolders, '')
       expect(result).toEqual(mockFolders)
     })
 
-    it('should return empty array when no matches found', () => {
+    it('マッチしない場合は空配列を返すことを確認', () => {
       const result = filterBookmarks(mockFolders, 'nonexistent')
       expect(result).toHaveLength(0)
     })
   })
 
   describe('escapeHtml', () => {
-    it('should escape HTML special characters', () => {
+    it('HTML特殊文字がエスケープされることを確認', () => {
       expect(escapeHtml('<script>alert("xss")</script>')).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;')
       expect(escapeHtml('A & B')).toBe('A &amp; B')
       expect(escapeHtml('"quoted"')).toBe('&quot;quoted&quot;')
     })
 
-    it('should handle normal text without escaping', () => {
+    it('通常のテキストはエスケープせずに処理されることを確認', () => {
       expect(escapeHtml('Normal text')).toBe('Normal text')
     })
   })
 
   describe('getDomain', () => {
-    it('should extract domain from URL', () => {
+    it('URLからドメインを抽出できることを確認', () => {
       expect(getDomain('https://www.example.com/path')).toBe('www.example.com')
       expect(getDomain('http://google.com')).toBe('google.com')
       expect(getDomain('https://sub.domain.co.jp/page?param=value')).toBe('sub.domain.co.jp')
     })
 
-    it('should return original string for invalid URLs', () => {
+    it('無効なURLに対して元の文字列を返すことを確認', () => {
       expect(getDomain('invalid-url')).toBe('invalid-url')
       expect(getDomain('')).toBe('')
     })
   })
 
   describe('saveFaviconCache', () => {
-    it('should save favicon cache to localStorage', () => {
+    it('ファビコンキャッシュがlocalStorageに保存されることを確認', () => {
       const mockSetItem = vi.fn()
       Object.defineProperty(globalThis, 'localStorage', {
         value: { setItem: mockSetItem },
@@ -242,7 +242,7 @@ describe('Utils Functions', () => {
       )
     })
 
-    it('should handle localStorage errors gracefully', () => {
+    it('localStorageエラーが適切に処理されることを確認', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       
       Object.defineProperty(globalThis, 'localStorage', {
