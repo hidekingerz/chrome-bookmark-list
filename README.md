@@ -19,26 +19,43 @@
 
 ```
 chrome-bookmark-list/
-├── src/                    # 拡張機能ソースファイル
+├── src/                    # TypeScriptソースファイル
 │   ├── manifest.json       # 拡張機能マニフェスト
 │   ├── newtab.html         # 新しいタブページHTML
-│   ├── newtab.js           # メインJavaScript
+│   ├── newtab.ts           # メインTypeScript
+│   ├── types.ts            # TypeScript型定義
 │   ├── styles.css          # スタイルシート
 │   └── icons/              # アイコンファイル
+├── dist/                   # ビルド成果物（拡張機能用）
 ├── demo.html               # デモ版HTML
 ├── demo.js                 # デモ版JavaScript
+├── build.sh                # ビルドスクリプト
+├── package.json            # Node.js依存関係
+├── tsconfig.json           # TypeScript設定
 ├── screenshot.png          # スクリーンショット
 └── README.md               # このファイル
 ```
 
 ## インストール方法
 
-1. このリポジトリをクローンまたはダウンロード
-2. Chromeで `chrome://extensions/` を開く
-3. 右上の「デベロッパーモード」を有効にする
-4. 「パッケージ化されていない拡張機能を読み込む」をクリック
-5. **`src`フォルダ**を選択（プロジェクトルートではなくsrcフォルダを選択してください）
-6. 新しいタブを開くと、ブックマーク一覧が表示されます
+### 1. リポジトリのクローンと依存関係のインストール
+```bash
+git clone <このリポジトリのURL>
+cd chrome-bookmark-list
+npm install
+```
+
+### 2. プロジェクトのビルド
+```bash
+npm run build:extension
+```
+
+### 3. Chrome拡張機能として読み込み
+1. Chromeで `chrome://extensions/` を開く
+2. 右上の「デベロッパーモード」を有効にする
+3. 「パッケージ化されていない拡張機能を読み込む」をクリック
+4. **`dist`フォルダ**を選択（ビルド成果物が含まれています）
+5. 新しいタブを開くと、ブックマーク一覧が表示されます
 
 ## デモ版の確認方法
 
@@ -65,7 +82,31 @@ chrome-bookmark-list/
 
 このプロジェクトは以下の技術を使用しています：
 
-- Manifest V3
-- Vanilla JavaScript
-- CSS Grid & Flexbox
-- Chrome Bookmarks API
+- **TypeScript** - 型安全なJavaScript開発
+- **Manifest V3** - 最新のChrome拡張機能仕様
+- **Vanilla JavaScript/TypeScript** - フレームワークを使用しない軽量実装
+- **CSS Grid & Flexbox** - モダンなレイアウト
+- **Chrome Bookmarks API** - ブックマークデータへのアクセス
+
+### 開発コマンド
+
+- `npm run build` - TypeScriptをコンパイル
+- `npm run build:extension` - 拡張機能をビルド（dist/フォルダに出力）
+- `npm run dev` - TypeScriptの監視モード（ファイル変更時に自動再コンパイル）
+- `npm run clean` - ビルド成果物をクリーンアップ
+
+## TypeScript化について
+
+このプロジェクトはJavaScriptからTypeScriptに移植されました。主な改善点：
+
+- **型安全性**: 実行時エラーを減らし、開発時にバグを発見
+- **IntelliSense**: エディタでの自動補完とドキュメント表示
+- **リファクタリング支援**: 安全な変数名変更や構造変更
+- **モダンな開発環境**: 最新のJavaScript機能を安全に使用
+
+### 型定義
+
+- `BookmarkItem`: 個別のブックマーク情報
+- `BookmarkFolder`: フォルダとサブフォルダの階層構造
+- `ChromeBookmarkNode`: Chrome API からのデータ型
+- `FaviconCacheData`: Favicon キャッシュデータ
