@@ -7,7 +7,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./test/setup.ts'],
     coverage: {
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [
         'node_modules/',
         'dist/',

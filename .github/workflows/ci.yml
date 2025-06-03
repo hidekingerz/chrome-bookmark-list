@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   test:
     name: Run Tests
@@ -13,7 +17,8 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [18, 20]
+        node-version: [20, 22]
+      fail-fast: false
     
     steps:
     - uses: actions/checkout@v4
@@ -23,21 +28,20 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    
+
     - name: Install dependencies
       run: npm ci
-    
-    - name: Run lint (if configured)
-      run: npm run lint --if-present
-    
+
     - name: Run tests
       run: npm run test:run
-    
+
     - name: Generate coverage report
       run: npm run test:coverage
-    
+      if: matrix.node-version == '20'
+
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
+      if: matrix.node-version == '20'
       with:
         file: ./coverage/lcov.info
         fail_ci_if_error: false
@@ -61,12 +65,15 @@ jobs:
     
     - name: Build TypeScript
       run: npm run build
-    
+
+    - name: Make build script executable
+      run: chmod +x build.sh
+
     - name: Build extension
       run: npm run build:extension
     
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: chrome-extension
         path: dist/

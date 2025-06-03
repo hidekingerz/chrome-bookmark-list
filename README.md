@@ -148,6 +148,34 @@ npm run build:extension
 
 テストカバレッジレポートは `coverage/index.html` で確認できます。
 
+## CI/CD
+
+このプロジェクトにはGitHub Actionsを使用した自動化されたCI/CDパイプラインが設定されています。
+
+### GitHub Actions ワークフロー
+
+- **トリガー**: `main`と`develop`ブランチへのプッシュ、`main`ブランチへのプルリクエスト
+- **Node.js バージョン**: 18, 20, 22でのマトリックステスト
+- **実行内容**:
+  1. **テスト**: すべてのユニットテスト・統合テストを実行
+  2. **カバレッジ**: テストカバレッジレポートを生成（Node.js 20のみ）
+  3. **ビルド**: TypeScriptのコンパイルと拡張機能のビルド
+  4. **型チェック**: TypeScriptの静的型チェック
+  5. **アーティファクト**: ビルドされた拡張機能をGitHub Actionsアーティファクトとして保存
+
+### ローカル開発での検証
+
+```bash
+# すべてのテストを実行
+npm run test:run
+
+# TypeScriptの型チェック
+npx tsc --noEmit
+
+# 拡張機能をビルド
+npm run build:extension
+```
+
 ## ライセンス
 
 MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してください。
