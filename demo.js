@@ -270,7 +270,6 @@ async function displayBookmarks(folders) {
                                         <img class="bookmark-favicon hidden" alt="" data-bookmark-url="${escapeHtml(bookmark.url)}">
                                     </div>
                                     <span class="bookmark-title">${escapeHtml(bookmark.title)}</span>
-                                    <span class="bookmark-url">${getDomain(bookmark.url)}</span>
                                 </a>
                             </li>
                         `).join('')}

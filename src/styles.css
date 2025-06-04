@@ -285,16 +285,6 @@ header h1 {
     white-space: nowrap;
 }
 
-.bookmark-url {
-    font-size: 0.8rem;
-    color: #999;
-    margin-left: 10px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 150px;
-}
-
 .loading {
     text-align: center;
     color: white;
