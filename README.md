@@ -27,8 +27,6 @@ chrome-bookmark-list/
 │   ├── styles.css          # スタイルシート
 │   └── icons/              # アイコンファイル
 ├── dist/                   # ビルド成果物（拡張機能用）
-├── demo.html               # デモ版HTML
-├── demo.js                 # デモ版JavaScript
 ├── build.sh                # ビルドスクリプト
 ├── package.json            # Node.js依存関係
 ├── tsconfig.json           # TypeScript設定
@@ -56,18 +54,6 @@ npm run build:extension
 3. 「パッケージ化されていない拡張機能を読み込む」をクリック
 4. **`dist`フォルダ**を選択（ビルド成果物が含まれています）
 5. 新しいタブを開くと、ブックマーク一覧が表示されます
-
-## デモ版の確認方法
-
-実際の拡張機能をインストールする前に、デモ版で動作確認できます：
-
-**方法1: ファイル直接開き**
-- デモファイル（`demo.html`）をブラウザで直接開く
-
-**方法2: ローカルサーバー使用**
-1. ターミナルでプロジェクトフォルダに移動
-2. `python3 -m http.server 8000` でローカルサーバーを起動
-3. ブラウザで `http://localhost:8000/demo.html` を開く
 
 ## 使用方法
 
@@ -178,4 +164,4 @@ npm run build:extension
 
 ## ライセンス
 
-MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してください。
+Apache License 2.0 - 詳細は [LICENSE](LICENSE) ファイルを参照してください。
