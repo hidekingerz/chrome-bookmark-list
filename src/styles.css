@@ -278,8 +278,24 @@ header h1 {
     display: none;
 }
 
-.bookmark-title {
+.bookmark-content {
     flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bookmark-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.bookmark-url {
+    font-size: 0.75rem;
+    color: #888;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
