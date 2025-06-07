@@ -57,7 +57,7 @@ async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
         const totalBookmarks = folder.bookmarks.length + folder.subfolders.reduce((sum, sub) => sum + getTotalBookmarks(sub), 0);
         
         return `
-            <div class="bookmark-folder" data-level="${level}" data-folder-id="${folder.id}">
+            <div class="bookmark-folder" data-folder-id="${folder.id}">
                 <div class="folder-header" ${hasContent ? 'style="cursor: pointer;"' : ''}>
                     <div class="folder-info">
                         ${hasContent ? `<span class="expand-icon ${folder.expanded ? 'expanded' : ''}">${folder.expanded ? '📂' : '📁'}</span>` : '<span class="folder-icon">📄</span>'}
@@ -121,7 +121,6 @@ async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
             e.preventDefault();
             const folderElement = folderHeader.closest('.bookmark-folder') as HTMLElement;
             const folderId = folderElement.getAttribute('data-folder-id');
-            const level = parseInt(folderElement.getAttribute('data-level') || '0');
             
             // 全てのフォルダ（親・子関係なく）で展開/折りたたみ処理を行う
             const expandIcon = folderHeader.querySelector('.expand-icon') as HTMLElement;

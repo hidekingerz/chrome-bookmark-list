@@ -6,9 +6,21 @@ import type { BookmarkFolder } from '../src/types'
 describe('UI関連のテスト', () => {
   let dom: JSDOM
   let document: Document
-  let window: Window
-
-  beforeEach(() => {
+  let window:       // 展開された親フォルダと子フォルダの構造を作成
+      bookmarkContainer.innerHTML = `
+        <div class="bookmark-folder" data-folder-id="parent">
+          <div class="folder-header">
+            <span class="expand-icon expanded">📂</span>
+            <h2 class="folder-title">親フォルダ</h2>
+          </div>
+          <div class="subfolders-container expanded">
+            <div class="bookmark-folder" data-folder-id="child">
+              <div class="folder-header">
+                <span class="expand-icon expanded">📂</span>
+                <h2 class="folder-title">子フォルダ</h2>
+              </div>
+              <div class="subfolders-container expanded">
+                <div class="bookmark-folder" data-folder-id="grandchild">eEach(() => {
     dom = new JSDOM(`
       <!DOCTYPE html>
       <html>
