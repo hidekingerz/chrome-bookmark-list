@@ -74,10 +74,7 @@ async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
                                         <div class="favicon-placeholder">🔗</div>
                                         <img class="bookmark-favicon hidden" alt="" data-bookmark-url="${escapeHtml(bookmark.url)}">
                                     </div>
-                                    <div class="bookmark-content">
-                                        <span class="bookmark-title">${escapeHtml(bookmark.title)}</span>
-                                        <span class="bookmark-url">${escapeHtml(bookmark.url)}</span>
-                                    </div>
+                                    <span class="bookmark-title">${escapeHtml(bookmark.title)}</span>
                                 </a>
                             </li>
                         `).join('')}
