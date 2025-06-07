@@ -64,8 +64,12 @@ header h1 {
 }
 
 .bookmark-folder:hover {
-    transform: translateY(-5px);
     box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+}
+
+/* サブフォルダのみに適用するトランスフォーム効果 */
+.bookmark-container > .bookmark-folder:hover {
+    transform: translateY(-5px);
 }
 
 .folder-header {
@@ -73,16 +77,15 @@ header h1 {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 15px;
-    padding-bottom: 10px;
+    padding: 8px;
+    margin: -8px -8px 7px -8px;
     border-bottom: 2px solid #f0f0f0;
+    border-radius: 8px;
     transition: background-color 0.2s ease;
 }
 
 .folder-header:hover {
     background-color: rgba(102, 126, 234, 0.05);
-    border-radius: 8px;
-    padding: 8px;
-    margin: -8px -8px 7px -8px;
 }
 
 .folder-info {
@@ -98,22 +101,9 @@ header h1 {
     user-select: none;
 }
 
-.expand-icon.expanded {
-    transform: rotate(90deg);
-}
-
 .folder-icon {
     font-size: 1.2rem;
     margin-right: 8px;
-}
-
-.subfolder-count {
-    font-size: 0.8rem;
-    color: #888;
-    margin-left: 8px;
-    background: rgba(102, 126, 234, 0.1);
-    padding: 2px 6px;
-    border-radius: 10px;
 }
 
 .folder-title {
@@ -132,25 +122,28 @@ header h1 {
     font-weight: 500;
 }
 
-.subfolders-container {
+.folder-content {
     margin-top: 15px;
-    padding-left: 15px;
-    border-left: 2px solid rgba(102, 126, 234, 0.2);
     transition: all 0.3s ease;
     overflow: hidden;
 }
 
-.subfolders-container.collapsed {
+.folder-content.collapsed {
     max-height: 0;
     margin-top: 0;
     opacity: 0;
     visibility: hidden;
 }
 
-.subfolders-container.expanded {
+.folder-content.expanded {
     max-height: none;
     opacity: 1;
     visibility: visible;
+}
+
+.subfolders-container {
+    padding-left: 15px;
+    border-left: 2px solid rgba(102, 126, 234, 0.2);
 }
 
 .subfolders-container .bookmark-folder {
@@ -158,68 +151,6 @@ header h1 {
     background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
     border: 1px solid rgba(102, 126, 234, 0.1);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.subfolders-container .bookmark-folder.hidden {
-    display: none;
-}
-
-.subfolder-list {
-    margin-top: 15px;
-    padding: 8px 12px 12px 12px;
-    background: rgba(102, 126, 234, 0.05);
-    border-radius: 8px;
-    border: 1px solid rgba(102, 126, 234, 0.1);
-}
-
-.subfolder-items {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-.subfolder-item {
-    margin-bottom: 4px;
-}
-
-.subfolder-header {
-    display: flex;
-    align-items: center;
-    padding: 6px 8px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.subfolder-header:hover {
-    background-color: rgba(102, 126, 234, 0.1);
-}
-
-.subfolder-expand-icon {
-    font-size: 0.9rem;
-    margin-right: 6px;
-    transition: transform 0.2s ease;
-}
-
-.subfolder-expand-icon.expanded {
-    transform: rotate(90deg);
-}
-
-.subfolder-name {
-    flex: 1;
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #555;
-}
-
-.subfolder-bookmark-count {
-    font-size: 0.8rem;
-    background: #667eea;
-    color: white;
-    padding: 2px 6px;
-    border-radius: 10px;
-    min-width: 16px;
-    text-align: center;
 }
 
 .bookmark-list {
@@ -231,9 +162,8 @@ header h1 {
 }
 
 .bookmark-link {
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
+    display: block;
+    padding: 12px;
     text-decoration: none;
     color: #555;
     border-radius: 8px;
@@ -245,11 +175,23 @@ header h1 {
     color: #667eea;
 }
 
+.bookmark-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bookmark-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .bookmark-favicon-container {
     position: relative;
     width: 16px;
     height: 16px;
-    margin-right: 10px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -279,10 +221,26 @@ header h1 {
 }
 
 .bookmark-title {
-    flex: 1;
+    font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    flex: 1;
+}
+
+.bookmark-url {
+    font-size: 0.8rem;
+    color: #888;
+    margin-left: 26px; /* favicon分のスペース */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.7;
+}
+
+.bookmark-link:hover .bookmark-url {
+    color: #667eea;
+    opacity: 0.8;
 }
 
 .loading {
@@ -338,18 +296,25 @@ header h1 {
         align-self: flex-end;
     }
     
-    .subfolder-count {
-        font-size: 0.7rem;
-        padding: 1px 5px;
+    /* モバイル向けブックマークスタイル */
+    .bookmark-link {
+        padding: 10px;
     }
     
-    /* モバイルでサブフォルダリストのフォントサイズを調整 */
-    .subfolder-name {
-        font-size: 0.85rem;
+    .bookmark-content {
+        gap: 3px;
     }
     
-    .subfolder-bookmark-count {
-        font-size: 0.7rem;
-        padding: 1px 4px;
+    .bookmark-header {
+        gap: 8px;
+    }
+    
+    .bookmark-title {
+        font-size: 0.9rem;
+    }
+    
+    .bookmark-url {
+        font-size: 0.75rem;
+        margin-left: 24px;
     }
 }

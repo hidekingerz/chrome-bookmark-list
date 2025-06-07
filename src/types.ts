@@ -19,19 +19,8 @@ interface FaviconCacheData {
   timestamp: number;
 }
 
-interface ChromeBookmarkNode {
-  id: string;
-  title: string;
-  url?: string;
-  children?: ChromeBookmarkNode[];
-}
-
-// Chrome API拡張
-declare global {
-  interface Window {
-    chrome: typeof chrome;
-  }
-}
+// Chrome APIのBookmarkTreeNodeと互換性のある型定義
+type ChromeBookmarkNode = chrome.bookmarks.BookmarkTreeNode;
 
 export { BookmarkFolder, BookmarkItem, ChromeBookmarkNode, FaviconCacheData };
 

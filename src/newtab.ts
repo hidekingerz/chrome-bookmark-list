@@ -52,56 +52,49 @@ async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
     // まず基本構造をレンダリング
     function renderFolder(folder: BookmarkFolder, level: number = 0): string {
         const hasSubfolders = folder.subfolders.length > 0;
+        const hasBookmarks = folder.bookmarks.length > 0;
+        const hasContent = hasSubfolders || hasBookmarks;
         const totalBookmarks = folder.bookmarks.length + folder.subfolders.reduce((sum, sub) => sum + getTotalBookmarks(sub), 0);
         
         return `
-            <div class="bookmark-folder ${level > 0 && !folder.expanded ? 'hidden' : ''}" data-level="${level}" data-folder-id="${folder.id}">
-                <div class="folder-header" ${hasSubfolders ? 'style="cursor: pointer;"' : ''}>
+            <div class="bookmark-folder" data-level="${level}" data-folder-id="${folder.id}">
+                <div class="folder-header" ${hasContent ? 'style="cursor: pointer;"' : ''}>
                     <div class="folder-info">
-                        ${hasSubfolders ? `<span class="expand-icon ${folder.expanded ? 'expanded' : ''}">${folder.expanded ? '📂' : '📁'}</span>` : '<span class="folder-icon">📄</span>'}
+                        ${hasContent ? `<span class="expand-icon ${folder.expanded ? 'expanded' : ''}">${folder.expanded ? '📂' : '📁'}</span>` : '<span class="folder-icon">📄</span>'}
                         <h2 class="folder-title">${escapeHtml(folder.title)}</h2>
                         ${hasSubfolders ? `<span class="subfolder-count">${folder.subfolders.length}個のフォルダ</span>` : ''}
                     </div>
                     <span class="bookmark-count">${totalBookmarks}</span>
                 </div>
                 
-                ${folder.bookmarks.length > 0 ? `
-                    <ul class="bookmark-list">
-                        ${folder.bookmarks.map(bookmark => `
-                            <li class="bookmark-item">
-                                <a href="#" class="bookmark-link" data-url="${escapeHtml(bookmark.url)}">
-                                    <div class="bookmark-favicon-container">
-                                        <div class="favicon-placeholder">🔗</div>
-                                        <img class="bookmark-favicon hidden" alt="" data-bookmark-url="${escapeHtml(bookmark.url)}">
-                                    </div>
-                                    <span class="bookmark-title">${escapeHtml(bookmark.title)}</span>
-                                </a>
-                            </li>
-                        `).join('')}
-                    </ul>
-                ` : ''}
-                
-                ${hasSubfolders ? `
-                    <div class="subfolder-list">
-                        <ul class="subfolder-items">
-                            ${folder.subfolders.map(subfolder => {
-                                const subfolderBookmarkCount = getTotalBookmarks(subfolder);
-                                return `
-                                    <li class="subfolder-item">
-                                        <div class="subfolder-header" data-subfolder-id="${subfolder.id}">
-                                            <span class="subfolder-expand-icon ${subfolder.expanded ? 'expanded' : ''}">${subfolder.expanded ? '📂' : '📁'}</span>
-                                            <span class="subfolder-name">${escapeHtml(subfolder.title)}</span>
-                                            <span class="subfolder-bookmark-count">${subfolderBookmarkCount}</span>
+                <div class="folder-content ${folder.expanded ? 'expanded' : 'collapsed'}">
+                    ${hasBookmarks ? `
+                        <ul class="bookmark-list">
+                            ${folder.bookmarks.map(bookmark => `
+                                <li class="bookmark-item">
+                                    <a href="#" class="bookmark-link" data-url="${escapeHtml(bookmark.url)}">
+                                        <div class="bookmark-content">
+                                            <div class="bookmark-header">
+                                                <div class="bookmark-favicon-container">
+                                                    <div class="favicon-placeholder">🔗</div>
+                                                    <img class="bookmark-favicon hidden" alt="" data-bookmark-url="${escapeHtml(bookmark.url)}">
+                                                </div>
+                                                <span class="bookmark-title">${escapeHtml(bookmark.title)}</span>
+                                            </div>
+                                            <div class="bookmark-url">${escapeHtml(bookmark.url)}</div>
                                         </div>
-                                    </li>
-                                `;
-                            }).join('')}
+                                    </a>
+                                </li>
+                            `).join('')}
                         </ul>
-                    </div>
-                    <div class="subfolders-container ${folder.expanded ? 'expanded' : 'collapsed'}">
-                        ${folder.subfolders.map(subfolder => renderFolder(subfolder, level + 1)).join('')}
-                    </div>
-                ` : ''}
+                    ` : ''}
+                    
+                    ${hasSubfolders ? `
+                        <div class="subfolders-container">
+                            ${folder.subfolders.map(subfolder => renderFolder(subfolder, level + 1)).join('')}
+                        </div>
+                    ` : ''}
+                </div>
             </div>
         `;
     }
@@ -116,7 +109,6 @@ async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
     bookmarkContainer.addEventListener('click', (e: Event) => {
         const target = e.target as HTMLElement;
         const folderHeader = target.closest('.folder-header') as HTMLElement | null;
-        const subfolderHeader = target.closest('.subfolder-header') as HTMLElement | null;
         const bookmarkLink = target.closest('.bookmark-link') as HTMLElement | null;
         
         if (bookmarkLink) {
@@ -125,71 +117,36 @@ async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
             if (url) {
                 chrome.tabs.create({ url: url });
             }
-        } else if (subfolderHeader) {
-            // 子フォルダのクリック処理
-            e.preventDefault();
-            const subfolderId = subfolderHeader.getAttribute('data-subfolder-id');
-            const parentFolderElement = subfolderHeader.closest('.bookmark-folder') as HTMLElement;
-            const parentFolderId = parentFolderElement.getAttribute('data-folder-id');
-            
-            if (parentFolderId && subfolderId) {
-                const parentFolder = findFolderById(allBookmarks, parentFolderId);
-                const subfolder = parentFolder ? findFolderById(parentFolder.subfolders, subfolderId) : null;
-                
-                if (subfolder) {
-                    // 子フォルダの表示状態を切り替え
-                    subfolder.expanded = !subfolder.expanded;
-                    
-                    // サブフォルダリスト内のアイコンを更新
-                    const expandIcon = subfolderHeader.querySelector('.subfolder-expand-icon') as HTMLElement;
-                    if (expandIcon) {
-                        expandIcon.textContent = subfolder.expanded ? '📂' : '📁';
-                        expandIcon.classList.toggle('expanded');
-                    }
-                    
-                    // 親フォルダも展開状態にする（子フォルダの内容を表示するため）
-                    if (subfolder.expanded && parentFolder) {
-                        parentFolder.expanded = true;
-                        
-                        // 親フォルダの展開状態も更新
-                        const parentExpandIcon = parentFolderElement.querySelector('.expand-icon') as HTMLElement;
-                        const parentSubfoldersContainer = parentFolderElement.querySelector('.subfolders-container') as HTMLElement;
-                        
-                        if (parentExpandIcon && parentSubfoldersContainer) {
-                            parentExpandIcon.textContent = '📂';
-                            parentExpandIcon.classList.add('expanded');
-                            parentSubfoldersContainer.classList.add('expanded');
-                            parentSubfoldersContainer.classList.remove('collapsed');
-                        }
-                    }
-                    
-                    // 対象の子フォルダのコンテナを探して表示/非表示を切り替え
-                    const subfolderContainers = parentFolderElement.querySelectorAll('.subfolders-container .bookmark-folder') as NodeListOf<HTMLElement>;
-                    subfolderContainers.forEach(container => {
-                        if (container.getAttribute('data-folder-id') === subfolderId) {
-                            if (subfolder.expanded) {
-                                container.classList.remove('hidden');
-                            } else {
-                                container.classList.add('hidden');
-                            }
-                        }
-                    });
-                }
-            }
         } else if (folderHeader) {
+            e.preventDefault();
             const folderElement = folderHeader.closest('.bookmark-folder') as HTMLElement;
             const folderId = folderElement.getAttribute('data-folder-id');
-            const expandIcon = folderHeader.querySelector('.expand-icon') as HTMLElement;
-            const subfoldersContainer = folderElement.querySelector('.subfolders-container') as HTMLElement;
+            const level = parseInt(folderElement.getAttribute('data-level') || '0');
             
-            if (expandIcon && subfoldersContainer && folderId) {
+            // 全てのフォルダ（親・子関係なく）で展開/折りたたみ処理を行う
+            const expandIcon = folderHeader.querySelector('.expand-icon') as HTMLElement;
+            const folderContent = folderElement.querySelector('.folder-content') as HTMLElement;
+            
+            if (folderId) {
                 const folder = findFolderById(allBookmarks, folderId);
+                
                 if (folder) {
+                    // 展開アイコンがない場合（コンテンツがない場合）は何もしない
+                    if (!expandIcon) {
+                        return;
+                    }
+                    
+                    // 展開状態を切り替え
                     folder.expanded = !folder.expanded;
+                    
+                    // アイコンとクラスを更新
                     expandIcon.textContent = folder.expanded ? '📂' : '📁';
                     expandIcon.classList.toggle('expanded');
-                    subfoldersContainer.classList.toggle('expanded');
-                    subfoldersContainer.classList.toggle('collapsed');
+                    
+                    if (folderContent) {
+                        folderContent.classList.toggle('expanded');
+                        folderContent.classList.toggle('collapsed');
+                    }
                 }
             }
         }
