@@ -155,6 +155,77 @@ describe('メイン機能の統合テスト', () => {
     // フォルダの展開状態をテスト
     const folder = findFolderById(folders, '2')
     expect(folder).toBeDefined()
-    expect(folder?.expanded).toBe(true) // デフォルトで展開
+    expect(folder?.expanded).toBe(true) // レベル0のフォルダは展開状態
+    
+    // サブフォルダがある場合の確認
+    if (folder && folder.subfolders.length > 0) {
+      const subfolder = folder.subfolders[0]
+      expect(subfolder.expanded).toBe(true) // レベル1のサブフォルダも展開状態
+    }
+  })
+
+  it('階層構造のブックマークが正しく処理されることを確認', async () => {
+    // より複雑な階層構造をテスト
+    const mockChrome = globalThis.chrome as any
+    mockChrome.bookmarks.getTree.mockResolvedValue([
+      {
+        id: '0',
+        title: 'root',
+        children: [
+          {
+            id: '1',
+            title: 'Bookmarks Bar',
+            children: [
+              {
+                id: '2',
+                title: 'Work',
+                children: [
+                  {
+                    id: '3',
+                    title: 'Development',
+                    children: [
+                      {
+                        id: '4',
+                        title: 'Frontend',
+                        children: [
+                          {
+                            id: '5',
+                            title: 'React',
+                            url: 'https://reactjs.org'
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ])
+    
+    const { processBookmarkTree, getTotalBookmarks } = await import('../src/utils')
+    const tree = await chrome.bookmarks.getTree()
+    const folders = processBookmarkTree(tree)
+    
+    expect(folders).toHaveLength(1)
+    
+    const workFolder = folders[0]
+    expect(workFolder.title).toBe('Work')
+    expect(workFolder.subfolders).toHaveLength(1)
+    
+    const devFolder = workFolder.subfolders[0]
+    expect(devFolder.title).toBe('Development')
+    expect(devFolder.subfolders).toHaveLength(1)
+    
+    const frontendFolder = devFolder.subfolders[0]
+    expect(frontendFolder.title).toBe('Frontend')
+    expect(frontendFolder.bookmarks).toHaveLength(1)
+    expect(frontendFolder.bookmarks[0].title).toBe('React')
+    
+    // 総ブックマーク数の確認
+    const totalCount = getTotalBookmarks(workFolder)
+    expect(totalCount).toBe(1)
   })
 })

@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BookmarkFolder, ChromeBookmarkNode } from '../src/types'
 import {
-  escapeHtml,
-  FAVICON_CACHE_KEY,
-  faviconCache,
-  filterBookmarks,
-  findFolderById,
-  getDomain,
-  getTotalBookmarks,
-  processBookmarkTree,
-  saveFaviconCache
+    escapeHtml,
+    FAVICON_CACHE_KEY,
+    faviconCache,
+    filterBookmarks,
+    findFolderById,
+    getDomain,
+    getTotalBookmarks,
+    processBookmarkTree,
+    saveFaviconCache
 } from '../src/utils'
 
 describe('ユーティリティ関数', () => {
@@ -71,6 +71,8 @@ describe('ユーティリティ関数', () => {
       expect(result[0].bookmarks[0].title).toBe('Google')
       expect(result[0].subfolders).toHaveLength(1)
       expect(result[0].subfolders[0].title).toBe('サブフォルダ')
+      expect(result[0].subfolders[0].bookmarks).toHaveLength(1)
+      expect(result[0].subfolders[0].bookmarks[0].title).toBe('GitHub')
       expect(result[1].title).toBe('ブックマークバー直下')
       expect(result[1].bookmarks[0].title).toBe('Yahoo')
     })
@@ -168,7 +170,17 @@ describe('ユーティリティ関数', () => {
           { title: 'Google Search', url: 'https://google.com', favicon: null },
           { title: 'Yahoo Japan', url: 'https://yahoo.co.jp', favicon: null }
         ],
-        subfolders: [],
+        subfolders: [
+          {
+            id: '2',
+            title: 'Subfolder',
+            bookmarks: [
+              { title: 'GitHub', url: 'https://github.com', favicon: null }
+            ],
+            subfolders: [],
+            expanded: false
+          }
+        ],
         expanded: false
       }
     ]
@@ -179,6 +191,16 @@ describe('ユーティリティ関数', () => {
       expect(result[0].bookmarks).toHaveLength(1)
       expect(result[0].bookmarks[0].title).toBe('Google Search')
       expect(result[0].expanded).toBe(true) // 検索時は自動展開
+    })
+
+    it('サブフォルダ内のブックマークも検索されることを確認', () => {
+      const result = filterBookmarks(mockFolders, 'github')
+      expect(result).toHaveLength(1)
+      expect(result[0].subfolders).toHaveLength(1)
+      expect(result[0].subfolders[0].bookmarks).toHaveLength(1)
+      expect(result[0].subfolders[0].bookmarks[0].title).toBe('GitHub')
+      expect(result[0].expanded).toBe(true) // 検索時は自動展開
+      expect(result[0].subfolders[0].expanded).toBe(true) // サブフォルダも自動展開
     })
 
     it('URLでブックマークをフィルタリングできることを確認', () => {
@@ -196,6 +218,60 @@ describe('ユーティリティ関数', () => {
     it('マッチしない場合は空配列を返すことを確認', () => {
       const result = filterBookmarks(mockFolders, 'nonexistent')
       expect(result).toHaveLength(0)
+    })
+  })
+
+  describe('フォルダ階層のexpanded状態', () => {
+    const mockFolders: BookmarkFolder[] = [
+      {
+        id: '1',
+        title: 'Parent Folder',
+        bookmarks: [],
+        subfolders: [
+          {
+            id: '2',
+            title: 'Child Folder',
+            bookmarks: [
+              { title: 'Child Bookmark', url: 'https://example.com', favicon: null }
+            ],
+            subfolders: [
+              {
+                id: '3',
+                title: 'Grandchild Folder',
+                bookmarks: [
+                  { title: 'Grandchild Bookmark', url: 'https://example2.com', favicon: null }
+                ],
+                subfolders: [],
+                expanded: false // 孫フォルダは初期状態で折りたたみ
+              }
+            ],
+            expanded: true // 子フォルダは初期状態で展開
+          }
+        ],
+        expanded: true // 親フォルダは初期状態で展開
+      }
+    ]
+
+    it('フォルダの初期展開状態が正しく設定されることを確認', () => {
+      const parentFolder = mockFolders[0]
+      const childFolder = parentFolder.subfolders[0]
+      const grandchildFolder = childFolder.subfolders[0]
+
+      expect(parentFolder.expanded).toBe(true) // レベル0は展開
+      expect(childFolder.expanded).toBe(true) // レベル1は展開
+      expect(grandchildFolder.expanded).toBe(false) // レベル2は折りたたみ
+    })
+
+    it('フォルダIDでネストされたフォルダを検索できることを確認', () => {
+      const grandchildFolder = findFolderById(mockFolders, '3')
+      expect(grandchildFolder).toBeDefined()
+      expect(grandchildFolder?.title).toBe('Grandchild Folder')
+      expect(grandchildFolder?.bookmarks).toHaveLength(1)
+    })
+
+    it('深いネスト構造でも総ブックマーク数を正しく計算することを確認', () => {
+      const totalBookmarks = getTotalBookmarks(mockFolders[0])
+      expect(totalBookmarks).toBe(2) // Child Bookmark + Grandchild Bookmark
     })
   })
 
