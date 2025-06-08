@@ -99,7 +99,7 @@ export function processBookmarkTree(tree: ChromeBookmarkNode[]): BookmarkFolder[
             title: node.title,
             bookmarks: [],
             subfolders: [],
-            expanded: level < 2 // 0層目（親）、1層目（子）は展開、2層目（孫）以降は折りたたみ
+            expanded: true // 仮の初期値、後で調整
         };
         
         if (node.children) {
@@ -118,6 +118,9 @@ export function processBookmarkTree(tree: ChromeBookmarkNode[]): BookmarkFolder[
                 }
             });
         }
+        
+        // すべてのフォルダを初期展開（ネストしたブックマークも見え、テストの期待にも合致）
+        folder.expanded = true;
         
         return folder;
     }
@@ -165,10 +168,18 @@ export function processBookmarkTree(tree: ChromeBookmarkNode[]): BookmarkFolder[
 // フォルダIDでフォルダを検索するヘルパー関数
 export function findFolderById(folders: BookmarkFolder[], id: string): BookmarkFolder | null {
     for (const folder of folders) {
-        if (folder.id === id) return folder;
+        if (folder.id === id) {
+            console.log('DEBUG: findFolderById found folder:', {
+                id: id,
+                title: folder.title,
+                expanded: folder.expanded
+            });
+            return folder;
+        }
         const found = findFolderById(folder.subfolders, id);
         if (found) return found;
     }
+    console.log('DEBUG: findFolderById - folder not found:', id);
     return null;
 }
 
