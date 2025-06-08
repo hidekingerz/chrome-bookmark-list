@@ -1,8 +1,8 @@
 import { JSDOM } from 'jsdom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderFolder, setupFolderClickHandler } from '../src/newtab-core'
-import type { BookmarkFolder } from '../src/types'
-import { processBookmarkTree } from '../src/utils'
+import { renderFolder, setupFolderClickHandler } from '../src/scripts/newtab-core'
+import type { BookmarkFolder } from '../src/scripts/types'
+import { processBookmarkTree } from '../src/scripts/utils'
 
 describe('3層構造フォルダの問題を検証', () => {
   let dom: JSDOM

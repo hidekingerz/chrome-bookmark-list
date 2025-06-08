@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { BookmarkFolder } from '../src/types'
+import type { BookmarkFolder } from '../src/scripts/types'
 
 // フォルダクリック機能のテスト
 describe('フォルダクリック機能のテスト', () => {
@@ -158,7 +158,7 @@ describe('フォルダクリック機能のテスト', () => {
     expect(folderHeader).toBeDefined()
 
     // クリックイベントを発火
-    const clickEvent = new window.Event('click', { bubbles: true })
+    const clickEvent = new dom.window.Event('click', { bubbles: true })
     folderHeader.dispatchEvent(clickEvent)
 
     // 結果を検証
@@ -215,7 +215,7 @@ describe('フォルダクリック機能のテスト', () => {
     const bookmarkLink = bookmarkContainer.querySelector('.bookmark-link') as HTMLElement
     expect(bookmarkLink).toBeDefined()
 
-    const clickEvent = new window.Event('click', { bubbles: true })
+    const clickEvent = new dom.window.Event('click', { bubbles: true })
     bookmarkLink.dispatchEvent(clickEvent)
 
     // Chrome API が呼ばれたことを確認
@@ -277,7 +277,7 @@ describe('フォルダクリック機能のテスト', () => {
 
     // フォルダヘッダーをクリック
     const folderHeader = bookmarkContainer.querySelector('.folder-header') as HTMLElement
-    const clickEvent = new window.Event('click', { bubbles: true })
+    const clickEvent = new dom.window.Event('click', { bubbles: true })
     folderHeader.dispatchEvent(clickEvent)
 
     // 状態が変わらないことを確認

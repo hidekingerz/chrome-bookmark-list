@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { BookmarkFolder, ChromeBookmarkNode } from '../src/types'
+import type { BookmarkFolder, ChromeBookmarkNode } from '../src/scripts/types'
 import {
     escapeHtml,
     FAVICON_CACHE_KEY,
@@ -10,7 +10,7 @@ import {
     getTotalBookmarks,
     processBookmarkTree,
     saveFaviconCache
-} from '../src/utils'
+} from '../src/scripts/utils'
 
 describe('ユーティリティ関数', () => {
   beforeEach(() => {
