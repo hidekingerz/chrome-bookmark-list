@@ -12,8 +12,6 @@ let allBookmarks: BookmarkFolder[] = [];
 
 // ブックマークデータを取得して表示する
 document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
-    console.log('🎯 DOMContentLoaded - Starting bookmark extension');
-    
     const bookmarkContainer = document.getElementById('bookmarkContainer') as HTMLElement;
     const searchInput = document.getElementById('searchInput') as HTMLInputElement;
     
@@ -27,28 +25,21 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
         return;
     }
     
-    console.log('✅ DOM elements found successfully');
-    
     // Favicon キャッシュの初期化
     await initFaviconCache();
     
     try {
-        console.log('📚 Fetching Chrome bookmarks...');
         // Chromeのブックマークを取得
         const bookmarkTree: ChromeBookmarkNode[] = await chrome.bookmarks.getTree();
-        console.log('📊 Raw bookmark tree:', bookmarkTree.length, 'root nodes');
         
         allBookmarks = processBookmarkTree(bookmarkTree);
-        console.log('🏗️ Processed bookmarks:', allBookmarks.length, 'folders');
         
         await displayBookmarks(allBookmarks);
-        console.log('🎨 Bookmarks displayed successfully');
         
         // 検索機能
         searchInput.addEventListener('input', async (e: Event): Promise<void> => {
             const target = e.target as HTMLInputElement;
             const searchTerm = target.value.toLowerCase();
-            console.log('🔍 Search triggered:', searchTerm);
             const filteredBookmarks = filterBookmarks(allBookmarks, searchTerm);
             await displayBookmarks(filteredBookmarks);
         });
@@ -76,16 +67,7 @@ async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
     bookmarkContainer.parentNode?.replaceChild(newBookmarkContainer, bookmarkContainer);
     
     // フォルダクリックイベントを設定
-    console.log('🚀 About to setup folder click handler...');
     setupFolderClickHandler(newBookmarkContainer, allBookmarks);
-    console.log('✅ Folder click handler setup completed');
-    
-    // デバッグ: 設定後にイベントリスナーをテスト
-    console.log('🔍 Testing click detection setup:', {
-        containerHasClickListener: 'onclick' in newBookmarkContainer,
-        folderHeaderCount: newBookmarkContainer.querySelectorAll('.folder-header').length,
-        hasSubfoldersCount: newBookmarkContainer.querySelectorAll('.folder-header.has-subfolders').length
-    });
     
     // Favicon を非同期で読み込み（新しいコンテナに対して）
     await loadFavicons(newBookmarkContainer);
