@@ -1,8 +1,8 @@
 import { JSDOM } from 'jsdom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderFolder, setupFolderClickHandler } from '../src/newtab-core'
-import type { BookmarkFolder, ChromeBookmarkNode } from '../src/types'
-import { findFolderById, processBookmarkTree } from '../src/utils'
+import { renderFolder, setupFolderClickHandler } from '../src/scripts/newtab-core'
+import type { BookmarkFolder, ChromeBookmarkNode } from '../src/scripts/types'
+import { findFolderById, processBookmarkTree } from '../src/scripts/utils'
 
 describe('実際のフォルダクリック機能の統合テスト', () => {
   let dom: JSDOM

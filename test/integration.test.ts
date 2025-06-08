@@ -87,7 +87,7 @@ describe('メイン機能の統合テスト', () => {
   it('ブックマークが正しく読み込まれ表示されることを確認', async () => {
     // メイン関数を直接テストするのではなく、
     // コンポーネントの動作をテスト
-    const { processBookmarkTree } = await import('../src/utils')
+    const { processBookmarkTree } = await import('../src/scripts/utils')
     
     // Chrome APIからブックマークを取得
     const tree = await chrome.bookmarks.getTree()
@@ -101,7 +101,7 @@ describe('メイン機能の統合テスト', () => {
   })
 
   it('検索機能が正しく動作することを確認', async () => {
-    const { filterBookmarks, processBookmarkTree } = await import('../src/utils')
+    const { filterBookmarks, processBookmarkTree } = await import('../src/scripts/utils')
     
     const tree = await chrome.bookmarks.getTree()
     const folders = processBookmarkTree(tree)
@@ -117,7 +117,7 @@ describe('メイン機能の統合テスト', () => {
     const mockChrome = globalThis.chrome as any
     mockChrome.bookmarks.getTree.mockResolvedValue([])
     
-    const { processBookmarkTree } = await import('../src/utils')
+    const { processBookmarkTree } = await import('../src/scripts/utils')
     const tree = await chrome.bookmarks.getTree()
     const folders = processBookmarkTree(tree)
 
@@ -138,7 +138,7 @@ describe('メイン機能の統合テスト', () => {
   })
 
   it('ファビコンの読み込みが適切に処理されることを確認', async () => {
-    const { getDomain } = await import('../src/utils')
+    const { getDomain } = await import('../src/scripts/utils')
     
     const testUrl = 'https://example.com/path'
     const domain = getDomain(testUrl)
@@ -147,7 +147,7 @@ describe('メイン機能の統合テスト', () => {
   })
 
   it('フォルダの展開・折りたたみが正しく動作することを確認', async () => {
-    const { findFolderById, processBookmarkTree } = await import('../src/utils')
+    const { findFolderById, processBookmarkTree } = await import('../src/scripts/utils')
     
     const tree = await chrome.bookmarks.getTree()
     const folders = processBookmarkTree(tree)
@@ -205,7 +205,7 @@ describe('メイン機能の統合テスト', () => {
       }
     ])
     
-    const { processBookmarkTree, getTotalBookmarks } = await import('../src/utils')
+    const { processBookmarkTree, getTotalBookmarks } = await import('../src/scripts/utils')
     const tree = await chrome.bookmarks.getTree()
     const folders = processBookmarkTree(tree)
     
