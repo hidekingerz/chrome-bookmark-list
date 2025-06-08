@@ -169,17 +169,11 @@ export function processBookmarkTree(tree: ChromeBookmarkNode[]): BookmarkFolder[
 export function findFolderById(folders: BookmarkFolder[], id: string): BookmarkFolder | null {
     for (const folder of folders) {
         if (folder.id === id) {
-            console.log('DEBUG: findFolderById found folder:', {
-                id: id,
-                title: folder.title,
-                expanded: folder.expanded
-            });
             return folder;
         }
         const found = findFolderById(folder.subfolders, id);
         if (found) return found;
     }
-    console.log('DEBUG: findFolderById - folder not found:', id);
     return null;
 }
 

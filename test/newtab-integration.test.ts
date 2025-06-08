@@ -684,9 +684,6 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
     })
 
     it('初期レンダリング時の3層構造の状態を確認', () => {
-      // まず処理されたフォルダ構造をデバッグ
-      console.log('🔍 allBookmarks:', JSON.stringify(allBookmarks, null, 2))
-      
       // processBookmarkTreeのlevel < 2ルールにより：
       // - 1層目（level 0）: expanded = true
       // - 2層目（level 1）: expanded = true  
@@ -696,13 +693,6 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
       const layer2FolderA = findFolderById(allBookmarks, '200')
       const layer2FolderB = findFolderById(allBookmarks, '201')
       const layer3Folder = findFolderById(allBookmarks, '300')
-
-      console.log('🔍 Found folders:', {
-        layer1: layer1Folder,
-        layer2A: layer2FolderA,
-        layer2B: layer2FolderB,
-        layer3: layer3Folder
-      })
 
       expect(layer1Folder).toBeDefined()
       expect(layer2FolderA).toBeDefined()
@@ -718,12 +708,6 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
       const layer1Element = document.querySelector('[data-folder-id="100"]') as HTMLElement
       const layer2AElement = document.querySelector('[data-folder-id="200"]') as HTMLElement
       const layer3Element = document.querySelector('[data-folder-id="300"]') as HTMLElement
-
-      console.log('🔍 Found DOM elements:', {
-        layer1: !!layer1Element,
-        layer2A: !!layer2AElement,
-        layer3: !!layer3Element
-      })
 
       expect(layer1Element).toBeDefined()
       expect(layer2AElement).toBeDefined()

@@ -78,9 +78,6 @@ describe('3層構造フォルダの問題を検証', () => {
   })
 
   it('3層構造の初期展開状態が正しいことを確認', () => {
-    console.log('🔍 Processed bookmarks structure:')
-    console.log('Level 1:', allBookmarks.map(f => ({ title: f.title, expanded: f.expanded, level: 0 })))
-    
     expect(allBookmarks).toHaveLength(1)
     
     const level1Folder = allBookmarks[0]
@@ -88,14 +85,10 @@ describe('3層構造フォルダの問題を検証', () => {
     expect(level1Folder.expanded).toBe(true) // level 0 → expanded: true
     expect(level1Folder.subfolders).toHaveLength(1)
     
-    console.log('Level 2:', level1Folder.subfolders.map(f => ({ title: f.title, expanded: f.expanded, level: 1 })))
-    
     const level2Folder = level1Folder.subfolders[0]
     expect(level2Folder.title).toBe('Level2 Child Folder')
     expect(level2Folder.expanded).toBe(true) // level 1 → expanded: true
     expect(level2Folder.subfolders).toHaveLength(1)
-    
-    console.log('Level 3:', level2Folder.subfolders.map(f => ({ title: f.title, expanded: f.expanded, level: 2 })))
     
     const level3Folder = level2Folder.subfolders[0]
     expect(level3Folder.title).toBe('Level3 Grandchild Folder')
@@ -106,9 +99,6 @@ describe('3層構造フォルダの問題を検証', () => {
   it('3層構造のHTMLレンダリングが正しいことを確認', () => {
     const html = allBookmarks.map(folder => renderFolder(folder, 0)).join('')
     container.innerHTML = html
-    
-    console.log('🎨 Rendered HTML structure:')
-    console.log(container.innerHTML)
     
     // Level1フォルダの確認
     const level1Element = container.querySelector('[data-folder-id="level1-1"]') as HTMLElement
@@ -158,20 +148,11 @@ describe('3層構造フォルダの問題を検証', () => {
     expect(level2Element).toBeTruthy()
     expect(level3Element).toBeTruthy()
     
-    console.log('🔍 Before Level1 click:')
-    console.log('Level2 display:', level2Element.style.display)
-    console.log('Level3 display:', level3Element.style.display)
-    
     // 1層目フォルダヘッダーをクリック（折りたたみ）
     const level1Header = container.querySelector('[data-folder-id="level1-1"] .folder-header') as HTMLElement
     expect(level1Header).toBeTruthy()
     
     level1Header.click()
-    
-    console.log('🔍 After Level1 click (collapsed):')
-    console.log('Level1 expanded:', allBookmarks[0].expanded)
-    console.log('Level2 display:', level2Element.style.display)
-    console.log('Level3 display:', level3Element.style.display)
     
     // 問題: 2層目以降のフォルダが消えるはず（正常動作）
     // しかし、サブフォルダなしの場合はpreserve-visibleで保持される
@@ -181,11 +162,6 @@ describe('3層構造フォルダの問題を検証', () => {
     
     // 再度クリックして展開
     level1Header.click()
-    
-    console.log('🔍 After Level1 click (expanded):')
-    console.log('Level1 expanded:', allBookmarks[0].expanded)
-    console.log('Level2 display:', level2Element.style.display)
-    console.log('Level3 display:', level3Element.style.display)
     
     expect(allBookmarks[0].expanded).toBe(true)
     expect(level2Element.style.display).toBe('block')
@@ -206,15 +182,7 @@ describe('3層構造フォルダの問題を検証', () => {
     const level2Folder = allBookmarks[0].subfolders[0]
     const level3Element = container.querySelector('[data-folder-id="level3-1"]') as HTMLElement
     
-    console.log('🔍 Before Level2 click:')
-    console.log('Level2 expanded:', level2Folder.expanded)
-    console.log('Level3 display:', level3Element.style.display)
-    
     level2Header.click()
-    
-    console.log('🔍 After Level2 click:')
-    console.log('Level2 expanded:', level2Folder.expanded)
-    console.log('Level3 display:', level3Element.style.display)
     
     // 期待動作: Level2が折りたたまれ、Level3も非表示になる
     expect(level2Folder.expanded).toBe(false)
