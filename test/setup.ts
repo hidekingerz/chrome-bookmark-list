@@ -1,5 +1,5 @@
 // テスト環境のセットアップ
-import { vi } from 'vitest'
+import { vi } from 'vitest';
 
 // Chrome API のモック
 const mockChrome = {
@@ -20,13 +20,13 @@ const mockChrome = {
       remove: vi.fn(),
     },
   },
-}
+};
 
 // グローバルオブジェクトにChromeをモック
 Object.defineProperty(globalThis, 'chrome', {
   value: mockChrome,
   writable: true,
-})
+});
 
 // localStorage のモック
 const localStorageMock = {
@@ -34,30 +34,30 @@ const localStorageMock = {
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
-}
+};
 
 Object.defineProperty(globalThis, 'localStorage', {
   value: localStorageMock,
   writable: true,
-})
+});
 
 // DOM のモック
 Object.defineProperty(globalThis, 'Image', {
   value: class MockImage {
-    onload: (() => void) | null = null
-    onerror: (() => void) | null = null
-    src: string = ''
-    
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    src = '';
+
     constructor() {
       setTimeout(() => {
         if (this.onload) {
-          this.onload()
+          this.onload();
         }
-      }, 0)
+      }, 0);
     }
   },
   writable: true,
-})
+});
 
 // document のモック
 Object.defineProperty(globalThis, 'document', {
@@ -73,27 +73,27 @@ Object.defineProperty(globalThis, 'document', {
               .replace(/</g, '&lt;')
               .replace(/>/g, '&gt;')
               .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#39;')
-          }
-        }
+              .replace(/'/g, '&#39;');
+          },
+        };
       }
-      return {}
-    })
+      return {};
+    }),
   },
   writable: true,
-})
+});
 
 // URL のモック（Node.js環境で利用可能）
 if (typeof URL === 'undefined') {
   Object.defineProperty(globalThis, 'URL', {
     value: class MockURL {
-      hostname: string
-      
+      hostname: string;
+
       constructor(url: string) {
-        const match = url.match(/https?:\/\/([^\/]+)/)
-        this.hostname = match ? match[1] : 'localhost'
+        const match = url.match(/https?:\/\/([^\/]+)/);
+        this.hostname = match ? match[1] : 'localhost';
       }
     },
     writable: true,
-  })
+  });
 }
