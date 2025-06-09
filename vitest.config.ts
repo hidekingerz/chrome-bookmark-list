@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
@@ -8,17 +8,12 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     coverage: {
       reporter: ['text', 'json', 'html', 'lcov'],
-      exclude: [
-        'node_modules/',
-        'dist/',
-        'test/',
-        '**/*.d.ts',
-      ],
+      exclude: ['node_modules/', 'dist/', 'test/', '**/*.d.ts'],
     },
   },
   resolve: {
     alias: {
-      '@': './src'
-    }
-  }
-})
+      '@': './src',
+    },
+  },
+});

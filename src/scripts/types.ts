@@ -33,5 +33,9 @@ declare global {
   }
 }
 
-export { BookmarkFolder, BookmarkItem, ChromeBookmarkNode, FaviconCacheData };
-
+export type {
+  BookmarkFolder,
+  BookmarkItem,
+  ChromeBookmarkNode,
+  FaviconCacheData,
+};
