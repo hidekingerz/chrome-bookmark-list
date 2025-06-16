@@ -76,8 +76,9 @@ export async function getFavicon(url: string): Promise<string> {
   }
 
   try {
-    const domain = new URL(url).hostname;
-    const protocol = new URL(url).protocol;
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname;
+    const protocol = urlObj.protocol;
     
     // 複数のfavicon URLを優先順位順で試行
     const faviconUrls = [
