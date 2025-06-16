@@ -163,7 +163,7 @@ export async function getFaviconFromHtml(url: string): Promise<string | null> {
 
     for (const selector of selectors) {
       const link = doc.querySelector(selector) as HTMLLinkElement;
-      if (link && link.href) {
+      if (link?.href) {
         // 相対URLを絶対URLに変換
         const faviconUrl = new URL(link.href, url).href;
         return faviconUrl;
