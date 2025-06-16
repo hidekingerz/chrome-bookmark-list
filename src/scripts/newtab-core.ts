@@ -22,9 +22,9 @@ export function renderFolder(folder: BookmarkFolder, level = 0): string {
                 <div class="folder-info">
                     ${
                       hasSubfolders
-                        ? `<span class="expand-icon ${folder.expanded ? 'expanded' : ''}" style="transform: ${folder.expanded ? 'rotate(90deg)' : 'rotate(0deg)'}">${folder.expanded ? '📂' : '📁'}</span>`
+                        ? `<span class="expand-icon ${folder.expanded ? 'expanded' : ''}">${folder.expanded ? '📂' : '📁'}</span>`
                         : hasBookmarks
-                          ? `<span class="expand-icon ${folder.expanded ? 'expanded' : ''}" style="transform: ${folder.expanded ? 'rotate(90deg)' : 'rotate(0deg)'}">${folder.expanded ? '📂' : '📁'}</span>`
+                          ? `<span class="expand-icon ${folder.expanded ? 'expanded' : ''}">${folder.expanded ? '📂' : '📁'}</span>`
                           : '<span class="folder-icon">📄</span>'
                     }
                     <h2 class="folder-title">${escapeHtml(folder.title)}</h2>
