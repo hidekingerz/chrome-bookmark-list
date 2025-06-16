@@ -65,6 +65,43 @@ export function checkFaviconValidity(faviconUrl: string): Promise<boolean> {
   });
 }
 
+// 必要な権限を確認・リクエストする
+async function ensureHostPermission(url: string): Promise<boolean> {
+  try {
+    const urlObj = new URL(url);
+    const origin = urlObj.origin;
+    
+    // 既に権限があるかチェック
+    const hasPermission = await chrome.permissions.contains({
+      origins: [`${origin}/*`]
+    });
+    
+    if (hasPermission) {
+      return true;
+    }
+    
+    // 権限をリクエスト（ユーザーの操作が必要）
+    // ただし、自動的にリクエストしないでGoogle Favicon APIを使用
+    return false;
+  } catch (error) {
+    console.warn('権限チェックエラー:', error);
+    return false;
+  }
+}
+
+// ユーザーが明示的に権限を許可する場合の関数（将来の機能拡張用）
+export async function requestHostPermissions(): Promise<boolean> {
+  try {
+    const granted = await chrome.permissions.request({
+      origins: ['http://*/*', 'https://*/*']
+    });
+    return granted;
+  } catch (error) {
+    console.warn('権限リクエストエラー:', error);
+    return false;
+  }
+}
+
 // Favicon を取得する
 export async function getFavicon(url: string): Promise<string> {
   // キャッシュから確認
@@ -135,6 +172,13 @@ export async function getFavicon(url: string): Promise<string> {
 // HTMLからfaviconのURLを検出する
 export async function getFaviconFromHtml(url: string): Promise<string | null> {
   try {
+    // 権限チェック
+    const hasPermission = await ensureHostPermission(url);
+    if (!hasPermission) {
+      console.warn('HTMLからのfavicon検出には権限が必要です:', url);
+      return null;
+    }
+
     // Chrome拡張機能のコンテキストではCORSの制限が緩い
     const response = await fetch(url, {
       method: 'GET',
