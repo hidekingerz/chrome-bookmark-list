@@ -60,8 +60,8 @@ export function checkFaviconValidity(faviconUrl: string): Promise<boolean> {
     // CORS対応のためcrossOriginを設定しない（Chrome拡張機能では不要）
     img.src = faviconUrl;
 
-    // タイムアウト設定（2秒）
-    setTimeout(() => resolve(false), 2000);
+    // タイムアウト設定（1秒に短縮）
+    setTimeout(() => resolve(false), 1000);
   });
 }
 
@@ -126,34 +126,54 @@ export async function getFavicon(url: string): Promise<string> {
       `${protocol}//${domain}/favicon.svg`,
     ];
 
-    // 各favicon URLを順番に試行
-    for (const faviconUrl of faviconUrls) {
-      const isValid = await checkFaviconValidity(faviconUrl);
-      if (isValid) {
-        faviconCache.set(url, faviconUrl);
-        saveFaviconCache();
-        return faviconUrl;
-      }
+    // 並列でfavicon URLをチェック（最初に成功したものを使用）
+    try {
+      const validityPromises = faviconUrls.map(async (faviconUrl) => {
+        const isValid = await checkFaviconValidity(faviconUrl);
+        if (isValid) {
+          return faviconUrl;
+        }
+        throw new Error(`Invalid favicon: ${faviconUrl}`);
+      });
+
+      // Promise.any を使用して最初に成功したfaviconを取得
+      const validFaviconUrl = await Promise.any(validityPromises);
+      faviconCache.set(url, validFaviconUrl);
+      saveFaviconCache();
+      return validFaviconUrl;
+    } catch {
+      // すべてのfavicon URLが失敗した場合、HTMLから検出を試行
     }
 
-    // HTMLから favicon を検出する試行
-    const htmlFaviconUrl = await getFaviconFromHtml(url);
-    if (htmlFaviconUrl) {
-      const isValid = await checkFaviconValidity(htmlFaviconUrl);
-      if (isValid) {
-        faviconCache.set(url, htmlFaviconUrl);
-        saveFaviconCache();
-        return htmlFaviconUrl;
-      }
-    }
-
-    // フォールバックとしてGoogle Favicon APIを使用
+    // HTMLから favicon を検出する試行とGoogle Favicon APIを並列実行
+    const htmlFaviconPromise = getFaviconFromHtml(url);
     const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
-    const isGoogleFaviconValid = await checkFaviconValidity(googleFaviconUrl);
-    if (isGoogleFaviconValid) {
-      faviconCache.set(url, googleFaviconUrl);
-      saveFaviconCache();  
-      return googleFaviconUrl;
+    const googleFaviconPromise = checkFaviconValidity(googleFaviconUrl);
+
+    try {
+      const [htmlFaviconUrl, isGoogleFaviconValid] = await Promise.all([
+        htmlFaviconPromise,
+        googleFaviconPromise
+      ]);
+
+      // HTMLから取得したfaviconを優先
+      if (htmlFaviconUrl) {
+        const isValid = await checkFaviconValidity(htmlFaviconUrl);
+        if (isValid) {
+          faviconCache.set(url, htmlFaviconUrl);
+          saveFaviconCache();
+          return htmlFaviconUrl;
+        }
+      }
+
+      // Google Favicon APIをフォールバック
+      if (isGoogleFaviconValid) {
+        faviconCache.set(url, googleFaviconUrl);
+        saveFaviconCache();  
+        return googleFaviconUrl;
+      }
+    } catch (error) {
+      console.warn('フォールバックfavicon取得エラー:', url, error);
     }
 
   } catch (error) {
