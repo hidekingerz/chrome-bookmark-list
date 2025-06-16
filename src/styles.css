@@ -104,9 +104,6 @@ header h1 {
     user-select: none;
 }
 
-.expand-icon.expanded {
-    transform: rotate(90deg);
-}
 
 .folder-icon {
     font-size: 1.2rem;
