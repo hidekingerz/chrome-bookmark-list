@@ -56,7 +56,7 @@ export function checkFaviconValidity(faviconUrl: string): Promise<boolean> {
     const img = new Image();
     img.onload = () => resolve(true);
     img.onerror = () => resolve(false);
-    
+
     // CORS対応のためcrossOriginを設定しない（Chrome拡張機能では不要）
     img.src = faviconUrl;
 
@@ -70,16 +70,16 @@ async function ensureHostPermission(url: string): Promise<boolean> {
   try {
     const urlObj = new URL(url);
     const origin = urlObj.origin;
-    
+
     // 既に権限があるかチェック
     const hasPermission = await chrome.permissions.contains({
-      origins: [`${origin}/*`]
+      origins: [`${origin}/*`],
     });
-    
+
     if (hasPermission) {
       return true;
     }
-    
+
     // 権限をリクエスト（ユーザーの操作が必要）
     // ただし、自動的にリクエストしないでGoogle Favicon APIを使用
     return false;
@@ -93,7 +93,7 @@ async function ensureHostPermission(url: string): Promise<boolean> {
 export async function requestHostPermissions(): Promise<boolean> {
   try {
     const granted = await chrome.permissions.request({
-      origins: ['http://*/*', 'https://*/*']
+      origins: ['http://*/*', 'https://*/*'],
     });
     return granted;
   } catch (error) {
@@ -116,7 +116,7 @@ export async function getFavicon(url: string): Promise<string> {
     const urlObj = new URL(url);
     const domain = urlObj.hostname;
     const protocol = urlObj.protocol;
-    
+
     // 複数のfavicon URLを優先順位順で試行
     const faviconUrls = [
       `${protocol}//${domain}/favicon.ico`,
@@ -153,7 +153,7 @@ export async function getFavicon(url: string): Promise<string> {
     try {
       const [htmlFaviconUrl, isGoogleFaviconValid] = await Promise.all([
         htmlFaviconPromise,
-        googleFaviconPromise
+        googleFaviconPromise,
       ]);
 
       // HTMLから取得したfaviconを優先
@@ -169,13 +169,12 @@ export async function getFavicon(url: string): Promise<string> {
       // Google Favicon APIをフォールバック
       if (isGoogleFaviconValid) {
         faviconCache.set(url, googleFaviconUrl);
-        saveFaviconCache();  
+        saveFaviconCache();
         return googleFaviconUrl;
       }
     } catch (error) {
       console.warn('フォールバックfavicon取得エラー:', url, error);
     }
-
   } catch (error) {
     console.warn('Favicon 取得エラー:', url, error);
   }
