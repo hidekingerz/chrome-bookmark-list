@@ -56,6 +56,8 @@ export function checkFaviconValidity(faviconUrl: string): Promise<boolean> {
     const img = new Image();
     img.onload = () => resolve(true);
     img.onerror = () => resolve(false);
+    
+    // CORS対応のためcrossOriginを設定しない（Chrome拡張機能では不要）
     img.src = faviconUrl;
 
     // タイムアウト設定（2秒）
@@ -75,16 +77,47 @@ export async function getFavicon(url: string): Promise<string> {
 
   try {
     const domain = new URL(url).hostname;
-    const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+    const protocol = new URL(url).protocol;
+    
+    // 複数のfavicon URLを優先順位順で試行
+    const faviconUrls = [
+      `${protocol}//${domain}/favicon.ico`,
+      `${protocol}//${domain}/apple-touch-icon.png`,
+      `${protocol}//${domain}/apple-touch-icon-precomposed.png`,
+      `${protocol}//${domain}/favicon.png`,
+      `${protocol}//${domain}/favicon.svg`,
+    ];
 
-    // Favicon の有効性をチェック
-    const isValid = await checkFaviconValidity(faviconUrl);
-
-    if (isValid) {
-      faviconCache.set(url, faviconUrl);
-      saveFaviconCache();
-      return faviconUrl;
+    // 各favicon URLを順番に試行
+    for (const faviconUrl of faviconUrls) {
+      const isValid = await checkFaviconValidity(faviconUrl);
+      if (isValid) {
+        faviconCache.set(url, faviconUrl);
+        saveFaviconCache();
+        return faviconUrl;
+      }
     }
+
+    // HTMLから favicon を検出する試行
+    const htmlFaviconUrl = await getFaviconFromHtml(url);
+    if (htmlFaviconUrl) {
+      const isValid = await checkFaviconValidity(htmlFaviconUrl);
+      if (isValid) {
+        faviconCache.set(url, htmlFaviconUrl);
+        saveFaviconCache();
+        return htmlFaviconUrl;
+      }
+    }
+
+    // フォールバックとしてGoogle Favicon APIを使用
+    const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+    const isGoogleFaviconValid = await checkFaviconValidity(googleFaviconUrl);
+    if (isGoogleFaviconValid) {
+      faviconCache.set(url, googleFaviconUrl);
+      saveFaviconCache();  
+      return googleFaviconUrl;
+    }
+
   } catch (error) {
     console.warn('Favicon 取得エラー:', url, error);
   }
@@ -96,6 +129,52 @@ export async function getFavicon(url: string): Promise<string> {
   faviconCache.set(url, defaultFavicon);
   saveFaviconCache();
   return defaultFavicon;
+}
+
+// HTMLからfaviconのURLを検出する
+export async function getFaviconFromHtml(url: string): Promise<string | null> {
+  try {
+    // Chrome拡張機能のコンテキストではCORSの制限が緩い
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; BookmarkExtension/1.0)',
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const html = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // 複数のfavicon形式を優先順位で検索
+    const selectors = [
+      'link[rel="icon"][type="image/svg+xml"]',
+      'link[rel="icon"][type="image/png"]',
+      'link[rel="icon"][type="image/x-icon"]',
+      'link[rel="shortcut icon"]',
+      'link[rel="apple-touch-icon"]',
+      'link[rel="apple-touch-icon-precomposed"]',
+      'link[rel="icon"]',
+    ];
+
+    for (const selector of selectors) {
+      const link = doc.querySelector(selector) as HTMLLinkElement;
+      if (link && link.href) {
+        // 相対URLを絶対URLに変換
+        const faviconUrl = new URL(link.href, url).href;
+        return faviconUrl;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('HTMLからのfavicon検出エラー:', url, error);
+    return null;
+  }
 }
 
 // ブックマークツリーを処理してフォルダ別に整理
