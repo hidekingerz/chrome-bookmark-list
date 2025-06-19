@@ -362,7 +362,7 @@ describe('ユーティリティ関数', () => {
     beforeEach(() => {
       faviconCache.clear();
       vi.clearAllMocks();
-      
+
       // localStorageをモック
       const mockLocalStorage = {
         getItem: vi.fn(),
@@ -390,23 +390,27 @@ describe('ユーティリティ関数', () => {
 
       // fetchもモックして失敗させる
       globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
-      
+
       // chrome.permissions.containsもモックして失敗させる
       globalThis.chrome = {
         permissions: {
-          contains: vi.fn().mockRejectedValue(new Error('Permissions API not available')),
+          contains: vi
+            .fn()
+            .mockRejectedValue(new Error('Permissions API not available')),
         },
       } as any;
 
       const result = await getFavicon('https://nonexistent-domain-test.com');
-      
+
       // デフォルトのSVGアイコンが返されることを確認
       expect(result).toContain('data:image/svg+xml');
       expect(result).toContain('circle');
       expect(result).toContain('path');
-      
+
       // キャッシュに保存されることを確認
-      expect(faviconCache.has('https://nonexistent-domain-test.com')).toBe(true);
+      expect(faviconCache.has('https://nonexistent-domain-test.com')).toBe(
+        true
+      );
     });
 
     it('キャッシュからfaviconが返されることを確認', async () => {
@@ -414,7 +418,7 @@ describe('ユーティリティ関数', () => {
       faviconCache.set('https://cached-test.com', cachedFavicon);
 
       const result = await getFavicon('https://cached-test.com');
-      
+
       expect(result).toBe(cachedFavicon);
     });
   });
