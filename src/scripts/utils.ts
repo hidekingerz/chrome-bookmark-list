@@ -89,19 +89,6 @@ async function ensureHostPermission(url: string): Promise<boolean> {
   }
 }
 
-// ユーザーが明示的に権限を許可する場合の関数（将来の機能拡張用）
-export async function requestHostPermissions(): Promise<boolean> {
-  try {
-    const granted = await chrome.permissions.request({
-      origins: ['http://*/*', 'https://*/*'],
-    });
-    return granted;
-  } catch (error) {
-    console.warn('権限リクエストエラー:', error);
-    return false;
-  }
-}
-
 // Favicon を取得する
 export async function getFavicon(url: string): Promise<string> {
   // キャッシュから確認
@@ -114,14 +101,12 @@ export async function getFavicon(url: string): Promise<string> {
 
   try {
     const urlObj = new URL(url);
-    const domain = urlObj.hostname;
+    const domain = getDomain(url);
     const protocol = urlObj.protocol;
 
     // 複数のfavicon URLを優先順位順で試行
     const faviconUrls = [
       `${protocol}//${domain}/favicon.ico`,
-      `${protocol}//${domain}/apple-touch-icon.png`,
-      `${protocol}//${domain}/apple-touch-icon-precomposed.png`,
       `${protocol}//${domain}/favicon.png`,
       `${protocol}//${domain}/favicon.svg`,
     ];
@@ -145,18 +130,9 @@ export async function getFavicon(url: string): Promise<string> {
       // すべてのfavicon URLが失敗した場合、HTMLから検出を試行
     }
 
-    // HTMLから favicon を検出する試行とGoogle Favicon APIを並列実行
-    const htmlFaviconPromise = getFaviconFromHtml(url);
-    const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
-    const googleFaviconPromise = checkFaviconValidity(googleFaviconUrl);
-
+    // HTMLから favicon を検出する試行
     try {
-      const [htmlFaviconUrl, isGoogleFaviconValid] = await Promise.all([
-        htmlFaviconPromise,
-        googleFaviconPromise,
-      ]);
-
-      // HTMLから取得したfaviconを優先
+      const htmlFaviconUrl = await getFaviconFromHtml(url);
       if (htmlFaviconUrl) {
         const isValid = await checkFaviconValidity(htmlFaviconUrl);
         if (isValid) {
@@ -165,15 +141,8 @@ export async function getFavicon(url: string): Promise<string> {
           return htmlFaviconUrl;
         }
       }
-
-      // Google Favicon APIをフォールバック
-      if (isGoogleFaviconValid) {
-        faviconCache.set(url, googleFaviconUrl);
-        saveFaviconCache();
-        return googleFaviconUrl;
-      }
     } catch (error) {
-      console.warn('フォールバックfavicon取得エラー:', url, error);
+      console.warn('HTMLからのfavicon取得エラー:', url, error);
     }
   } catch (error) {
     console.warn('Favicon 取得エラー:', url, error);
