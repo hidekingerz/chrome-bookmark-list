@@ -103,9 +103,20 @@ function buildFolderStructure(node: ChromeBookmarkNode, level: number = 0): Book
 const faviconCache = new Map<string, string>();
 const CACHE_EXPIRY_DAYS = 7;
 
-// 非同期取得とキャッシュ保存
+// 非同期取得とキャッシュ保存（セキュリティ重視）
 export async function getFavicon(url: string): Promise<string>
 ```
+
+**Favicon取得戦略**:
+1. **キャッシュ確認**: 既存のキャッシュから高速取得
+2. **標準パス試行**: `/favicon.ico`, `/favicon.png`, `/favicon.svg`
+3. **HTML解析**: `<link rel="icon">` タグからの検出
+4. **デフォルト表示**: SVGプレースホルダーアイコン
+
+**セキュリティ方針**:
+- 外部APIサービス（Google Favicon API等）は使用しない
+- ホスト名の外部流出を防止
+- 内部ネットワークの情報保護を優先
 
 ### 4. 型定義 (types.ts)
 **責務**: TypeScript型安全性の確保
@@ -230,6 +241,7 @@ try {
 - プレースホルダーアイコン表示
 - キャッシュ無効データの処理
 - ネットワークエラー対応
+- 外部APIサービスを使用しないことによる堅牢性向上
 
 ## セキュリティ実装
 
@@ -244,7 +256,8 @@ export function escapeHtml(text: string): string {
 
 ### 権限最小化
 - 必要最小限の Chrome Extension 権限
-- 外部通信の制限
+- 外部通信の制限（セキュリティ強化）
+- 外部APIサービスへの依存なし
 
 ## テスト戦略
 
