@@ -7,6 +7,7 @@ import {
   filterBookmarks,
   findFolderById,
   getDomain,
+  getFavicon,
   getTotalBookmarks,
   processBookmarkTree,
   saveFaviconCache,
@@ -354,6 +355,67 @@ describe('ユーティリティ関数', () => {
       expect(consoleErrorSpy).toHaveBeenCalled();
 
       consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('getFavicon', () => {
+    beforeEach(() => {
+      faviconCache.clear();
+      vi.clearAllMocks();
+      
+      // localStorageをモック
+      const mockLocalStorage = {
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      };
+      Object.defineProperty(globalThis, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+    });
+
+    it('デフォルトfaviconが正しく返されることを確認', async () => {
+      // Imageコンストラクタをモックしてfavicon取得を失敗させる
+      globalThis.Image = vi.fn(() => ({
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        set src(value: string) {
+          // 即座にエラーをトリガー
+          setTimeout(() => this.onerror?.(), 0);
+        },
+        onerror: null,
+        onload: null,
+      })) as any;
+
+      // fetchもモックして失敗させる
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+      
+      // chrome.permissions.containsもモックして失敗させる
+      globalThis.chrome = {
+        permissions: {
+          contains: vi.fn().mockRejectedValue(new Error('Permissions API not available')),
+        },
+      } as any;
+
+      const result = await getFavicon('https://nonexistent-domain-test.com');
+      
+      // デフォルトのSVGアイコンが返されることを確認
+      expect(result).toContain('data:image/svg+xml');
+      expect(result).toContain('circle');
+      expect(result).toContain('path');
+      
+      // キャッシュに保存されることを確認
+      expect(faviconCache.has('https://nonexistent-domain-test.com')).toBe(true);
+    });
+
+    it('キャッシュからfaviconが返されることを確認', async () => {
+      const cachedFavicon = 'data:image/png;base64,cached-favicon';
+      faviconCache.set('https://cached-test.com', cachedFavicon);
+
+      const result = await getFavicon('https://cached-test.com');
+      
+      expect(result).toBe(cachedFavicon);
     });
   });
 });
