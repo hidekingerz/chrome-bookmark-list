@@ -144,18 +144,10 @@ export class BookmarkEditor {
     const closeBtn = dialog?.querySelector('.edit-dialog-close');
     const cancelBtn = dialog?.querySelector('.edit-dialog-cancel');
     const saveBtn = dialog?.querySelector('.edit-dialog-save');
-    const overlay = dialog;
 
     // 閉じるボタン
     closeBtn?.addEventListener('click', () => this.closeEditDialog());
     cancelBtn?.addEventListener('click', () => this.closeEditDialog());
-
-    // オーバーレイクリックで閉じる
-    overlay?.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        this.closeEditDialog();
-      }
-    });
 
     // 保存ボタン
     saveBtn?.addEventListener('click', () => this.handleSave(bookmark));

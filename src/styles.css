@@ -519,3 +519,64 @@ header h1 {
 .edit-dialog-save:hover {
     opacity: 0.9;
 }
+
+/* 削除ダイアログ固有のスタイル */
+.delete-confirmation-message {
+    text-align: center;
+}
+
+.delete-confirmation-message p {
+    margin-bottom: 16px;
+    color: #333;
+    font-size: 16px;
+}
+
+.delete-bookmark-info {
+    background-color: #f8f9ff;
+    border: 1px solid #e0e7ff;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+.delete-bookmark-info strong {
+    font-weight: 600;
+    color: #1f2937;
+    word-break: break-all;
+}
+
+.delete-warning {
+    color: #dc2626 !important;
+    font-weight: 500;
+    font-size: 14px;
+    margin-top: 16px !important;
+    margin-bottom: 0 !important;
+}
+
+.delete-dialog-confirm {
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.delete-dialog-confirm:hover {
+    opacity: 0.9;
+}
+
+/* エラーダイアログのスタイル */
+.error-message {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.error-message p {
+    color: #dc2626;
+    font-size: 16px;
+    margin: 0;
+}
