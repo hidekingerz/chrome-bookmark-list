@@ -197,6 +197,11 @@ header h1 {
 
 .bookmark-item {
     margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    overflow: hidden;
 }
 
 .bookmark-link {
@@ -207,6 +212,9 @@ header h1 {
     color: #555;
     border-radius: 8px;
     transition: background-color 0.2s ease, color 0.2s ease;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .bookmark-link:hover {
@@ -222,6 +230,7 @@ header h1 {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .favicon-placeholder {
@@ -252,6 +261,34 @@ header h1 {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
+}
+
+.bookmark-delete-btn {
+    background: none;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 4px 6px;
+    margin-left: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    opacity: 0.6;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bookmark-delete-btn:hover {
+    background-color: #ffebee;
+    opacity: 1;
+}
+
+.bookmark-item:hover .bookmark-delete-btn {
+    opacity: 1;
 }
 
 .loading {
@@ -310,5 +347,20 @@ header h1 {
     .subfolder-count {
         font-size: 0.7rem;
         padding: 1px 5px;
+    }
+    
+    .bookmark-link {
+        padding: 6px 8px;
+    }
+    
+    .bookmark-delete-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+        margin-left: 4px;
+    }
+    
+    .bookmark-favicon-container {
+        margin-right: 8px;
     }
 }

@@ -48,6 +48,9 @@ export function renderFolder(folder: BookmarkFolder, level = 0): string {
                                 </div>
                                 <span class="bookmark-title">${escapeHtml(bookmark.title)}</span>
                             </a>
+                            <button class="bookmark-delete-btn" data-bookmark-url="${escapeHtml(bookmark.url)}" data-bookmark-title="${escapeHtml(bookmark.title)}" title="削除">
+                                🗑️
+                            </button>
                         </li>
                     `
                       )
@@ -81,8 +84,15 @@ export function setupFolderClickHandler(
     const target = e.target as HTMLElement;
     const folderHeader = target.closest('.folder-header') as HTMLElement | null;
     const bookmarkLink = target.closest('.bookmark-link') as HTMLElement | null;
+    const deleteBtn = target.closest(
+      '.bookmark-delete-btn'
+    ) as HTMLElement | null;
 
-    if (bookmarkLink) {
+    if (deleteBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleBookmarkDelete(deleteBtn);
+    } else if (bookmarkLink) {
       e.preventDefault();
       const url = bookmarkLink.getAttribute('data-url');
       if (url) {
@@ -321,4 +331,45 @@ export async function displayBookmarksTestable(
 
   // イベントリスナーを設定
   setupFolderClickHandler(container, folders);
+}
+
+/**
+ * ブックマーク削除の処理を行う関数
+ */
+export async function handleBookmarkDelete(
+  deleteBtn: HTMLElement
+): Promise<void> {
+  const url = deleteBtn.getAttribute('data-bookmark-url');
+  const title = deleteBtn.getAttribute('data-bookmark-title');
+
+  if (!url || !title) {
+    console.error('❌ ブックマークのURLまたはタイトルが取得できませんでした');
+    return;
+  }
+
+  // 削除確認ダイアログを表示
+  const confirmed = confirm(`ブックマーク「${title}」を削除しますか？`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    // Chrome APIを使用してブックマークを削除
+    const bookmarks = await chrome.bookmarks.search({ url: url });
+
+    if (bookmarks.length === 0) {
+      console.error('❌ 削除対象のブックマークが見つかりませんでした');
+      return;
+    }
+
+    // 最初に見つかったブックマークを削除
+    await chrome.bookmarks.remove(bookmarks[0].id);
+
+    // 削除後、ページを再読み込みして表示を更新
+    window.location.reload();
+  } catch (error) {
+    console.error('❌ ブックマークの削除に失敗しました:', error);
+    alert('ブックマークの削除に失敗しました。');
+  }
 }
