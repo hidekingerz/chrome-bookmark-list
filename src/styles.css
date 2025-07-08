@@ -12,7 +12,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: none;
     margin: 0 auto;
     padding: 20px;
 }
@@ -34,7 +34,7 @@ header h1 {
 }
 
 #searchInput {
-    width: 300px;
+    width: 450px;
     padding: 12px 20px;
     border: none;
     border-radius: 25px;
@@ -50,7 +50,7 @@ header h1 {
 
 .bookmark-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
     gap: 25px;
 }
 
@@ -323,7 +323,7 @@ header h1 {
     
     #searchInput {
         width: 100%;
-        max-width: 300px;
+        max-width: 450px;
     }
     
     .bookmark-container {
