@@ -6,9 +6,17 @@
 ```
 Chrome Extension (Manifest V3)
 ├── Frontend (newtab.html + newtab.ts)
-├── Core Logic (newtab-core.ts)
+├── Components (コンポーネントベースアーキテクチャ)
+│   ├── BookmarkFolder/ (フォルダーレンダリング・イベント処理)
+│   ├── BookmarkItem/ (アイテムレンダリング)
+│   └── BookmarkActions/ (編集・削除機能)
+├── Types (強化された型定義)
+│   ├── bookmark.ts (ブックマーク関連)
+│   ├── events.ts (イベント関連)
+│   └── index.ts (統合エクスポート)
+├── Core Logic (newtab-core.ts - リファクタリング済み)
 ├── Utility Functions (utils.ts)
-├── Type Definitions (types.ts)
+├── Legacy Types (types.ts - 後方互換性)
 └── Styling (styles.css)
 ```
 
@@ -42,30 +50,69 @@ document.addEventListener('DOMContentLoaded', async () => {
 - `loadFavicons()`: Favicon非同期読み込み
 - 検索機能のイベントハンドリング
 
-### 2. コア機能 (newtab-core.ts)
-**責務**: UI生成とインタラクション処理
+### 2. コンポーネント アーキテクチャ (Components/)
+**責務**: 機能別に分離されたモジュラー設計
 
-#### 主要関数
+#### 2.1 BookmarkFolder コンポーネント
 
-##### `renderFolder(folder: BookmarkFolder, level: number): string`
-- フォルダをHTMLに変換
+##### `BookmarkFolderRenderer.ts`
+**責務**: フォルダーのHTML生成
+- `renderFolder(folder, level)`: フォルダをHTMLに変換
+- `renderFolderHeader()`: ヘッダー部分の生成
+- `renderFolderIcon()`: アイコンの状態管理
+- `renderFolderContent()`: コンテンツエリアの生成
 - 階層レベルに応じたスタイリング
-- 条件分岐:
-  - サブフォルダあり: `.has-subfolders`クラス
-  - ブックマークのみ: `.has-bookmarks`クラス
 
-##### `setupFolderClickHandler(container: HTMLElement, allBookmarks: BookmarkFolder[]): void`
-- フォルダクリックイベントの一元管理
-- イベント委譲パターンを使用
+##### `BookmarkFolderEvents.ts`
+**責務**: フォルダーのイベント処理
+- `setupFolderClickHandler()`: イベント委譲による一元管理
+- `handleFolderClick()`: フォルダクリック処理
+- `updateFolderUI()` / `updateBookmarkListUI()`: UI状態同期
 - 処理分岐:
-  1. ブックマークリンク → 新しいタブで開く
-  2. サブフォルダありフォルダ → サブフォルダ表示切り替え
-  3. ブックマークのみフォルダ → ブックマークリスト表示切り替え
+  1. 編集ボタン → 編集ダイアログ表示
+  2. 削除ボタン → 削除確認・実行
+  3. ブックマークリンク → 新しいタブで開く
+  4. フォルダヘッダー → 展開/折りたたみ
 
-##### `updateFolderUI()` / `updateBookmarkListUI()`
-- UI状態の同期処理
-- DOM要素の表示/非表示制御
-- アイコン状態の更新
+#### 2.2 BookmarkItem コンポーネント
+
+##### `BookmarkItemRenderer.ts`
+**責務**: ブックマークアイテムのHTML生成
+- `renderBookmarkItem()`: 単一アイテムの生成
+- `renderBookmarkActions()`: アクションボタン（編集・削除）
+- `renderBookmarkList()`: アイテムリスト全体の生成
+
+#### 2.3 BookmarkActions コンポーネント
+
+##### `BookmarkEditor.ts`
+**責務**: ブックマーク編集機能
+- `handleBookmarkEdit()`: 編集処理のエントリーポイント
+- `showEditDialog()`: モーダルダイアログの表示
+- `setupEditDialogEvents()`: ダイアログのイベント処理
+- Chrome Bookmarks APIとの連携（update, move）
+
+##### `BookmarkDeleter.ts`
+**責務**: ブックマーク削除機能
+- `handleBookmarkDelete()`: 削除処理
+- `showDeleteConfirmation()`: 確認ダイアログ
+- `deleteBookmarkByUrl()`: Chrome API経由での削除
+
+##### `BookmarkActions.ts`
+**責務**: アクション機能の統合
+- Editor と Deleter の統合インターフェース
+- 統一されたAPIの提供
+
+### 3. リファクタリング後のコア機能 (newtab-core.ts)
+**責務**: 後方互換性の維持と新コンポーネントの統合
+
+#### 後方互換性API
+- `renderFolder()`: BookmarkFolderRenderer への委譲
+- `setupFolderClickHandler()`: BookmarkFolderEvents への委譲
+- `handleBookmarkEdit()` / `handleBookmarkDelete()`: BookmarkActions への委譲
+
+#### 新しいコンポーネントAPI
+- 個別コンポーネントクラスのエクスポート
+- より細かい制御が可能な新しいインターフェース
 
 ### 3. ユーティリティ (utils.ts)
 **責務**: データ処理とヘルパー機能
@@ -118,9 +165,10 @@ export async function getFavicon(url: string): Promise<string>
 - ホスト名の外部流出を防止
 - 内部ネットワークの情報保護を優先
 
-### 4. 型定義 (types.ts)
-**責務**: TypeScript型安全性の確保
+### 4. 強化された型定義システム (types/)
+**責務**: 型安全性の向上と機能別型定義
 
+#### 4.1 `bookmark.ts` - ブックマーク関連型
 ```typescript
 interface BookmarkItem {
   title: string;
@@ -136,13 +184,54 @@ interface BookmarkFolder {
   expanded: boolean;
 }
 
-interface ChromeBookmarkNode {
-  id: string;
+interface BookmarkUpdateData {
   title: string;
-  url?: string;
+  url: string;
+}
+
+interface BookmarkMoveData {
+  parentId: string;
+}
+
+interface ChromeBookmarkNode extends chrome.bookmarks.BookmarkTreeNode {
   children?: ChromeBookmarkNode[];
 }
 ```
+
+#### 4.2 `events.ts` - イベント関連型
+```typescript
+interface BookmarkClickEventData {
+  url: string;
+  title: string;
+}
+
+interface FolderToggleEventData {
+  folderId: string;
+  expanded: boolean;
+  level: number;
+}
+
+interface BookmarkEditEventData {
+  url: string;
+  currentTitle: string;
+}
+
+interface BookmarkDeleteEventData {
+  url: string;
+  title: string;
+}
+
+interface BookmarkDataAttributes {
+  'data-bookmark-url': string;
+  'data-bookmark-title': string;
+  'data-folder-id'?: string;
+  'data-level'?: string;
+}
+```
+
+#### 4.3 `index.ts` - 統合エクスポート
+- 全ての型定義の一元管理
+- 後方互換性のためのLegacy型の再エクスポート
 
 ## データフロー
 
@@ -262,18 +351,27 @@ export function escapeHtml(text: string): string {
 ## テスト戦略
 
 ### ユニットテスト
-- **utils.test.ts**: データ処理関数
+- **utils.test.ts**: データ処理関数（23テスト）
+- **bookmark-delete.test.ts**: 削除機能（6テスト）
+- **bookmark-edit.test.ts**: 編集機能（9テスト）
 - **カバレッジ**: 主要ロジック100%
 
 ### 統合テスト
-- **newtab-integration.test.ts**: フォルダクリック機能
-- **3layer-issues.test.ts**: 深い階層の特殊ケース
-- **integration.test.ts**: Chrome API連携
+- **newtab-integration.test.ts**: フォルダクリック機能（13テスト）
+- **3layer-issues.test.ts**: 深い階層の特殊ケース（4テスト）
+- **integration.test.ts**: Chrome API連携（7テスト）
+- **newtab.test.ts**: 基本機能（3テスト）
 
 ### テスト環境
-- **Vitest**: 高速実行
+- **Vitest**: 高速実行（総計65テスト）
 - **JSDOM**: 実DOM環境シミュレーション
 - **Chrome API Mock**: 拡張機能API模擬
+- **コンポーネント別テスト**: リファクタリング後の各コンポーネントをテスト
+
+### リファクタリング後のテスト戦略
+- **後方互換性テスト**: 既存のAPIが正常に動作することを確認
+- **新コンポーネントテスト**: 各コンポーネントクラスの独立テスト
+- **統合テスト**: コンポーネント間の連携テスト
 
 ## ビルドプロセス
 
@@ -311,3 +409,27 @@ dist/
 1. **仮想スクロール**: 大量データ対応
 2. **バックグラウンド処理**: Favicon事前取得
 3. **インクリメンタル更新**: 差分更新による高速化
+
+## リファクタリング成果（v1.4.0）
+
+### アーキテクチャ改善
+1. **モジュラー設計**: 590行の巨大ファイルを機能別コンポーネントに分割
+2. **責務の分離**: HTML生成、イベント処理、編集・削除機能を独立化
+3. **型安全性向上**: 詳細なinterface定義とイベント型を追加
+4. **後方互換性**: 既存APIを維持しながら段階的移行を実現
+
+### コード品質向上
+- **保守性**: 各コンポーネントが独立してテスト・修正可能
+- **再利用性**: コンポーネントクラスとして独立したモジュール
+- **可読性**: 機能ごとに整理されたファイル構造
+- **拡張性**: 新機能追加時の影響範囲を限定
+
+### パフォーマンス
+- **ビルド時間**: TypeScriptコンパイルの最適化
+- **テスト実行**: 65テスト全て通過、高速実行
+- **バンドルサイズ**: モジュール分割による効率的な読み込み
+
+### 新機能
+- **ブックマーク編集**: 名前変更、URL変更、フォルダ移動
+- **ブックマーク削除**: 確認ダイアログ付き削除機能
+- **レスポンシブデザイン**: 1600px以上で3カラム表示

@@ -127,10 +127,11 @@ describe('ブックマーク削除機能のテスト', () => {
     const mockChrome = globalThis.chrome as any;
     mockChrome.bookmarks.search.mockResolvedValue([]);
 
-    // console.error のモック
+    // console.error と alert のモック
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => {});
+    const alertSpy = vi.spyOn(globalThis, 'alert').mockImplementation(() => {});
 
     // location.reload のモック
     const reloadSpy = vi.fn();
@@ -146,8 +147,10 @@ describe('ブックマーク削除機能のテスト', () => {
 
     // エラーメッセージが出力されることを確認
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      '❌ 削除対象のブックマークが見つかりませんでした'
+      '❌ ブックマークの削除に失敗しました:',
+      expect.any(Error)
     );
+    expect(alertSpy).toHaveBeenCalledWith('ブックマークの削除に失敗しました。');
     expect(chrome.bookmarks.remove).not.toHaveBeenCalled();
     expect(reloadSpy).not.toHaveBeenCalled();
   });
