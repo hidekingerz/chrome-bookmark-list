@@ -48,9 +48,14 @@ export function renderFolder(folder: BookmarkFolder, level = 0): string {
                                 </div>
                                 <span class="bookmark-title">${escapeHtml(bookmark.title)}</span>
                             </a>
-                            <button class="bookmark-delete-btn" data-bookmark-url="${escapeHtml(bookmark.url)}" data-bookmark-title="${escapeHtml(bookmark.title)}" title="削除">
-                                🗑️
-                            </button>
+                            <div class="bookmark-actions">
+                                <button class="bookmark-edit-btn" data-bookmark-url="${escapeHtml(bookmark.url)}" data-bookmark-title="${escapeHtml(bookmark.title)}" title="編集">
+                                    ✏️
+                                </button>
+                                <button class="bookmark-delete-btn" data-bookmark-url="${escapeHtml(bookmark.url)}" data-bookmark-title="${escapeHtml(bookmark.title)}" title="削除">
+                                    🗑️
+                                </button>
+                            </div>
                         </li>
                     `
                       )
@@ -87,8 +92,13 @@ export function setupFolderClickHandler(
     const deleteBtn = target.closest(
       '.bookmark-delete-btn'
     ) as HTMLElement | null;
+    const editBtn = target.closest('.bookmark-edit-btn') as HTMLElement | null;
 
-    if (deleteBtn) {
+    if (editBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleBookmarkEdit(editBtn);
+    } else if (deleteBtn) {
       e.preventDefault();
       e.stopPropagation();
       handleBookmarkDelete(deleteBtn);
@@ -371,5 +381,208 @@ export async function handleBookmarkDelete(
   } catch (error) {
     console.error('❌ ブックマークの削除に失敗しました:', error);
     alert('ブックマークの削除に失敗しました。');
+  }
+}
+
+/**
+ * ブックマーク編集の処理を行う関数
+ */
+export async function handleBookmarkEdit(editBtn: HTMLElement): Promise<void> {
+  const url = editBtn.getAttribute('data-bookmark-url');
+  const currentTitle = editBtn.getAttribute('data-bookmark-title');
+
+  if (!url || !currentTitle) {
+    console.error('❌ ブックマークのURLまたはタイトルが取得できませんでした');
+    return;
+  }
+
+  try {
+    // Chrome APIを使用してブックマークを検索
+    const bookmarks = await chrome.bookmarks.search({ url: url });
+
+    if (bookmarks.length === 0) {
+      console.error('❌ 編集対象のブックマークが見つかりませんでした');
+      return;
+    }
+
+    const bookmark = bookmarks[0];
+
+    // すべてのフォルダーを取得
+    const allFolders = await getAllFolders();
+
+    // 編集ダイアログを表示
+    showEditDialog(bookmark, allFolders);
+  } catch (error) {
+    console.error('❌ ブックマークの編集準備に失敗しました:', error);
+    alert('ブックマークの編集準備に失敗しました。');
+  }
+}
+
+/**
+ * すべてのフォルダーを取得する関数
+ */
+async function getAllFolders(): Promise<chrome.bookmarks.BookmarkTreeNode[]> {
+  const bookmarkTree = await chrome.bookmarks.getTree();
+  const folders: chrome.bookmarks.BookmarkTreeNode[] = [];
+
+  function collectFolders(nodes: chrome.bookmarks.BookmarkTreeNode[]) {
+    for (const node of nodes) {
+      if (node.children && !node.url) {
+        // フォルダー（URLがない）の場合
+        folders.push(node);
+        collectFolders(node.children);
+      }
+    }
+  }
+
+  collectFolders(bookmarkTree);
+  return folders;
+}
+
+/**
+ * 編集ダイアログを表示する関数
+ */
+function showEditDialog(
+  bookmark: chrome.bookmarks.BookmarkTreeNode,
+  folders: chrome.bookmarks.BookmarkTreeNode[]
+): void {
+  // 既存のダイアログがあれば削除
+  const existingDialog = document.getElementById('edit-dialog');
+  if (existingDialog) {
+    existingDialog.remove();
+  }
+
+  // ダイアログのHTML作成
+  const dialogHTML = `
+    <div id="edit-dialog" class="edit-dialog-overlay">
+      <div class="edit-dialog">
+        <div class="edit-dialog-header">
+          <h3>ブックマークを編集</h3>
+          <button class="edit-dialog-close" type="button">×</button>
+        </div>
+        <div class="edit-dialog-content">
+          <div class="edit-form-group">
+            <label for="edit-title">名前:</label>
+            <input type="text" id="edit-title" value="${escapeHtml(bookmark.title)}" />
+          </div>
+          <div class="edit-form-group">
+            <label for="edit-url">URL:</label>
+            <input type="url" id="edit-url" value="${escapeHtml(bookmark.url || '')}" />
+          </div>
+          <div class="edit-form-group">
+            <label for="edit-folder">フォルダー:</label>
+            <select id="edit-folder">
+              ${folders
+                .map(
+                  (folder) => `
+                <option value="${folder.id}" ${folder.id === bookmark.parentId ? 'selected' : ''}>
+                  ${escapeHtml(folder.title)}
+                </option>
+              `
+                )
+                .join('')}
+            </select>
+          </div>
+        </div>
+        <div class="edit-dialog-actions">
+          <button type="button" class="edit-dialog-cancel">キャンセル</button>
+          <button type="button" class="edit-dialog-save">保存</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ダイアログをDOMに追加
+  document.body.insertAdjacentHTML('beforeend', dialogHTML);
+
+  // イベントリスナーを設定
+  setupEditDialogEvents(bookmark);
+}
+
+/**
+ * 編集ダイアログのイベントを設定する関数
+ */
+function setupEditDialogEvents(
+  bookmark: chrome.bookmarks.BookmarkTreeNode
+): void {
+  const dialog = document.getElementById('edit-dialog');
+  const closeBtn = dialog?.querySelector('.edit-dialog-close');
+  const cancelBtn = dialog?.querySelector('.edit-dialog-cancel');
+  const saveBtn = dialog?.querySelector('.edit-dialog-save');
+  const overlay = dialog;
+
+  // 閉じるボタン
+  closeBtn?.addEventListener('click', closeEditDialog);
+  cancelBtn?.addEventListener('click', closeEditDialog);
+
+  // オーバーレイクリックで閉じる
+  overlay?.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      closeEditDialog();
+    }
+  });
+
+  // 保存ボタン
+  saveBtn?.addEventListener('click', async () => {
+    const titleInput = document.getElementById(
+      'edit-title'
+    ) as HTMLInputElement;
+    const urlInput = document.getElementById('edit-url') as HTMLInputElement;
+    const folderSelect = document.getElementById(
+      'edit-folder'
+    ) as HTMLSelectElement;
+
+    if (!titleInput || !urlInput || !folderSelect) {
+      return;
+    }
+
+    const newTitle = titleInput.value.trim();
+    const newUrl = urlInput.value.trim();
+    const newParentId = folderSelect.value;
+
+    if (!newTitle || !newUrl) {
+      alert('名前とURLは必須です。');
+      return;
+    }
+
+    try {
+      // ブックマークを更新
+      await chrome.bookmarks.update(bookmark.id, {
+        title: newTitle,
+        url: newUrl,
+      });
+
+      // フォルダーが変更された場合は移動
+      if (newParentId !== bookmark.parentId) {
+        await chrome.bookmarks.move(bookmark.id, {
+          parentId: newParentId,
+        });
+      }
+
+      closeEditDialog();
+
+      // ページを再読み込みして表示を更新
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ ブックマークの更新に失敗しました:', error);
+      alert('ブックマークの更新に失敗しました。');
+    }
+  });
+
+  // ESCキーで閉じる
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeEditDialog();
+    }
+  });
+}
+
+/**
+ * 編集ダイアログを閉じる関数
+ */
+function closeEditDialog(): void {
+  const dialog = document.getElementById('edit-dialog');
+  if (dialog) {
+    dialog.remove();
   }
 }
