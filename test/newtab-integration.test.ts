@@ -229,7 +229,8 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
       setupFolderClickHandler(bookmarkContainer, allBookmarks);
 
       // 初期状態のブックマーク数を確認
-      const initialBookmarks = bookmarkContainer.querySelectorAll('.bookmark-item').length;
+      const initialBookmarks =
+        bookmarkContainer.querySelectorAll('.bookmark-item').length;
       expect(initialBookmarks).toBeGreaterThan(0);
 
       // 履歴サイドバーを開く
@@ -247,7 +248,8 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
       await historySidebar.open();
 
       // サイドバーが開いた状態でもブックマークは変わらない
-      const bookmarksAfterOpen = bookmarkContainer.querySelectorAll('.bookmark-item').length;
+      const bookmarksAfterOpen =
+        bookmarkContainer.querySelectorAll('.bookmark-item').length;
       expect(bookmarksAfterOpen).toBe(initialBookmarks);
 
       // サイドバーが開いていることを確認
@@ -258,14 +260,17 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
       historySidebar.close();
 
       // サイドバーが閉じてもブックマークは変わらない
-      const bookmarksAfterClose = bookmarkContainer.querySelectorAll('.bookmark-item').length;
+      const bookmarksAfterClose =
+        bookmarkContainer.querySelectorAll('.bookmark-item').length;
       expect(bookmarksAfterClose).toBe(initialBookmarks);
     });
 
     it('履歴サイドバーと検索機能が同時に動作する', async () => {
       const historySidebar = new HistorySidebar();
       const bookmarkContainer = document.getElementById('bookmarkContainer')!;
-      const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+      const searchInput = document.getElementById(
+        'searchInput'
+      ) as HTMLInputElement;
 
       // ブックマークをレンダリング
       const html = allBookmarks.map((folder) => renderFolder(folder)).join('');
@@ -319,7 +324,9 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
 
     it('履歴読み込み失敗時のエラーハンドリング', async () => {
       const historySidebar = new HistorySidebar();
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       // 履歴読み込みを失敗させる
       mockGetRecentHistory.mockRejectedValue(new Error('History API Error'));
@@ -365,7 +372,9 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
       await historySidebar.open();
 
       // 検索バーが存在することを確認
-      const searchInput = document.querySelector('.history-search-input') as HTMLInputElement;
+      const searchInput = document.querySelector(
+        '.history-search-input'
+      ) as HTMLInputElement;
       expect(searchInput).toBeTruthy();
 
       // 初期状態で全アイテムが表示されることを確認
@@ -380,7 +389,9 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
       // フィルタリング結果を確認
       historyItems = document.querySelectorAll('.history-item');
       expect(historyItems.length).toBe(1);
-      expect(historyItems[0].querySelector('.history-item-title')?.textContent).toBe('GitHub');
+      expect(
+        historyItems[0].querySelector('.history-item-title')?.textContent
+      ).toBe('GitHub');
     });
   });
 

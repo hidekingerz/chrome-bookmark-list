@@ -172,9 +172,7 @@ describe('履歴API (history.ts)', () => {
       const actualStartTime = callArgs.startTime;
 
       // 呼び出し前後の時間を考慮して範囲チェック
-      expect(actualStartTime).toBeGreaterThanOrEqual(
-        expectedStartTime - 1000
-      );
+      expect(actualStartTime).toBeGreaterThanOrEqual(expectedStartTime - 1000);
       expect(actualStartTime).toBeLessThanOrEqual(
         afterCall - 7 * 24 * 60 * 60 * 1000 + 1000
       );
@@ -183,7 +181,9 @@ describe('履歴API (history.ts)', () => {
     it('API呼び出しが失敗した場合は空配列を返す', async () => {
       mockHistorySearch.mockRejectedValue(new Error('API Error'));
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       const result = await getRecentHistory();
 
