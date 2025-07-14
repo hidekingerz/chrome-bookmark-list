@@ -1,6 +1,6 @@
 # Chrome Bookmark List
 
-新しいタブでブックマークをフォルダ別に一覧表示するChrome拡張機能
+新しいタブでブックマークをフォルダ別に一覧表示し、履歴も検索できるChrome拡張機能
 
 ![Chrome Bookmark List Screenshot](screenshot.png)
 
@@ -12,6 +12,7 @@
 - 🔍 リアルタイム検索機能（検索時は自動展開）
 - ✏️ **ブックマーク編集機能**（名前変更・URL変更・フォルダ移動）
 - 🗑️ **ブックマーク削除機能**（確認ダイアログ付き）
+- 🕐 **履歴サイドバー**（過去7日間の履歴を表示・検索可能）
 - 🎨 モダンで美しいUI
 - ⚡ 高速なブックマークアクセス
 - 📱 レスポンシブデザイン（1600px以上で3カラム表示）
@@ -30,10 +31,13 @@ chrome-bookmark-list/
 │   │   │   └── index.ts                     # 統合インターフェース
 │   │   ├── BookmarkItem/        # アイテム関連コンポーネント
 │   │   │   └── BookmarkItemRenderer.ts      # アイテムHTML生成
-│   │   └── BookmarkActions/     # アクション機能
-│   │       ├── BookmarkEditor.ts            # 編集機能
-│   │       ├── BookmarkDeleter.ts           # 削除機能
-│   │       └── index.ts                     # 統合クラス
+│   │   ├── BookmarkActions/     # アクション機能
+│   │   │   ├── BookmarkEditor.ts            # 編集機能
+│   │   │   ├── BookmarkDeleter.ts           # 削除機能
+│   │   │   └── index.ts                     # 統合クラス
+│   │   └── HistorySidebar/   # 履歴サイドバー機能
+│   │       ├── HistorySidebar.ts            # 履歴サイドバー本体
+│   │       └── index.ts                     # エクスポート
 │   ├── types/                   # 強化された型定義
 │   │   ├── bookmark.ts          # ブックマーク関連型
 │   │   ├── events.ts            # イベント関連型
@@ -41,6 +45,7 @@ chrome-bookmark-list/
 │   ├── scripts/                 # スクリプトファイル
 │   │   ├── newtab.ts            # メインエントリーポイント
 │   │   ├── newtab-core.ts       # リファクタリング済みコア機能
+│   │   ├── history.ts           # 履歴取得API
 │   │   ├── types.ts             # レガシー型定義（後方互換性）
 │   │   └── utils.ts             # ユーティリティ関数
 │   ├── manifest.json            # 拡張機能マニフェスト
@@ -52,8 +57,10 @@ chrome-bookmark-list/
 │   ├── utils.test.ts            # ユーティリティテスト（23テスト）
 │   ├── bookmark-delete.test.ts  # 削除機能テスト（6テスト）
 │   ├── bookmark-edit.test.ts    # 編集機能テスト（9テスト）
+│   ├── history.test.ts          # 履歴API テスト（9テスト）
+│   ├── history-sidebar.test.ts  # 履歴サイドバーテスト（23テスト）
 │   ├── integration.test.ts      # 統合テスト（7テスト）
-│   ├── newtab-integration.test.ts # フォルダクリックテスト（13テスト）
+│   ├── newtab-integration.test.ts # フォルダクリックテスト（19テスト）
 │   ├── newtab.test.ts           # 基本機能テスト（3テスト）
 │   └── 3layer-issues.test.ts    # 深い階層テスト（4テスト）
 ├── docs/                        # ドキュメント
@@ -100,6 +107,7 @@ npm run build:extension
 6. **ブックマーク編集**: ✏️ 編集ボタンで名前・URL・フォルダを変更
 7. **ブックマーク削除**: 🗑️ 削除ボタンで不要なブックマークを削除（確認ダイアログ付き）
 8. **検索**: 検索バーでブックマークタイトルやURLを素早く検索（検索時は関連フォルダが自動展開）
+9. **履歴サイドバー**: 右上の🕐ボタンで履歴サイドバーを開き、過去7日間の履歴を閲覧・検索
 
 ## 開発
 
@@ -111,6 +119,7 @@ npm run build:extension
 - **Vanilla JavaScript/TypeScript** - フレームワークを使用しない軽量実装
 - **CSS Grid & Flexbox** - モダンなレイアウト
 - **Chrome Bookmarks API** - ブックマークデータへのアクセス
+- **Chrome History API** - 履歴データへのアクセス
 - **Happy DOM** - テスト環境でのDOM操作
 - **JSDOM** - 統合テスト用のDOM環境
 
@@ -145,6 +154,7 @@ npm run build:extension
 - **BookmarkFolder**: フォルダーのレンダリングとイベント処理
 - **BookmarkItem**: ブックマークアイテムのHTML生成
 - **BookmarkActions**: 編集・削除機能の統合
+- **HistorySidebar**: 履歴サイドバーと検索機能
 
 #### 型定義の強化
 - **bookmark.ts**: ブックマーク関連の型（`BookmarkItem`, `BookmarkFolder`, `BookmarkUpdateData`等）
@@ -159,15 +169,17 @@ npm run build:extension
 - **utils.test.ts** (23テスト): データ処理関数、検索・フィルタリング、Faviconキャッシュ
 - **bookmark-delete.test.ts** (6テスト): 削除機能の包括的テスト
 - **bookmark-edit.test.ts** (9テスト): 編集機能の包括的テスト
+- **history.test.ts** (9テスト): 履歴API機能のテスト
+- **history-sidebar.test.ts** (23テスト): 履歴サイドバーと検索機能のテスト
 
 #### 統合テスト
 - **integration.test.ts** (7テスト): Chrome API連携とDOM操作
-- **newtab-integration.test.ts** (13テスト): フォルダクリック機能の詳細テスト
+- **newtab-integration.test.ts** (19テスト): フォルダクリック機能と履歴サイドバーの統合テスト
 - **newtab.test.ts** (3テスト): 基本機能の動作確認
 - **3layer-issues.test.ts** (4テスト): 深い階層の特殊ケース
 
 #### テスト環境
-- **Vitest**: 高速なテストランナー（**総計65テスト**）
+- **Vitest**: 高速なテストランナー（**総計103テスト**）
 - **Happy DOM**: 軽量なDOM環境
 - **JSDOM**: 完全なDOM環境（統合テスト用）
 - **Chrome API モック**: 拡張機能API のシミュレーション
