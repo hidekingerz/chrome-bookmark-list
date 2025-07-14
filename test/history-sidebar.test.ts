@@ -18,7 +18,8 @@ describe('HistorySidebar', () => {
 
   beforeEach(() => {
     // DOM環境を設定
-    dom = new JSDOM(`
+    dom = new JSDOM(
+      `
       <!DOCTYPE html>
       <html>
         <head>
@@ -30,10 +31,12 @@ describe('HistorySidebar', () => {
           </header>
         </body>
       </html>
-    `, {
-      url: 'http://localhost',
-      pretendToBeVisual: true,
-    });
+    `,
+      {
+        url: 'http://localhost',
+        pretendToBeVisual: true,
+      }
+    );
 
     document = dom.window.document;
 
@@ -110,8 +113,10 @@ describe('HistorySidebar', () => {
     });
 
     it('トグルボタンクリックでサイドバーが開く', async () => {
-      const toggleButton = document.querySelector('.history-toggle-btn') as HTMLButtonElement;
-      
+      const toggleButton = document.querySelector(
+        '.history-toggle-btn'
+      ) as HTMLButtonElement;
+
       toggleButton.click();
 
       const sidebarElement = document.querySelector('.history-sidebar');
@@ -126,7 +131,9 @@ describe('HistorySidebar', () => {
       // まず開く
       await sidebar.open();
 
-      const closeButton = document.querySelector('.history-sidebar-close') as HTMLButtonElement;
+      const closeButton = document.querySelector(
+        '.history-sidebar-close'
+      ) as HTMLButtonElement;
       closeButton.click();
 
       const sidebarElement = document.querySelector('.history-sidebar');
@@ -141,7 +148,9 @@ describe('HistorySidebar', () => {
       // まず開く
       await sidebar.open();
 
-      const overlayElement = document.querySelector('.history-sidebar-overlay') as HTMLElement;
+      const overlayElement = document.querySelector(
+        '.history-sidebar-overlay'
+      ) as HTMLElement;
       overlayElement.click();
 
       const sidebarElement = document.querySelector('.history-sidebar');
@@ -215,8 +224,10 @@ describe('HistorySidebar', () => {
 
       await sidebar.open();
 
-      const searchInput = document.querySelector('.history-search-input') as HTMLInputElement;
-      
+      const searchInput = document.querySelector(
+        '.history-search-input'
+      ) as HTMLInputElement;
+
       // 検索前は全アイテムが表示
       let historyItems = document.querySelectorAll('.history-item');
       expect(historyItems).toHaveLength(2);
@@ -229,7 +240,9 @@ describe('HistorySidebar', () => {
       // GitHubのアイテムのみ表示
       historyItems = document.querySelectorAll('.history-item');
       expect(historyItems).toHaveLength(1);
-      expect(historyItems[0].querySelector('.history-item-title')?.textContent).toBe('GitHub');
+      expect(
+        historyItems[0].querySelector('.history-item-title')?.textContent
+      ).toBe('GitHub');
     });
 
     it('URLでの検索が動作する', async () => {
@@ -256,8 +269,10 @@ describe('HistorySidebar', () => {
 
       await sidebar.open();
 
-      const searchInput = document.querySelector('.history-search-input') as HTMLInputElement;
-      
+      const searchInput = document.querySelector(
+        '.history-search-input'
+      ) as HTMLInputElement;
+
       // 'github.com'で検索
       searchInput.value = 'github.com';
       const inputEvent = new Event('input', { bubbles: true });
@@ -266,7 +281,9 @@ describe('HistorySidebar', () => {
       // GitHubのアイテムのみ表示
       const historyItems = document.querySelectorAll('.history-item');
       expect(historyItems).toHaveLength(1);
-      expect(historyItems[0].querySelector('.history-item-url')?.textContent).toBe('https://github.com');
+      expect(
+        historyItems[0].querySelector('.history-item-url')?.textContent
+      ).toBe('https://github.com');
     });
 
     it('検索結果が空の場合、適切なメッセージが表示される', async () => {
@@ -285,8 +302,10 @@ describe('HistorySidebar', () => {
 
       await sidebar.open();
 
-      const searchInput = document.querySelector('.history-search-input') as HTMLInputElement;
-      
+      const searchInput = document.querySelector(
+        '.history-search-input'
+      ) as HTMLInputElement;
+
       // 存在しないキーワードで検索
       searchInput.value = 'nonexistent';
       const inputEvent = new Event('input', { bubbles: true });
@@ -321,8 +340,10 @@ describe('HistorySidebar', () => {
 
       await sidebar.open();
 
-      const searchInput = document.querySelector('.history-search-input') as HTMLInputElement;
-      
+      const searchInput = document.querySelector(
+        '.history-search-input'
+      ) as HTMLInputElement;
+
       // 検索してフィルタリング
       searchInput.value = 'GitHub';
       const inputEvent1 = new Event('input', { bubbles: true });
@@ -357,8 +378,10 @@ describe('HistorySidebar', () => {
 
       await sidebar.open();
 
-      const searchInput = document.querySelector('.history-search-input') as HTMLInputElement;
-      
+      const searchInput = document.querySelector(
+        '.history-search-input'
+      ) as HTMLInputElement;
+
       // 小文字で検索
       searchInput.value = 'github';
       const inputEvent = new Event('input', { bubbles: true });
@@ -367,7 +390,9 @@ describe('HistorySidebar', () => {
       // GitHubのアイテムが表示される
       const historyItems = document.querySelectorAll('.history-item');
       expect(historyItems).toHaveLength(1);
-      expect(historyItems[0].querySelector('.history-item-title')?.textContent).toBe('GitHub');
+      expect(
+        historyItems[0].querySelector('.history-item-title')?.textContent
+      ).toBe('GitHub');
     });
   });
 
@@ -425,7 +450,9 @@ describe('HistorySidebar', () => {
     it('履歴読み込みに失敗した場合、エラーメッセージが表示される', async () => {
       mockGetRecentHistory.mockRejectedValue(new Error('API Error'));
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       await sidebar.open();
 
@@ -476,7 +503,9 @@ describe('HistorySidebar', () => {
       expect(visitCount?.textContent).toBe('訪問回数: 5');
 
       const favicon = historyItem?.querySelector('.history-favicon');
-      expect(favicon?.getAttribute('data-history-url')).toBe('https://example.com');
+      expect(favicon?.getAttribute('data-history-url')).toBe(
+        'https://example.com'
+      );
     });
 
     it('日付と時刻が正しく表示される', async () => {
@@ -496,7 +525,9 @@ describe('HistorySidebar', () => {
       await sidebar.open();
 
       const dateElement = document.querySelector('.history-item-date');
-      expect(dateElement?.textContent).toMatch(/\d{4}\/\d{1,2}\/\d{1,2} \d{1,2}:\d{2}/);
+      expect(dateElement?.textContent).toMatch(
+        /\d{4}\/\d{1,2}\/\d{1,2} \d{1,2}:\d{2}/
+      );
     });
   });
 
@@ -524,8 +555,10 @@ describe('HistorySidebar', () => {
 
       expect(mockGetFavicon).toHaveBeenCalledWith('https://example.com');
 
-      const favicon = document.querySelector('.history-favicon') as HTMLImageElement;
-      
+      const favicon = document.querySelector(
+        '.history-favicon'
+      ) as HTMLImageElement;
+
       // onloadイベントをシミュレート
       favicon.onload?.({} as Event);
 
@@ -552,7 +585,9 @@ describe('HistorySidebar', () => {
 
       await sidebar.open();
 
-      const placeholder = document.querySelector('.favicon-placeholder') as HTMLElement;
+      const placeholder = document.querySelector(
+        '.favicon-placeholder'
+      ) as HTMLElement;
       expect(placeholder?.textContent).toBe('🌐');
       expect(placeholder?.style.display).toBe('block');
 

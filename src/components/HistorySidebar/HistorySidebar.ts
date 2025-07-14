@@ -45,7 +45,9 @@ export class HistorySidebar {
     document.body.appendChild(this.overlayElement);
 
     // 検索入力要素を取得
-    this.searchInput = this.sidebarElement.querySelector('.history-search-input') as HTMLInputElement;
+    this.searchInput = this.sidebarElement.querySelector(
+      '.history-search-input'
+    ) as HTMLInputElement;
   }
 
   private createToggleButton(): void {
