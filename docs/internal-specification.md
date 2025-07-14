@@ -9,12 +9,14 @@ Chrome Extension (Manifest V3)
 ├── Components (コンポーネントベースアーキテクチャ)
 │   ├── BookmarkFolder/ (フォルダーレンダリング・イベント処理)
 │   ├── BookmarkItem/ (アイテムレンダリング)
-│   └── BookmarkActions/ (編集・削除機能)
+│   ├── BookmarkActions/ (編集・削除機能)
+│   └── HistorySidebar/ (履歴サイドバー・検索機能)
 ├── Types (強化された型定義)
 │   ├── bookmark.ts (ブックマーク関連)
 │   ├── events.ts (イベント関連)
 │   └── index.ts (統合エクスポート)
 ├── Core Logic (newtab-core.ts - リファクタリング済み)
+├── History API (history.ts - 履歴データ取得)
 ├── Utility Functions (utils.ts)
 ├── Legacy Types (types.ts - 後方互換性)
 └── Styling (styles.css)
@@ -26,7 +28,7 @@ Chrome Extension (Manifest V3)
 - **テストフレームワーク**: Vitest 1.6.0
 - **DOM環境**: Happy DOM / JSDOM
 - **CSS**: Vanilla CSS (Grid + Flexbox)
-- **Chrome API**: Bookmarks API, Tabs API
+- **Chrome API**: Bookmarks API, Tabs API, History API
 
 ## モジュール構成
 
@@ -38,10 +40,11 @@ Chrome Extension (Manifest V3)
 document.addEventListener('DOMContentLoaded', async () => {
   1. DOM要素の取得・検証
   2. Faviconキャッシュの初期化
-  3. Chrome Bookmarks APIからデータ取得
-  4. ブックマークツリーの処理
-  5. ブックマーク表示
-  6. 検索イベントリスナーの設定
+  3. 履歴サイドバーの初期化
+  4. Chrome Bookmarks APIからデータ取得
+  5. ブックマークツリーの処理
+  6. ブックマーク表示
+  7. 検索イベントリスナーの設定
 });
 ```
 
@@ -244,6 +247,14 @@ Raw ChromeBookmarkNode[]
 BookmarkFolder[] (内部形式)
     ↓ renderFolder()
 HTML文字列
+    ↓ DOM挿入
+表示完了
+
+Chrome History API
+    ↓ search()
+HistoryItem[]
+    ↓ HistorySidebar.renderHistory()
+履歴HTML文字列
     ↓ innerHTML
 DOM表示
     ↓ setupFolderClickHandler()

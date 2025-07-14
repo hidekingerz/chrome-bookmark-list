@@ -6,6 +6,20 @@ import {
 } from '../src/scripts/newtab-core';
 import type { BookmarkFolder, ChromeBookmarkNode } from '../src/scripts/types';
 import { findFolderById, processBookmarkTree } from '../src/scripts/utils';
+import { HistorySidebar } from '../src/components/HistorySidebar/HistorySidebar';
+import { getRecentHistory } from '../src/scripts/history';
+
+// モック
+vi.mock('../src/scripts/history');
+vi.mock('../src/scripts/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/scripts/utils')>();
+  return {
+    ...actual,
+    getFavicon: vi.fn().mockResolvedValue('data:image/png;base64,test'),
+  };
+});
+
+const mockGetRecentHistory = vi.mocked(getRecentHistory);
 
 describe('実際のフォルダクリック機能の統合テスト', () => {
   let dom: JSDOM;
@@ -108,8 +122,13 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
           </style>
         </head>
         <body>
+          <header>
+            <h1>📚 Bookmarks</h1>
+            <div class="search-container">
+              <input type="text" id="searchInput" placeholder="ブックマークを検索...">
+            </div>
+          </header>
           <div id="bookmarkContainer" class="bookmark-container"></div>
-          <input type="text" id="searchInput" placeholder="ブックマークを検索...">
         </body>
       </html>
     `,
@@ -153,6 +172,9 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
       tabs: {
         create: vi.fn(),
       },
+      history: {
+        search: vi.fn(),
+      },
     };
 
     // Chrome オブジェクトを条件付きで設定
@@ -169,6 +191,9 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
 
     // ブックマークデータを処理
     allBookmarks = processBookmarkTree(mockBookmarkTree);
+
+    // モックのデフォルト設定
+    mockGetRecentHistory.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -176,6 +201,187 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
     vi.clearAllMocks();
     // モックをリセット
     vi.resetAllMocks();
+  });
+
+  describe('履歴サイドバー統合テスト', () => {
+    it('履歴サイドバーが正しく初期化される', () => {
+      new HistorySidebar();
+
+      // トグルボタンがheaderに追加される
+      const toggleButton = document.querySelector('.history-toggle-btn');
+      expect(toggleButton).toBeTruthy();
+      expect(toggleButton?.parentElement?.tagName).toBe('HEADER');
+
+      // サイドバーとオーバーレイが作成される
+      const sidebar = document.querySelector('.history-sidebar');
+      const overlay = document.querySelector('.history-sidebar-overlay');
+      expect(sidebar).toBeTruthy();
+      expect(overlay).toBeTruthy();
+    });
+
+    it('履歴サイドバーの開閉がブックマーク表示に影響しない', async () => {
+      const historySidebar = new HistorySidebar();
+      const bookmarkContainer = document.getElementById('bookmarkContainer')!;
+
+      // ブックマークをレンダリング
+      const html = allBookmarks.map((folder) => renderFolder(folder)).join('');
+      bookmarkContainer.innerHTML = html;
+      setupFolderClickHandler(bookmarkContainer, allBookmarks);
+
+      // 初期状態のブックマーク数を確認
+      const initialBookmarks = bookmarkContainer.querySelectorAll('.bookmark-item').length;
+      expect(initialBookmarks).toBeGreaterThan(0);
+
+      // 履歴サイドバーを開く
+      mockGetRecentHistory.mockResolvedValue([
+        {
+          id: '1',
+          url: 'https://example.com',
+          title: 'Example',
+          lastVisitTime: Date.now(),
+          visitCount: 5,
+          typedCount: 1,
+        },
+      ]);
+
+      await historySidebar.open();
+
+      // サイドバーが開いた状態でもブックマークは変わらない
+      const bookmarksAfterOpen = bookmarkContainer.querySelectorAll('.bookmark-item').length;
+      expect(bookmarksAfterOpen).toBe(initialBookmarks);
+
+      // サイドバーが開いていることを確認
+      const sidebar = document.querySelector('.history-sidebar');
+      expect(sidebar?.classList.contains('open')).toBe(true);
+
+      // サイドバーを閉じる
+      historySidebar.close();
+
+      // サイドバーが閉じてもブックマークは変わらない
+      const bookmarksAfterClose = bookmarkContainer.querySelectorAll('.bookmark-item').length;
+      expect(bookmarksAfterClose).toBe(initialBookmarks);
+    });
+
+    it('履歴サイドバーと検索機能が同時に動作する', async () => {
+      const historySidebar = new HistorySidebar();
+      const bookmarkContainer = document.getElementById('bookmarkContainer')!;
+      const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+
+      // ブックマークをレンダリング
+      const html = allBookmarks.map((folder) => renderFolder(folder)).join('');
+      bookmarkContainer.innerHTML = html;
+      setupFolderClickHandler(bookmarkContainer, allBookmarks);
+
+      // 履歴サイドバーを開く
+      mockGetRecentHistory.mockResolvedValue([
+        {
+          id: '1',
+          url: 'https://example.com',
+          title: 'Example',
+          lastVisitTime: Date.now(),
+          visitCount: 5,
+          typedCount: 1,
+        },
+      ]);
+
+      await historySidebar.open();
+
+      // サイドバーが開いた状態で検索を実行
+      searchInput.value = 'GitHub';
+      const inputEvent = new Event('input', { bubbles: true });
+      searchInput.dispatchEvent(inputEvent);
+
+      // サイドバーが開いたままであることを確認
+      const sidebar = document.querySelector('.history-sidebar');
+      expect(sidebar?.classList.contains('open')).toBe(true);
+
+      // 履歴アイテムが表示されていることを確認
+      const historyItems = document.querySelectorAll('.history-item');
+      expect(historyItems.length).toBe(1);
+    });
+
+    it('履歴サイドバーのESCキーでの閉じる機能が動作する', async () => {
+      const historySidebar = new HistorySidebar();
+
+      // サイドバーを開く
+      await historySidebar.open();
+
+      const sidebar = document.querySelector('.history-sidebar');
+      expect(sidebar?.classList.contains('open')).toBe(true);
+
+      // ESCキーを押す
+      const escEvent = new window.KeyboardEvent('keydown', { key: 'Escape' });
+      document.dispatchEvent(escEvent);
+
+      // サイドバーが閉じることを確認
+      expect(sidebar?.classList.contains('open')).toBe(false);
+    });
+
+    it('履歴読み込み失敗時のエラーハンドリング', async () => {
+      const historySidebar = new HistorySidebar();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // 履歴読み込みを失敗させる
+      mockGetRecentHistory.mockRejectedValue(new Error('History API Error'));
+
+      await historySidebar.open();
+
+      // エラーメッセージが表示されることを確認
+      const errorMessage = document.querySelector('.history-error');
+      expect(errorMessage?.textContent).toBe('履歴の読み込みに失敗しました');
+
+      // コンソールにエラーが出力されることを確認
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '履歴の読み込みに失敗しました:',
+        expect.any(Error)
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('履歴サイドバーの検索機能が動作する', async () => {
+      const historySidebar = new HistorySidebar();
+
+      // 履歴データを設定
+      mockGetRecentHistory.mockResolvedValue([
+        {
+          id: '1',
+          url: 'https://github.com',
+          title: 'GitHub',
+          lastVisitTime: Date.now(),
+          visitCount: 5,
+          typedCount: 1,
+        },
+        {
+          id: '2',
+          url: 'https://stackoverflow.com',
+          title: 'Stack Overflow',
+          lastVisitTime: Date.now() - 1000,
+          visitCount: 3,
+          typedCount: 0,
+        },
+      ]);
+
+      await historySidebar.open();
+
+      // 検索バーが存在することを確認
+      const searchInput = document.querySelector('.history-search-input') as HTMLInputElement;
+      expect(searchInput).toBeTruthy();
+
+      // 初期状態で全アイテムが表示されることを確認
+      let historyItems = document.querySelectorAll('.history-item');
+      expect(historyItems.length).toBe(2);
+
+      // 検索実行
+      searchInput.value = 'GitHub';
+      const inputEvent = new Event('input', { bubbles: true });
+      searchInput.dispatchEvent(inputEvent);
+
+      // フィルタリング結果を確認
+      historyItems = document.querySelectorAll('.history-item');
+      expect(historyItems.length).toBe(1);
+      expect(historyItems[0].querySelector('.history-item-title')?.textContent).toBe('GitHub');
+    });
   });
 
   // 実際のnewtab-core.tsから関数をインポートして使用

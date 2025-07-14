@@ -6,9 +6,11 @@ import {
   initFaviconCache,
   processBookmarkTree,
 } from './utils.js';
+import { HistorySidebar } from '../components/HistorySidebar/index.js';
 
 // グローバル変数として定義
 let allBookmarks: BookmarkFolder[] = [];
+let historySidebar: HistorySidebar;
 
 // ブックマークデータを取得して表示する
 document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
@@ -31,6 +33,9 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
 
   // Favicon キャッシュの初期化
   await initFaviconCache();
+
+  // 履歴サイドバーの初期化
+  historySidebar = new HistorySidebar();
 
   try {
     // Chromeのブックマークを取得
