@@ -2,7 +2,8 @@
 
 新しいタブでブックマークをフォルダ別に一覧表示し、履歴も検索できるChrome拡張機能
 
-![Chrome Bookmark List Screenshot](screenshot.png)
+![Bookmarks](bookmark.png)
+![History](history.png)
 
 ## 機能
 
