@@ -79,7 +79,6 @@ Chrome Bookmark Listは、Chromeブラウザの新しいタブでブックマー
 - **ブラウザ**: Google Chrome（Manifest V3対応版）
 - **権限**: 
   - `bookmarks`: ブックマークデータへのアクセス
-  - `tabs`: 新しいタブでのページ開く機能
   - `history`: 履歴データへのアクセス
 
 ### パフォーマンス
