@@ -52,7 +52,6 @@ Permissions required by this extension and their purposes:
 ### Required Permissions
 
 - **bookmarks**: Reading and displaying bookmarks
-- **tabs**: Opening bookmarks in new tabs
 - **history**: Reading and displaying browsing history
 
 ### Optional Permissions

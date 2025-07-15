@@ -46,7 +46,7 @@ Chrome Extension (Manifest V3)
 - **テストフレームワーク**: Vitest 1.6.0
 - **DOM環境**: Happy DOM / JSDOM
 - **CSS**: Vanilla CSS (Grid + Flexbox)
-- **Chrome API**: Bookmarks API, Tabs API, History API
+- **Chrome API**: Bookmarks API, History API
 - **コード品質**: Biome (lint & format)
 
 ### ディレクトリ構造

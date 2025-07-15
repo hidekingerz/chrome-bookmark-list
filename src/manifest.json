@@ -1,11 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Chrome Bookmark List",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "新しいタブでブックマークをフォルダ別に表示し、履歴も検索できる拡張機能",
   "permissions": [
     "bookmarks",
-    "tabs",
     "history"
   ],
   "optional_host_permissions": [
