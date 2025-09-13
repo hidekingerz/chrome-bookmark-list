@@ -51,3 +51,13 @@ export interface ChromeBookmarkNode extends chrome.bookmarks.BookmarkTreeNode {
   /** 子ノード（フォルダの場合） */
   children?: ChromeBookmarkNode[];
 }
+
+/**
+ * Faviconキャッシュのデータ型
+ */
+export interface FaviconCacheData {
+  /** ドメインとファビコンURLのマップ */
+  data: Record<string, string>;
+  /** キャッシュのタイムスタンプ */
+  timestamp: number;
+}

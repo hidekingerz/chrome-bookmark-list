@@ -1,5 +1,5 @@
 import { renderFolder, setupFolderClickHandler } from './newtab-core.js';
-import type { BookmarkFolder, ChromeBookmarkNode } from './types.js';
+import type { BookmarkFolder, ChromeBookmarkNode } from '../types/bookmark.js';
 import {
   filterBookmarks,
   getFavicon,
@@ -8,6 +8,7 @@ import {
 } from './utils.js';
 import { HistorySidebar } from '../components/HistorySidebar/index.js';
 import { BookmarkDragAndDrop } from '../components/BookmarkDragAndDrop/index.js';
+import { SELECTORS } from '../constants/index.js';
 
 // グローバル変数として定義
 let allBookmarks: BookmarkFolder[] = [];
@@ -16,11 +17,11 @@ let bookmarkDragAndDrop: BookmarkDragAndDrop;
 
 // ブックマークデータを取得して表示する
 document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
-  const bookmarkContainer = document.getElementById(
-    'bookmarkContainer'
+  const bookmarkContainer = document.querySelector(
+    SELECTORS.BOOKMARK_CONTAINER
   ) as HTMLElement;
-  const searchInput = document.getElementById(
-    'searchInput'
+  const searchInput = document.querySelector(
+    SELECTORS.SEARCH_INPUT
   ) as HTMLInputElement;
 
   if (!bookmarkContainer) {
@@ -73,8 +74,8 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
 
 // ブックマークを表示
 async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
-  const bookmarkContainer = document.getElementById(
-    'bookmarkContainer'
+  const bookmarkContainer = document.querySelector(
+    SELECTORS.BOOKMARK_CONTAINER
   ) as HTMLElement;
 
   if (folders.length === 0) {
@@ -86,23 +87,16 @@ async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
   const html = folders.map((folder) => renderFolder(folder)).join('');
   bookmarkContainer.innerHTML = html;
 
-  // 既存のイベントリスナーを削除してから新しいものを追加
-  const newBookmarkContainer = bookmarkContainer.cloneNode(true) as HTMLElement;
-  bookmarkContainer.parentNode?.replaceChild(
-    newBookmarkContainer,
-    bookmarkContainer
-  );
-
   // フォルダクリックイベントを設定
-  setupFolderClickHandler(newBookmarkContainer, allBookmarks);
+  setupFolderClickHandler(bookmarkContainer, allBookmarks);
 
   // ドラッグ&ドロップ機能を有効化
   if (bookmarkDragAndDrop) {
     bookmarkDragAndDrop.makeBookmarksDraggable();
   }
 
-  // Favicon を非同期で読み込み（新しいコンテナに対して）
-  await loadFavicons(newBookmarkContainer);
+  // Favicon を非同期で読み込み
+  await loadFavicons(bookmarkContainer);
 }
 
 // Favicon を非同期で読み込む
@@ -158,9 +152,11 @@ async function reloadBookmarks(): Promise<void> {
   try {
     const bookmarkTree: ChromeBookmarkNode[] = await chrome.bookmarks.getTree();
     allBookmarks = processBookmarkTree(bookmarkTree);
-    
+
     // 検索入力がある場合はフィルタリングして表示
-    const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+    const searchInput = document.querySelector(
+      SELECTORS.SEARCH_INPUT
+    ) as HTMLInputElement;
     if (searchInput?.value) {
       const searchTerm = searchInput.value.toLowerCase();
       const filteredBookmarks = filterBookmarks(allBookmarks, searchTerm);
@@ -168,7 +164,7 @@ async function reloadBookmarks(): Promise<void> {
     } else {
       await displayBookmarks(allBookmarks);
     }
-    
+
     console.log('ブックマーク再読み込み完了');
   } catch (error) {
     console.error('ブックマーク再読み込みエラー:', error);

@@ -1,4 +1,3 @@
-
 /**
  * ブックマークのドラッグ&ドロップ機能を管理するクラス
  */
@@ -47,12 +46,14 @@ export class BookmarkDragAndDrop {
   private handleDragStart(event: DragEvent): void {
     const target = event.target as HTMLElement;
     const bookmarkLink = target.closest('.bookmark-link') as HTMLElement;
-    
+
     if (!bookmarkLink) return;
 
     const url = bookmarkLink.dataset.url;
     const title = bookmarkLink.querySelector('.bookmark-title')?.textContent;
-    const folderElement = bookmarkLink.closest('.bookmark-folder') as HTMLElement;
+    const folderElement = bookmarkLink.closest(
+      '.bookmark-folder'
+    ) as HTMLElement;
     const folderId = folderElement?.dataset.folderId;
 
     if (!url || !title || !folderId) return;
@@ -60,7 +61,7 @@ export class BookmarkDragAndDrop {
     this.draggedBookmark = {
       url,
       title,
-      originalFolderId: folderId
+      originalFolderId: folderId,
     };
 
     // ドラッグデータを設定
@@ -76,7 +77,7 @@ export class BookmarkDragAndDrop {
 
     // ドラッグ中の見た目を変更
     bookmarkLink.classList.add('dragging');
-    
+
     console.log('ドラッグ開始:', { url, title, folderId });
   }
 
@@ -86,7 +87,7 @@ export class BookmarkDragAndDrop {
   private handleDragEnd(event: DragEvent): void {
     const target = event.target as HTMLElement;
     const bookmarkLink = target.closest('.bookmark-link') as HTMLElement;
-    
+
     if (bookmarkLink) {
       bookmarkLink.classList.remove('dragging');
     }
@@ -97,7 +98,7 @@ export class BookmarkDragAndDrop {
     }
 
     // 全てのドロップターゲットからハイライトを削除
-    document.querySelectorAll('.drop-target-highlight').forEach(element => {
+    document.querySelectorAll('.drop-target-highlight').forEach((element) => {
       element.classList.remove('drop-target-highlight');
     });
 
@@ -111,10 +112,12 @@ export class BookmarkDragAndDrop {
   private handleDragOver(event: DragEvent): void {
     const target = event.target as HTMLElement;
     const folderHeader = target.closest('.folder-header') as HTMLElement;
-    
+
     if (!folderHeader || !this.draggedBookmark) return;
 
-    const folderElement = folderHeader.closest('.bookmark-folder') as HTMLElement;
+    const folderElement = folderHeader.closest(
+      '.bookmark-folder'
+    ) as HTMLElement;
     const targetFolderId = folderElement?.dataset.folderId;
 
     // 同じフォルダへのドロップは無効
@@ -147,7 +150,7 @@ export class BookmarkDragAndDrop {
   private handleDragLeave(event: DragEvent): void {
     const target = event.target as HTMLElement;
     const folderHeader = target.closest('.folder-header') as HTMLElement;
-    
+
     if (folderHeader) {
       folderHeader.classList.remove('drop-target-highlight');
     }
@@ -161,13 +164,18 @@ export class BookmarkDragAndDrop {
 
     const target = event.target as HTMLElement;
     const folderHeader = target.closest('.folder-header') as HTMLElement;
-    
+
     if (!folderHeader || !this.draggedBookmark) return;
 
-    const folderElement = folderHeader.closest('.bookmark-folder') as HTMLElement;
+    const folderElement = folderHeader.closest(
+      '.bookmark-folder'
+    ) as HTMLElement;
     const targetFolderId = folderElement?.dataset.folderId;
 
-    if (!targetFolderId || targetFolderId === this.draggedBookmark.originalFolderId) {
+    if (
+      !targetFolderId ||
+      targetFolderId === this.draggedBookmark.originalFolderId
+    ) {
       return;
     }
 
@@ -177,9 +185,9 @@ export class BookmarkDragAndDrop {
         console.log('ブックマーク移動成功:', {
           from: this.draggedBookmark?.originalFolderId,
           to: targetFolderId,
-          bookmark: this.draggedBookmark?.title
+          bookmark: this.draggedBookmark?.title,
         });
-        
+
         // UIを更新
         this.refreshBookmarkList();
       })
@@ -195,25 +203,28 @@ export class BookmarkDragAndDrop {
   /**
    * Chrome Bookmarks APIを使用してブックマークを移動する
    */
-  private async moveBookmark(bookmarkUrl: string, targetFolderId: string): Promise<void> {
+  private async moveBookmark(
+    bookmarkUrl: string,
+    targetFolderId: string
+  ): Promise<void> {
     try {
       // 移動するブックマークを検索
       const bookmarks = await chrome.bookmarks.search({ url: bookmarkUrl });
-      
+
       if (bookmarks.length === 0) {
         throw new Error('移動するブックマークが見つかりません');
       }
 
       const bookmark = bookmarks[0];
-      
+
       // ブックマークを移動
       await chrome.bookmarks.move(bookmark.id, {
-        parentId: targetFolderId
+        parentId: targetFolderId,
       });
 
       console.log('Chrome Bookmarks API: ブックマーク移動完了', {
         bookmarkId: bookmark.id,
-        newParentId: targetFolderId
+        newParentId: targetFolderId,
       });
     } catch (error) {
       console.error('Chrome Bookmarks API エラー:', error);
@@ -228,7 +239,7 @@ export class BookmarkDragAndDrop {
     try {
       // カスタムイベントを発火してメインのブックマーク表示を更新
       const refreshEvent = new CustomEvent('bookmarks-changed', {
-        detail: { action: 'move' }
+        detail: { action: 'move' },
       });
       document.dispatchEvent(refreshEvent);
     } catch (error) {
@@ -255,7 +266,7 @@ export class BookmarkDragAndDrop {
     if (this.dropIndicator?.parentNode) {
       this.dropIndicator.parentNode.removeChild(this.dropIndicator);
     }
-    
+
     document.removeEventListener('dragstart', this.handleDragStart.bind(this));
     document.removeEventListener('dragend', this.handleDragEnd.bind(this));
     document.removeEventListener('dragover', this.handleDragOver.bind(this));

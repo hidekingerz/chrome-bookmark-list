@@ -1,6 +1,6 @@
 // newtab.tsの主要機能をテスト可能にするため、分離したモジュール
 
-import type { BookmarkFolder } from './types.js';
+import type { BookmarkFolder } from '../types/bookmark.js';
 import { escapeHtml, findFolderById, getTotalBookmarks } from './utils.js';
 
 /**
