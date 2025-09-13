@@ -1,9 +1,9 @@
+import { escapeHtml } from '../../scripts/utils.js';
 import type {
-  BookmarkUpdateData,
   BookmarkMoveData,
+  BookmarkUpdateData,
   ChromeBookmarkNode,
 } from '../../types/bookmark.js';
-import { escapeHtml } from '../../scripts/utils.js';
 
 /**
  * ブックマーク編集機能を担当するクラス

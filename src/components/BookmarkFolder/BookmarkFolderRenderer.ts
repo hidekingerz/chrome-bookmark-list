@@ -1,5 +1,5 @@
-import type { BookmarkFolder } from '../../types/bookmark.js';
 import { escapeHtml, getTotalBookmarks } from '../../scripts/utils.js';
+import type { BookmarkFolder } from '../../types/bookmark.js';
 import { BookmarkItemRenderer } from '../BookmarkItem/BookmarkItemRenderer.js';
 
 /**

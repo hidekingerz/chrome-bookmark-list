@@ -35,6 +35,7 @@ export class BookmarkService {
             // "Bookmarks Bar"の場合は、その子フォルダを直接追加し、ルートブックマークも含める
             if (
               child.title === 'Bookmarks bar' ||
+              child.title === 'Bookmarks Bar' ||
               child.title === 'ブックマーク バー'
             ) {
               // ルートブックマークがある場合は、専用フォルダを作成

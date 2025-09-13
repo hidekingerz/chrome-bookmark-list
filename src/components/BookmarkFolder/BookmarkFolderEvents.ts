@@ -1,5 +1,5 @@
-import type { BookmarkFolder } from '../../types/bookmark.js';
 import { findFolderById } from '../../scripts/utils.js';
+import type { BookmarkFolder } from '../../types/bookmark.js';
 import { BookmarkActions } from '../BookmarkActions/index.js';
 
 /**

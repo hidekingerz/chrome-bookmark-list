@@ -1,14 +1,14 @@
-import { renderFolder, setupFolderClickHandler } from './newtab-core.js';
+import { BookmarkDragAndDrop } from '../components/BookmarkDragAndDrop/index.js';
+import { HistorySidebar } from '../components/HistorySidebar/index.js';
+import { SELECTORS } from '../constants/index.js';
 import type { BookmarkFolder, ChromeBookmarkNode } from '../types/bookmark.js';
+import { renderFolder, setupFolderClickHandler } from './newtab-core.js';
 import {
   filterBookmarks,
   getFavicon,
   initFaviconCache,
   processBookmarkTree,
 } from './utils.js';
-import { HistorySidebar } from '../components/HistorySidebar/index.js';
-import { BookmarkDragAndDrop } from '../components/BookmarkDragAndDrop/index.js';
-import { SELECTORS } from '../constants/index.js';
 
 // グローバル変数として定義
 let allBookmarks: BookmarkFolder[] = [];

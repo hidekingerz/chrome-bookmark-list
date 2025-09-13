@@ -3,22 +3,20 @@
  */
 
 // ブックマーク関連の型
+// Faviconキャッシュ関連の型
 export type {
-  BookmarkItem,
   BookmarkFolder,
-  BookmarkUpdateData,
+  BookmarkItem,
   BookmarkMoveData,
+  BookmarkUpdateData,
   ChromeBookmarkNode,
+  FaviconCacheData,
 } from './bookmark.js';
-
 // イベント関連の型
 export type {
   BookmarkClickEventData,
-  FolderToggleEventData,
-  BookmarkEditEventData,
-  BookmarkDeleteEventData,
   BookmarkDataAttributes,
+  BookmarkDeleteEventData,
+  BookmarkEditEventData,
+  FolderToggleEventData,
 } from './events.js';
-
-// Faviconキャッシュ関連の型
-export type { FaviconCacheData } from './bookmark.js';

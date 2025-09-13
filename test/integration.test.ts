@@ -96,10 +96,10 @@ describe('メイン機能の統合テスト', () => {
     const tree = await chrome.bookmarks.getTree();
     const folders = processBookmarkTree(tree);
 
-    expect(folders).toHaveLength(2); // フォルダ1 + ブックマークバー直下
-    expect(folders[0].title).toBe('フォルダ1');
-    expect(folders[0].bookmarks).toHaveLength(1);
-    expect(folders[1].title).toBe('ブックマークバー直下');
+    expect(folders).toHaveLength(2); // ブックマークバー(ルートブックマーク) + フォルダ1
+    expect(folders[0].title).toBe('ブックマークバー'); // ルートブックマーク用フォルダ
+    expect(folders[0].bookmarks).toHaveLength(1); // GitHub
+    expect(folders[1].title).toBe('フォルダ1'); // フォルダ1が個別のトップレベルフォルダに
     expect(folders[1].bookmarks).toHaveLength(1);
   });
 
@@ -114,6 +114,7 @@ describe('メイン機能の統合テスト', () => {
     // 検索テスト
     const searchResults = filterBookmarks(folders, 'google');
     expect(searchResults).toHaveLength(1);
+    expect(searchResults[0].title).toBe('フォルダ1'); // Google が含まれるフォルダ1が見つかる
     expect(searchResults[0].bookmarks[0].title).toBe('Google');
   });
 
@@ -221,7 +222,7 @@ describe('メイン機能の統合テスト', () => {
     expect(folders).toHaveLength(1);
 
     const workFolder = folders[0];
-    expect(workFolder.title).toBe('Work');
+    expect(workFolder.title).toBe('Work'); // Workフォルダがトップレベルに表示される
     expect(workFolder.subfolders).toHaveLength(1);
 
     const devFolder = workFolder.subfolders[0];

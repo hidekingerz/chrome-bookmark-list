@@ -2,11 +2,11 @@
  * ブックマークアクション関連のクラスのエクスポート
  */
 
-import { BookmarkEditor } from './BookmarkEditor.js';
 import { BookmarkDeleter } from './BookmarkDeleter.js';
+import { BookmarkEditor } from './BookmarkEditor.js';
 
-export { BookmarkEditor } from './BookmarkEditor.js';
 export { BookmarkDeleter } from './BookmarkDeleter.js';
+export { BookmarkEditor } from './BookmarkEditor.js';
 
 /**
  * ブックマークアクションを統合するクラス

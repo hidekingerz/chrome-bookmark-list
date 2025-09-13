@@ -1,5 +1,5 @@
-import type { BookmarkItem } from '../../types/bookmark.js';
 import { escapeHtml } from '../../scripts/utils.js';
+import type { BookmarkItem } from '../../types/bookmark.js';
 
 /**
  * ブックマークアイテムのレンダリングを担当するクラス
