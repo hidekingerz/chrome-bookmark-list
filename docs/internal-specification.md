@@ -65,6 +65,8 @@ chrome-bookmark-list/
 │   │   │   ├── BookmarkEditor.ts            # 編集機能
 │   │   │   ├── BookmarkDeleter.ts           # 削除機能
 │   │   │   └── index.ts                     # 統合クラス
+│   │   ├── BookmarkDragAndDrop/ # ドラッグ&ドロップ機能
+│   │   │   └── index.ts                     # D&D機能本体
 │   │   └── HistorySidebar/      # 履歴サイドバー機能
 │   │       ├── HistorySidebar.ts            # 履歴サイドバー本体
 │   │       └── index.ts                     # エクスポート
@@ -72,12 +74,20 @@ chrome-bookmark-list/
 │   │   ├── bookmark.ts          # ブックマーク関連型
 │   │   ├── events.ts            # イベント関連型
 │   │   └── index.ts             # 統合エクスポート
+│   ├── services/                # サービス層（ビジネスロジック）
+│   │   ├── BookmarkService.ts   # ブックマーク処理とAPI操作
+│   │   ├── FaviconService.ts    # Favicon取得とキャッシュ管理
+│   │   └── ErrorHandler.ts      # エラーハンドリングと通知
+│   ├── utils/                   # ユーティリティクラス
+│   │   └── HtmlUtils.ts         # HTML操作とDOM関連ユーティリティ
+│   ├── constants/               # アプリケーション定数
+│   │   └── index.ts             # 定数定義（エラーメッセージ、CSS、セレクター等）
 │   ├── scripts/                 # スクリプトファイル
 │   │   ├── newtab.ts            # メインエントリーポイント
 │   │   ├── newtab-core.ts       # リファクタリング済みコア機能
+│   │   ├── newtab-core-original.ts # レガシーコア機能（後方互換性維持）
 │   │   ├── history.ts           # 履歴取得API
-│   │   ├── types.ts             # レガシー型定義（後方互換性）
-│   │   └── utils.ts             # ユーティリティ関数
+│   │   └── utils.ts             # レガシー互換ユーティリティ関数
 │   ├── manifest.json            # 拡張機能マニフェスト
 │   ├── newtab.html              # 新しいタブページHTML
 │   ├── styles.css               # スタイルシート
@@ -196,16 +206,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   1. DOM要素の取得・検証
   2. Faviconキャッシュの初期化
   3. 履歴サイドバーの初期化
-  4. Chrome Bookmarks APIからデータ取得
-  5. ブックマークツリーの処理
-  6. ブックマーク表示
-  7. 検索イベントリスナーの設定
+  4. ドラッグ&ドロップ機能の初期化
+  5. ブックマーク変更イベントリスナー設定
+  6. Chrome Bookmarks APIからデータ取得
+  7. ブックマークツリーの処理
+  8. ブックマーク表示
+  9. 検索イベントリスナーの設定
 });
 ```
+
+**グローバル変数**:
+- `allBookmarks: BookmarkFolder[]`: 全ブックマークデータ
+- `_historySidebar: HistorySidebar`: 履歴サイドバー インスタンス
+- `bookmarkDragAndDrop: BookmarkDragAndDrop`: D&D機能インスタンス
 
 **主要機能**:
 - `displayBookmarks()`: ブックマークの表示制御
 - `loadFavicons()`: Favicon非同期読み込み
+- `reloadBookmarks()`: ブックマーク再読み込み
 - 検索機能のイベントハンドリング
 
 ### 2. コンポーネント アーキテクチャ (Components/)
@@ -254,7 +272,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 - Editor と Deleter の統合インターフェース
 - 統一されたAPIの提供
 
-#### 2.4 HistorySidebar コンポーネント
+#### 2.4 BookmarkDragAndDrop コンポーネント
+
+**BookmarkDragAndDrop.ts** - ドラッグ&ドロップ機能:
+- `initialize()`: D&D機能の初期化とイベントリスナー設定
+- `handleDragStart()`: ドラッグ開始時の処理とデータ設定
+- `handleDragOver()`: ドラッグオーバー時のUI更新とハイライト
+- `handleDrop()`: ドロップ時のブックマーク移動処理
+- `moveBookmark()`: Chrome Bookmarks APIを使用した実際の移動
+- `makeBookmarksDraggable()`: ブックマークアイテムにdraggable属性を設定
+- 視覚的フィードバック（ドロップインジケーター、ハイライト効果）
+
+#### 2.5 HistorySidebar コンポーネント
 
 **HistorySidebar.ts** - 履歴サイドバー機能:
 - 過去7日間の履歴表示
@@ -262,19 +291,95 @@ document.addEventListener('DOMContentLoaded', async () => {
 - サイドバーの開閉制御
 
 ### 3. リファクタリング後のコア機能 (newtab-core.ts)
-**責務**: 後方互換性の維持と新コンポーネントの統合
+**責務**: 新コンポーネントアーキテクチャへの統合インターフェース
+
+#### 主要クラスの統合
+- `BookmarkFolderRenderer`: フォルダのHTML生成
+- `BookmarkFolderEvents`: フォルダクリックイベント処理
 
 #### 後方互換性API
 - `renderFolder()`: BookmarkFolderRenderer への委譲
 - `setupFolderClickHandler()`: BookmarkFolderEvents への委譲
-- `handleBookmarkEdit()` / `handleBookmarkDelete()`: BookmarkActions への委譲
+- `displayBookmarksTestable()`: テスト用の表示関数
 
-#### 新しいコンポーネントAPI
-- 個別コンポーネントクラスのエクスポート
-- より細かい制御が可能な新しいインターフェース
+#### レガシーコア機能 (newtab-core-original.ts)
+**責務**: 元の実装を保持（段階的移行のため）
+- 独立した実装として保持
+- 現在は使用されていないが後方互換性のために保持
 
-### 4. ユーティリティ (utils.ts)
-**責務**: データ処理とヘルパー機能
+### 4. サービス層 (Services/)
+**責務**: ビジネスロジックとChrome API操作の抽象化
+
+#### 4.1 BookmarkService
+**責務**: ブックマークの処理とChrome Bookmarks API操作
+- `getBookmarkTree()`: Chrome APIからブックマークツリー取得
+- `processBookmarkTree()`: Chrome形式から内部形式への変換
+- `findFolderById()`: フォルダID検索
+- `filterBookmarks()`: 検索条件によるフィルタリング
+- `moveBookmark()`: ブックマーク移動
+- `updateBookmark()`: ブックマーク更新
+- `deleteBookmark()`: ブックマーク削除
+
+#### 4.2 FaviconService
+**責務**: Faviconの取得とキャッシュ管理
+- `initCache()`: キャッシュの初期化とChrome Storage連携
+- `getFavicon()`: Favicon取得（キャッシュ優先）
+- `fetchFavicon()`: 複数戦略による実際の取得
+  1. 標準パス（/favicon.ico）
+  2. HTML解析
+  3. Google Favicon API
+- キャッシュ機能（7日間有効期限）
+- プライバシー重視（外部API最小使用）
+
+#### 4.3 ErrorHandler
+**責務**: エラーハンドリングとユーザー通知の統一管理
+- `handleBookmarkOperation()`: ブックマーク操作エラー処理
+- `handleFaviconError()`: Favicon取得エラー処理（軽微扱い）
+- `handleGenericError()`: 一般的なエラー処理
+- ユーザーフレンドリーなエラーメッセージ生成
+- 開発用デバッグ機能
+
+### 5. ユーティリティ層 (Utils/)
+**責務**: DOM操作とHTML関連のヘルパー機能
+
+#### 5.1 HtmlUtils
+**責務**: 安全なHTML操作とDOM関連ユーティリティ
+- `escapeHtml()`: XSS対策のHTML エスケープ
+- `getDomain()`: URL正規化
+- `createSafeHtml()`: 安全なHTML生成
+- `toggleVisibility()`: 要素表示制御
+- `addEventListenerSafely()`: 安全なイベントリスナー追加
+- `getDataAttribute()`: データ属性の安全な取得
+- `truncateText()`: テキスト省略
+- `isValidUrl()`: URL有効性チェック
+
+### 6. 定数管理 (Constants/)
+**責務**: アプリケーション全体で使用する定数の一元管理
+- Favicon関連定数（キャッシュキー、有効期限、タイムアウト）
+- UI関連定数（アニメーション時間、検索デバウンス）
+- Chrome API関連定数（除外フォルダ、スキーム）
+- エラーメッセージ定数
+- CSSクラス名定数
+- DOMセレクター定数
+
+### 7. レガシーユーティリティ (utils.ts)
+**責務**: レガシー互換性のためのユーティリティ関数（新コードではServiceクラス使用推奨）
+
+#### サービスインスタンス管理
+- `getFaviconService()`: FaviconServiceのシングルトンインスタンス取得
+- `getBookmarkService()`: BookmarkServiceのシングルトンインスタンス取得
+
+#### レガシー互換関数（@deprecatedマーク付き）
+- `initFaviconCache()`: FaviconService.initCache()への委譲
+- `getFavicon()`: FaviconService.getFavicon()への委譲
+- `processBookmarkTree()`: BookmarkService.processBookmarkTree()への委譲
+- `filterBookmarks()`: BookmarkService.filterBookmarks()への委譲
+- `findFolderById()`: BookmarkService.findFolderById()への委譲
+- `getTotalBookmarks()`: BookmarkService.getTotalBookmarks()への委譲
+- `escapeHtml()`: HtmlUtils.escapeHtml()への委譲
+- `getDomain()`: HtmlUtils.getDomain()への委譲
+
+### 8. 既存ユーティリティ関数（後方互換性維持）
 
 #### データ処理
 **processBookmarkTree(tree: ChromeBookmarkNode[]): BookmarkFolder[]**:
@@ -582,4 +687,4 @@ npm run build:extension
 
 ---
 
-*最終更新: 2025年7月*
+*最終更新: 2025年9月*
