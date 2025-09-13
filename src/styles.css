@@ -4,6 +4,41 @@
     box-sizing: border-box;
 }
 
+/* ドラッグ&ドロップスタイル */
+.bookmark-link.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg);
+    transition: all 0.2s ease;
+}
+
+.folder-header.drop-target-highlight {
+    background: rgba(103, 126, 234, 0.2);
+    border: 2px dashed #667eea;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.bookmark-drop-indicator {
+    background: #667eea;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(103, 126, 234, 0.3);
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+.bookmark-link[draggable="true"] {
+    cursor: grab;
+}
+
+.bookmark-link[draggable="true"]:active {
+    cursor: grabbing;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

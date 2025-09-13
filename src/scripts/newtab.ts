@@ -7,10 +7,12 @@ import {
   processBookmarkTree,
 } from './utils.js';
 import { HistorySidebar } from '../components/HistorySidebar/index.js';
+import { BookmarkDragAndDrop } from '../components/BookmarkDragAndDrop/index.js';
 
 // グローバル変数として定義
 let allBookmarks: BookmarkFolder[] = [];
 let _historySidebar: HistorySidebar;
+let bookmarkDragAndDrop: BookmarkDragAndDrop;
 
 // ブックマークデータを取得して表示する
 document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
@@ -36,6 +38,16 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
 
   // 履歴サイドバーの初期化
   _historySidebar = new HistorySidebar();
+
+  // ドラッグ&ドロップ機能の初期化
+  bookmarkDragAndDrop = new BookmarkDragAndDrop();
+  bookmarkDragAndDrop.initialize();
+
+  // ブックマーク変更イベントリスナーを追加
+  document.addEventListener('bookmarks-changed', async () => {
+    console.log('ブックマークが変更されました。リロードします...');
+    await reloadBookmarks();
+  });
 
   try {
     // Chromeのブックマークを取得
@@ -83,6 +95,11 @@ async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
 
   // フォルダクリックイベントを設定
   setupFolderClickHandler(newBookmarkContainer, allBookmarks);
+
+  // ドラッグ&ドロップ機能を有効化
+  if (bookmarkDragAndDrop) {
+    bookmarkDragAndDrop.makeBookmarksDraggable();
+  }
 
   // Favicon を非同期で読み込み（新しいコンテナに対して）
   await loadFavicons(newBookmarkContainer);
@@ -133,5 +150,27 @@ async function loadFavicons(container?: HTMLElement): Promise<void> {
     await Promise.allSettled(faviconPromises);
   } catch (error) {
     console.warn('一部のfaviconの読み込みに失敗しました:', error);
+  }
+}
+
+// ブックマークを再読み込みする関数
+async function reloadBookmarks(): Promise<void> {
+  try {
+    const bookmarkTree: ChromeBookmarkNode[] = await chrome.bookmarks.getTree();
+    allBookmarks = processBookmarkTree(bookmarkTree);
+    
+    // 検索入力がある場合はフィルタリングして表示
+    const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+    if (searchInput?.value) {
+      const searchTerm = searchInput.value.toLowerCase();
+      const filteredBookmarks = filterBookmarks(allBookmarks, searchTerm);
+      await displayBookmarks(filteredBookmarks);
+    } else {
+      await displayBookmarks(allBookmarks);
+    }
+    
+    console.log('ブックマーク再読み込み完了');
+  } catch (error) {
+    console.error('ブックマーク再読み込みエラー:', error);
   }
 }
