@@ -83,16 +83,16 @@ export async function handleBookmarkEdit(editBtn: HTMLElement): Promise<void> {
  * @deprecated BookmarkFolderEvents.updateFolderUI を使用してください
  */
 export function updateFolderUI(
-  folderHeader: HTMLElement,
-  folderElement: HTMLElement,
-  folder: BookmarkFolder,
-  allBookmarks: BookmarkFolder[]
+  _folderHeader: HTMLElement,
+  _folderElement: HTMLElement,
+  _folder: BookmarkFolder,
+  _allBookmarks: BookmarkFolder[]
 ): void {
   console.warn(
     'updateFolderUI is deprecated. Use BookmarkFolderEvents instead.'
   );
   // 実装は新しいイベントクラスに委譲
-  const events = new BookmarkFolderEvents();
+  const _events = new BookmarkFolderEvents();
   // 注意: この関数は内部メソッドなので直接呼び出せません
   // 代わりにsetupFolderClickHandlerを使用してください
 }
@@ -101,15 +101,15 @@ export function updateFolderUI(
  * @deprecated BookmarkFolderEvents.updateBookmarkListUI を使用してください
  */
 export function updateBookmarkListUI(
-  folderHeader: HTMLElement,
-  folderElement: HTMLElement,
-  folder: BookmarkFolder
+  _folderHeader: HTMLElement,
+  _folderElement: HTMLElement,
+  _folder: BookmarkFolder
 ): void {
   console.warn(
     'updateBookmarkListUI is deprecated. Use BookmarkFolderEvents instead.'
   );
   // 実装は新しいイベントクラスに委譲
-  const events = new BookmarkFolderEvents();
+  const _events = new BookmarkFolderEvents();
   // 注意: この関数は内部メソッドなので直接呼び出せません
   // 代わりにsetupFolderClickHandlerを使用してください
 }

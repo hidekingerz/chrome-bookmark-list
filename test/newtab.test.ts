@@ -98,7 +98,7 @@ describe('フォルダクリック機能のテスト', () => {
     `;
 
     // findFolderByIdのモック
-    const findFolderById = vi.fn((folders: BookmarkFolder[], id: string) => {
+    const findFolderById = vi.fn((_folders: BookmarkFolder[], id: string) => {
       if (id === 'folder-1') return testBookmarks[0];
       if (id === 'subfolder-1') return testBookmarks[0].subfolders[0];
       return null;
@@ -280,7 +280,7 @@ describe('フォルダクリック機能のテスト', () => {
       </div>
     `;
 
-    const findFolderById = vi.fn((folders: BookmarkFolder[], id: string) => {
+    const findFolderById = vi.fn((_folders: BookmarkFolder[], id: string) => {
       if (id === 'folder-no-sub') return testBookmarks[0];
       return null;
     });
