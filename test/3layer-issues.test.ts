@@ -83,12 +83,14 @@ describe('3層構造フォルダの問題を検証', () => {
   });
 
   it('3層構造の初期展開状態が正しいことを確認', () => {
-    expect(allBookmarks).toHaveLength(1);
+    expect(allBookmarks).toHaveLength(1); // ブックマークバー + Level1 Parent Folder
 
+    // Level1 Parent Folderが唯一のトップレベルフォルダ
     const level1Folder = allBookmarks[0];
     expect(level1Folder.title).toBe('Level1 Parent Folder');
     expect(level1Folder.expanded).toBe(true); // level 0 → expanded: true
     expect(level1Folder.subfolders).toHaveLength(1);
+    expect(level1Folder.bookmarks).toHaveLength(1); // Level1 Bookmark
 
     const level2Folder = level1Folder.subfolders[0];
     expect(level2Folder.title).toBe('Level2 Child Folder');
@@ -98,7 +100,8 @@ describe('3層構造フォルダの問題を検証', () => {
     const level3Folder = level2Folder.subfolders[0];
     expect(level3Folder.title).toBe('Level3 Grandchild Folder');
     expect(level3Folder.expanded).toBe(true); // すべての階層を初期展開に変更
-    expect(level3Folder.bookmarks).toHaveLength(1);
+    expect(level3Folder.bookmarks).toHaveLength(1); // Deep Bookmark
+    expect(level2Folder.bookmarks).toHaveLength(1); // Level2 Bookmark
   });
 
   it('3層構造のHTMLレンダリングが正しいことを確認', () => {
@@ -110,7 +113,7 @@ describe('3層構造フォルダの問題を検証', () => {
       '[data-folder-id="level1-1"]'
     ) as HTMLElement;
     expect(level1Element).toBeTruthy();
-    expect(level1Element.getAttribute('data-level')).toBe('0');
+    expect(level1Element.getAttribute('data-level')).toBe('0'); // Level1は依然としてlevel 0
 
     // Level1の subfolders-container が展開されていることを確認
     const level1Container = level1Element.querySelector(
@@ -180,7 +183,7 @@ describe('3層構造フォルダの問題を検証', () => {
     // 問題: 2層目以降のフォルダが消えるはず（正常動作）
     // しかし、サブフォルダなしの場合はpreserve-visibleで保持される
     // Level2はサブフォルダありなので消えるはず
-    expect(allBookmarks[0].expanded).toBe(false);
+    expect(allBookmarks[0].expanded).toBe(false); // allBookmarks[0] = Level1 Parent Folder
     expect(level2Element.style.display).toBe('none'); // これが問題？
 
     // 再度クリックして展開

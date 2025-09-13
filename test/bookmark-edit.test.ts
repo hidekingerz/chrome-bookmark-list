@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderFolder, handleBookmarkEdit } from '../src/scripts/newtab-core';
+import { handleBookmarkEdit, renderFolder } from '../src/scripts/newtab-core';
 import type { BookmarkFolder } from '../src/scripts/types';
 
 // ブックマーク編集機能のテスト

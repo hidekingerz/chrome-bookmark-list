@@ -3,9 +3,9 @@
  * 新しいコードでは、各種Serviceクラスを使用することを推奨
  */
 
-import type { BookmarkFolder, ChromeBookmarkNode } from '../types/bookmark.js';
-import { FaviconService } from '../services/FaviconService.js';
 import { BookmarkService } from '../services/BookmarkService.js';
+import { FaviconService } from '../services/FaviconService.js';
+import type { BookmarkFolder, ChromeBookmarkNode } from '../types/bookmark.js';
 import { HtmlUtils } from '../utils/HtmlUtils.js';
 
 // サービスインスタンス（シングルトン）
@@ -100,7 +100,7 @@ export function getDomain(url: string): string {
 
 // === 新しいサービスクラスへのエクスポート ===
 
-export { FaviconService } from '../services/FaviconService.js';
 export { BookmarkService } from '../services/BookmarkService.js';
 export { ErrorHandler } from '../services/ErrorHandler.js';
+export { FaviconService } from '../services/FaviconService.js';
 export { HtmlUtils } from '../utils/HtmlUtils.js';

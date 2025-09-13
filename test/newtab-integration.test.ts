@@ -1,13 +1,13 @@
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { HistorySidebar } from '../src/components/HistorySidebar/HistorySidebar';
+import { getRecentHistory } from '../src/scripts/history';
 import {
   renderFolder,
   setupFolderClickHandler,
 } from '../src/scripts/newtab-core';
 import type { BookmarkFolder, ChromeBookmarkNode } from '../src/scripts/types';
 import { findFolderById, processBookmarkTree } from '../src/scripts/utils';
-import { HistorySidebar } from '../src/components/HistorySidebar/HistorySidebar';
-import { getRecentHistory } from '../src/scripts/history';
 
 // モック
 vi.mock('../src/scripts/history');

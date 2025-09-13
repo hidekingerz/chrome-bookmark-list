@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { JSDOM } from 'jsdom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HistorySidebar } from '../src/components/HistorySidebar/HistorySidebar';
 import { getRecentHistory } from '../src/scripts/history';
 import { getFavicon } from '../src/scripts/utils';

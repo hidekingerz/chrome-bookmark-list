@@ -2,11 +2,11 @@
  * ブックマークフォルダー関連のクラスのエクスポート
  */
 
-import { BookmarkFolderRenderer } from './BookmarkFolderRenderer.js';
 import { BookmarkFolderEvents } from './BookmarkFolderEvents.js';
+import { BookmarkFolderRenderer } from './BookmarkFolderRenderer.js';
 
-export { BookmarkFolderRenderer } from './BookmarkFolderRenderer.js';
 export { BookmarkFolderEvents } from './BookmarkFolderEvents.js';
+export { BookmarkFolderRenderer } from './BookmarkFolderRenderer.js';
 
 /**
  * ブックマークフォルダー機能を統合するクラス

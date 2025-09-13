@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderFolder, handleBookmarkDelete } from '../src/scripts/newtab-core';
+import { handleBookmarkDelete, renderFolder } from '../src/scripts/newtab-core';
 import type { BookmarkFolder } from '../src/scripts/types';
 
 // ブックマーク削除機能のテスト

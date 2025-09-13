@@ -3,9 +3,9 @@
  * 新しいコンポーネントアーキテクチャを使用
  */
 
-import type { BookmarkFolder } from '../types/bookmark.js';
-import { BookmarkFolderRenderer } from '../components/BookmarkFolder/BookmarkFolderRenderer.js';
 import { BookmarkFolderEvents } from '../components/BookmarkFolder/BookmarkFolderEvents.js';
+import { BookmarkFolderRenderer } from '../components/BookmarkFolder/BookmarkFolderRenderer.js';
+import type { BookmarkFolder } from '../types/bookmark.js';
 
 // 新しいコンポーネントのインスタンス
 const folderRenderer = new BookmarkFolderRenderer();
@@ -48,12 +48,12 @@ export async function displayBookmarksTestable(
   folderEvents.setupFolderClickHandler(container, folders);
 }
 
+export { BookmarkDeleter } from '../components/BookmarkActions/BookmarkDeleter.js';
+export { BookmarkEditor } from '../components/BookmarkActions/BookmarkEditor.js';
+export { BookmarkActions } from '../components/BookmarkActions/index.js';
+export { BookmarkFolderEvents } from '../components/BookmarkFolder/BookmarkFolderEvents.js';
 // 個別のコンポーネントエクスポート（新しいAPI）
 export { BookmarkFolderRenderer } from '../components/BookmarkFolder/BookmarkFolderRenderer.js';
-export { BookmarkFolderEvents } from '../components/BookmarkFolder/BookmarkFolderEvents.js';
-export { BookmarkActions } from '../components/BookmarkActions/index.js';
-export { BookmarkEditor } from '../components/BookmarkActions/BookmarkEditor.js';
-export { BookmarkDeleter } from '../components/BookmarkActions/BookmarkDeleter.js';
 
 // 後方互換性のための関数エクスポート（既存のテストが動作するよう）
 import { BookmarkActions } from '../components/BookmarkActions/index.js';
