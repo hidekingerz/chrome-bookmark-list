@@ -20,5 +20,5 @@ export type {
   BookmarkDataAttributes,
 } from './events.js';
 
-// 既存のtypes.tsからの再エクスポート（後方互換性のため）
-export type { BookmarkFolder as LegacyBookmarkFolder } from '../scripts/types.js';
+// Faviconキャッシュ関連の型
+export type { FaviconCacheData } from './bookmark.js';
