@@ -380,7 +380,7 @@ describe('ユーティリティ関数', () => {
       globalThis.Image = vi.fn(() => ({
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-        set src(value: string) {
+        set src(_value: string) {
           // 即座にエラーをトリガー
           setTimeout(() => this.onerror?.(), 0);
         },

@@ -90,7 +90,7 @@ if (typeof URL === 'undefined') {
       hostname: string;
 
       constructor(url: string) {
-        const match = url.match(/https?:\/\/([^\/]+)/);
+        const match = url.match(/https?:\/\/([^/]+)/);
         this.hostname = match ? match[1] : 'localhost';
       }
     },
