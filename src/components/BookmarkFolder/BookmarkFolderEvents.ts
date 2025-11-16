@@ -7,6 +7,7 @@ import { BookmarkActions } from '../BookmarkActions/index.js';
  */
 export class BookmarkFolderEvents {
   private bookmarkActions: BookmarkActions;
+  private clickHandler: ((e: Event) => void) | null = null;
 
   constructor() {
     this.bookmarkActions = new BookmarkActions();
@@ -19,7 +20,13 @@ export class BookmarkFolderEvents {
     container: HTMLElement,
     allBookmarks: BookmarkFolder[]
   ): void {
-    container.addEventListener('click', (e: Event) => {
+    // 既存のイベントリスナーを削除
+    if (this.clickHandler) {
+      container.removeEventListener('click', this.clickHandler);
+    }
+
+    // 新しいイベントリスナーを作成して保存
+    this.clickHandler = (e: Event) => {
       const target = e.target as HTMLElement;
 
       // 各種ボタンやリンクの要素を特定
@@ -46,7 +53,10 @@ export class BookmarkFolderEvents {
       } else if (folderHeader && !target.closest('.bookmark-link')) {
         this.handleFolderClick(e, folderHeader, allBookmarks);
       }
-    });
+    };
+
+    // イベントリスナーを登録
+    container.addEventListener('click', this.clickHandler);
   }
 
   /**
