@@ -1,4 +1,5 @@
 import { BookmarkDragAndDrop } from '../components/BookmarkDragAndDrop/index.js';
+import { CalendarHistorySidebar } from '../components/CalendarHistorySidebar/index.js';
 import { HistorySidebar } from '../components/HistorySidebar/index.js';
 import { SELECTORS } from '../constants/index.js';
 import type { BookmarkFolder, ChromeBookmarkNode } from '../types/bookmark.js';
@@ -13,6 +14,7 @@ import {
 // グローバル変数として定義
 let allBookmarks: BookmarkFolder[] = [];
 let _historySidebar: HistorySidebar;
+let _calendarHistorySidebar: CalendarHistorySidebar;
 let bookmarkDragAndDrop: BookmarkDragAndDrop;
 
 // ブックマークデータを取得して表示する
@@ -39,6 +41,9 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
 
   // 履歴サイドバーの初期化
   _historySidebar = new HistorySidebar();
+
+  // カレンダー履歴サイドバーの初期化
+  _calendarHistorySidebar = new CalendarHistorySidebar();
 
   // ドラッグ&ドロップ機能の初期化
   bookmarkDragAndDrop = new BookmarkDragAndDrop();

@@ -98,9 +98,12 @@ export class BookmarkDragAndDrop {
     }
 
     // 全てのドロップターゲットからハイライトを削除
-    document.querySelectorAll('.drop-target-highlight').forEach((element) => {
+    const highlightedElements = document.querySelectorAll(
+      '.drop-target-highlight'
+    );
+    for (const element of highlightedElements) {
       element.classList.remove('drop-target-highlight');
-    });
+    }
 
     this.draggedBookmark = null;
     console.log('ドラッグ終了');
@@ -252,11 +255,11 @@ export class BookmarkDragAndDrop {
    */
   makeBookmarksDraggable(): void {
     const bookmarkLinks = document.querySelectorAll('.bookmark-link');
-    bookmarkLinks.forEach((link) => {
+    for (const link of bookmarkLinks) {
       const linkElement = link as HTMLElement;
       linkElement.draggable = true;
       linkElement.setAttribute('draggable', 'true');
-    });
+    }
   }
 
   /**

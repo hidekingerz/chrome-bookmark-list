@@ -83,11 +83,11 @@ export class HtmlUtils {
     const elements = document.querySelectorAll(selector);
     let successCount = 0;
 
-    elements.forEach((element) => {
+    for (const element of elements) {
       if (HtmlUtils.addEventListenerSafely(element, event, handler, options)) {
         successCount++;
       }
-    });
+    }
 
     return successCount;
   }
