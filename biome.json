@@ -1,6 +1,8 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "organizeImports": {
+    "enabled": true
+  },
   "linter": {
     "enabled": true,
     "rules": {
@@ -23,20 +25,12 @@
     }
   },
   "files": {
-    "includes": [
-      "**/src/**/*.ts",
-      "**/test/**/*.ts",
-      "**/*.ts",
-      "**/*.js",
-      "!**/node_modules",
-      "!**/dist",
-      "!**/build",
-      "!**/coverage"
-    ]
+    "include": ["**/src/**/*.ts", "**/test/**/*.ts", "**/*.ts", "**/*.js"],
+    "ignore": ["**/node_modules", "**/dist", "**/build", "**/coverage"]
   },
   "overrides": [
     {
-      "includes": ["**/test/**/*"],
+      "include": ["**/test/**/*"],
       "linter": {
         "rules": {
           "suspicious": {
