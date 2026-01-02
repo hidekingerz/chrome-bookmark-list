@@ -127,14 +127,14 @@ export class CalendarHistorySidebar {
     // 月の切り替えボタン
     this.sidebarElement
       ?.querySelector('.prev-month')
-      ?.addEventListener('click', () => {
-        this.changeMonth(-1);
+      ?.addEventListener('click', async () => {
+        await this.changeMonth(-1);
       });
 
     this.sidebarElement
       ?.querySelector('.next-month')
-      ?.addEventListener('click', () => {
-        this.changeMonth(1);
+      ?.addEventListener('click', async () => {
+        await this.changeMonth(1);
       });
 
     // 検索入力の監視
@@ -177,9 +177,9 @@ export class CalendarHistorySidebar {
     document.body.style.overflow = '';
   }
 
-  private changeMonth(delta: number): void {
+  private async changeMonth(delta: number): Promise<void> {
     this.currentMonth.setMonth(this.currentMonth.getMonth() + delta);
-    this.loadMonthHistory();
+    await this.loadMonthHistory();
     this.renderCalendar();
   }
 

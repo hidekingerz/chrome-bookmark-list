@@ -245,6 +245,9 @@ describe('CalendarHistorySidebar', () => {
       ) as HTMLButtonElement;
       prevBtn.click();
 
+      // 非同期処理の完了を待つ
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const monthYearAfter = document.querySelector(
         '.calendar-month-year'
       )?.textContent;
@@ -263,6 +266,9 @@ describe('CalendarHistorySidebar', () => {
         '.next-month'
       ) as HTMLButtonElement;
       nextBtn.click();
+
+      // 非同期処理の完了を待つ
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const monthYearAfter = document.querySelector(
         '.calendar-month-year'
