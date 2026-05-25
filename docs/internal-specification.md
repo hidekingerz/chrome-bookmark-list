@@ -27,7 +27,9 @@ Chrome Extension (Manifest V3)
 │   ├── BookmarkFolder/ (フォルダーレンダリング・イベント処理)
 │   ├── BookmarkItem/ (アイテムレンダリング)
 │   ├── BookmarkActions/ (編集・削除機能)
-│   └── HistorySidebar/ (履歴サイドバー・検索機能)
+│   ├── TabController/ (タブ切り替え制御)
+│   ├── HistoryPanel/ (最近の履歴タブ・検索機能)
+│   └── CalendarHistoryPanel/ (カレンダー履歴タブ・検索機能)
 ├── Types (強化された型定義)
 │   ├── bookmark.ts (ブックマーク関連)
 │   ├── events.ts (イベント関連)
@@ -67,8 +69,14 @@ chrome-bookmark-list/
 │   │   │   └── index.ts                     # 統合クラス
 │   │   ├── BookmarkDragAndDrop/ # ドラッグ&ドロップ機能
 │   │   │   └── index.ts                     # D&D機能本体
-│   │   └── HistorySidebar/      # 履歴サイドバー機能
-│   │       ├── HistorySidebar.ts            # 履歴サイドバー本体
+│   │   ├── TabController/       # タブ切り替え制御
+│   │   │   ├── TabController.ts             # タブ制御本体
+│   │   │   └── index.ts                     # エクスポート
+│   │   ├── HistoryPanel/        # 最近の履歴タブ
+│   │   │   ├── HistoryPanel.ts              # 履歴パネル本体
+│   │   │   └── index.ts                     # エクスポート
+│   │   └── CalendarHistoryPanel/ # カレンダー履歴タブ
+│   │       ├── CalendarHistoryPanel.ts      # カレンダーパネル本体
 │   │       └── index.ts                     # エクスポート
 │   ├── types/                   # 強化された型定義
 │   │   ├── bookmark.ts          # ブックマーク関連型
@@ -85,7 +93,6 @@ chrome-bookmark-list/
 │   ├── scripts/                 # スクリプトファイル
 │   │   ├── newtab.ts            # メインエントリーポイント
 │   │   ├── newtab-core.ts       # リファクタリング済みコア機能
-│   │   ├── newtab-core-original.ts # レガシーコア機能（後方互換性維持）
 │   │   ├── history.ts           # 履歴取得API
 │   │   └── utils.ts             # レガシー互換ユーティリティ関数
 │   ├── manifest.json            # 拡張機能マニフェスト
@@ -98,9 +105,11 @@ chrome-bookmark-list/
 │   ├── bookmark-delete.test.ts  # 削除機能テスト（6テスト）
 │   ├── bookmark-edit.test.ts    # 編集機能テスト（9テスト）
 │   ├── history.test.ts          # 履歴API テスト（9テスト）
-│   ├── history-sidebar.test.ts  # 履歴サイドバーテスト（23テスト）
+│   ├── history-panel.test.ts    # 最近の履歴パネルテスト（16テスト）
+│   ├── calendar-history-panel.test.ts # カレンダー履歴パネルテスト（19テスト）
+│   ├── tab-controller.test.ts   # タブ制御テスト（3テスト）
 │   ├── integration.test.ts      # 統合テスト（7テスト）
-│   ├── newtab-integration.test.ts # フォルダクリックテスト（19テスト）
+│   ├── newtab-integration.test.ts # フォルダクリック・履歴パネル統合テスト（18テスト）
 │   ├── newtab.test.ts           # 基本機能テスト（3テスト）
 │   └── 3layer-issues.test.ts    # 深い階層テスト（4テスト）
 ├── docs/                        # ドキュメント
@@ -205,19 +214,22 @@ interface BookmarkDataAttributes {
 document.addEventListener('DOMContentLoaded', async () => {
   1. DOM要素の取得・検証
   2. Faviconキャッシュの初期化
-  3. 履歴サイドバーの初期化
-  4. ドラッグ&ドロップ機能の初期化
-  5. ブックマーク変更イベントリスナー設定
-  6. Chrome Bookmarks APIからデータ取得
-  7. ブックマークツリーの処理
-  8. ブックマーク表示
-  9. 検索イベントリスナーの設定
+  3. 履歴パネル・カレンダーパネルの初期化（各タブパネル内に構築）
+  4. タブコントローラーの初期化（タブ選択時に各パネルのデータを遅延読み込み）
+  5. ドラッグ&ドロップ機能の初期化
+  6. ブックマーク変更イベントリスナー設定
+  7. Chrome Bookmarks APIからデータ取得
+  8. ブックマークツリーの処理
+  9. ブックマーク表示
+  10. 検索イベントリスナーの設定
 });
 ```
 
 **グローバル変数**:
 - `allBookmarks: BookmarkFolder[]`: 全ブックマークデータ
-- `_historySidebar: HistorySidebar`: 履歴サイドバー インスタンス
+- `_tabController: TabController`: タブ切り替え制御インスタンス
+- `_historyPanel: HistoryPanel`: 最近の履歴パネル インスタンス
+- `_calendarHistoryPanel: CalendarHistoryPanel`: カレンダー履歴パネル インスタンス
 - `bookmarkDragAndDrop: BookmarkDragAndDrop`: D&D機能インスタンス
 
 **主要機能**:
@@ -283,12 +295,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 - `makeBookmarksDraggable()`: ブックマークアイテムにdraggable属性を設定
 - 視覚的フィードバック（ドロップインジケーター、ハイライト効果）
 
-#### 2.5 HistorySidebar コンポーネント
+#### 2.5 TabController コンポーネント
 
-**HistorySidebar.ts** - 履歴サイドバー機能:
-- 過去7日間の履歴表示
+**TabController.ts** - タブ切り替え制御:
+- `.tab-button[data-tab]` と `#tab-panel-<id>` の表示状態を制御
+- `onActivate(tab, handler)`: タブ選択時に実行するハンドラーを登録（履歴データの遅延読み込みに使用）
+- `activate(tab)`: タブのアクティブ化、`aria-selected`/`hidden` 属性の更新、登録済みハンドラの実行
+
+#### 2.6 HistoryPanel コンポーネント
+
+**HistoryPanel.ts** - 最近の履歴タブ:
+- 与えられたコンテナ要素内にUIを構築
+- 過去7日間の履歴表示（最大50件）
 - 履歴の検索・フィルタリング
-- サイドバーの開閉制御
+- `activate()`: タブ選択時に履歴を読み込んで描画
+- タイトル・URLは `escapeHtml` でエスケープし、リンクは `data-url` + `chrome.tabs.create` で開く（XSS対策）
+
+#### 2.7 CalendarHistoryPanel コンポーネント
+
+**CalendarHistoryPanel.ts** - カレンダー履歴タブ:
+- 与えられたコンテナ要素内にカレンダーとタイムラインを構築
+- 当月のカレンダー表示と履歴インジケーター
+- 日付選択で当日のタイムラインを時間帯ごとに表示、ドメイン統計を集計
+- `activate()`: タブ選択時に当月の履歴を読み込んでカレンダーを描画
+- タイトル・URL・ドメインは `escapeHtml` でエスケープし、リンクは `data-url` + `chrome.tabs.create` で開く（XSS対策）
 
 ### 3. リファクタリング後のコア機能 (newtab-core.ts)
 **責務**: 新コンポーネントアーキテクチャへの統合インターフェース
@@ -301,11 +331,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 - `renderFolder()`: BookmarkFolderRenderer への委譲
 - `setupFolderClickHandler()`: BookmarkFolderEvents への委譲
 - `displayBookmarksTestable()`: テスト用の表示関数
-
-#### レガシーコア機能 (newtab-core-original.ts)
-**責務**: 元の実装を保持（段階的移行のため）
-- 独立した実装として保持
-- 現在は使用されていないが後方互換性のために保持
 
 ### 4. サービス層 (Services/)
 **責務**: ビジネスロジックとChrome API操作の抽象化
@@ -449,11 +474,11 @@ HTML文字列
 Chrome History API
     ↓ search()
 HistoryItem[]
-    ↓ HistorySidebar.renderHistory()
-履歴HTML文字列
+    ↓ HistoryPanel.renderHistory() / CalendarHistoryPanel.renderTimeline()
+履歴HTML文字列（escapeHtmlでエスケープ済み）
     ↓ innerHTML
 DOM表示
-    ↓ setupFolderClickHandler()
+    ↓ イベント委譲（タイトルクリック → chrome.tabs.create）
 イベントリスナー設定完了
 ```
 
@@ -564,7 +589,7 @@ try {
 ## テスト概要
 
 ### テスト構成
-- **総計103テスト**: ユニットテスト（70）+ 統合テスト（33）
+- **総計116テスト**: ユニットテスト・コンポーネントテスト・統合テストで構成
 - **カバレッジ**: 主要ロジック100%
 - **テストツール**: Vitest + Happy DOM/JSDOM
 - **CI/CD**: GitHub Actions での自動実行
