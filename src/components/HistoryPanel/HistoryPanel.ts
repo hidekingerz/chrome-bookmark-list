@@ -1,128 +1,65 @@
 import { getRecentHistory, type HistoryItem } from '../../scripts/history.js';
-import { getFavicon } from '../../scripts/utils.js';
+import { escapeHtml, getFavicon } from '../../scripts/utils.js';
 
-export class HistorySidebar {
-  private isOpen = false;
-  private sidebarElement: HTMLElement | null = null;
-  private overlayElement: HTMLElement | null = null;
-  private toggleButton: HTMLElement | null = null;
+/**
+ * 「最近の履歴」タブパネル
+ *
+ * 過去7日間の履歴を一覧表示し、検索でフィルタリングできる。
+ * 与えられたコンテナ要素の中にUIを構築する。
+ */
+export class HistoryPanel {
+  private container: HTMLElement;
+  private contentElement: HTMLElement | null = null;
+  private searchInput: HTMLInputElement | null = null;
   private historyItems: HistoryItem[] = [];
   private filteredHistoryItems: HistoryItem[] = [];
-  private searchInput: HTMLInputElement | null = null;
 
-  constructor() {
+  constructor(container: HTMLElement) {
+    this.container = container;
     this.init();
   }
 
   private init(): void {
-    this.createSidebar();
-    this.createToggleButton();
-    this.setupEventListeners();
-  }
-
-  private createSidebar(): void {
-    // サイドバーの作成
-    this.sidebarElement = document.createElement('div');
-    this.sidebarElement.className = 'history-sidebar';
-    this.sidebarElement.innerHTML = `
-      <div class="history-sidebar-header">
-        <h2>🕐 履歴</h2>
-        <button class="history-sidebar-close" aria-label="閉じる">×</button>
-      </div>
-      <div class="history-sidebar-search">
+    this.container.classList.add('history-panel');
+    this.container.innerHTML = `
+      <div class="panel-search">
         <input type="text" class="history-search-input" placeholder="履歴を検索..." />
       </div>
-      <div class="history-sidebar-content">
+      <div class="history-panel-content">
         <div class="history-loading">履歴を読み込み中...</div>
       </div>
     `;
 
-    // オーバーレイの作成
-    this.overlayElement = document.createElement('div');
-    this.overlayElement.className = 'history-sidebar-overlay';
+    this.searchInput = this.container.querySelector('.history-search-input');
+    this.contentElement = this.container.querySelector(
+      '.history-panel-content'
+    );
 
-    document.body.appendChild(this.sidebarElement);
-    document.body.appendChild(this.overlayElement);
-
-    // 検索入力要素を取得
-    this.searchInput = this.sidebarElement.querySelector(
-      '.history-search-input'
-    ) as HTMLInputElement;
-  }
-
-  private createToggleButton(): void {
-    this.toggleButton = document.createElement('button');
-    this.toggleButton.className = 'history-toggle-btn';
-    this.toggleButton.innerHTML = '🕐';
-    this.toggleButton.setAttribute('aria-label', '履歴を表示');
-    this.toggleButton.title = '履歴を表示';
-
-    // ヘッダーに追加
-    const header = document.querySelector('header');
-    if (header) {
-      header.appendChild(this.toggleButton);
-    }
-  }
-
-  private setupEventListeners(): void {
-    // トグルボタンのクリック
-    this.toggleButton?.addEventListener('click', () => {
-      this.toggle();
-    });
-
-    // 閉じるボタンのクリック
-    this.sidebarElement
-      ?.querySelector('.history-sidebar-close')
-      ?.addEventListener('click', () => {
-        this.close();
-      });
-
-    // オーバーレイのクリック
-    this.overlayElement?.addEventListener('click', () => {
-      this.close();
-    });
-
-    // ESCキーで閉じる
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.isOpen) {
-        this.close();
-      }
-    });
-
-    // 検索入力の監視
     this.searchInput?.addEventListener('input', (e) => {
       const target = e.target as HTMLInputElement;
       this.filterHistory(target.value);
     });
+
+    // 履歴アイテムのクリックで新しいタブを開く（イベント委譲）
+    this.contentElement?.addEventListener('click', (e) => {
+      const link = (e.target as HTMLElement).closest(
+        '.history-item-title'
+      ) as HTMLElement | null;
+      if (!link) return;
+
+      e.preventDefault();
+      const url = link.getAttribute('data-url');
+      if (url) {
+        chrome.tabs.create({ url });
+      }
+    });
   }
 
-  public async toggle(): Promise<void> {
-    if (this.isOpen) {
-      this.close();
-    } else {
-      await this.open();
-    }
-  }
-
-  public async open(): Promise<void> {
-    if (this.isOpen) return;
-
-    this.isOpen = true;
-    this.sidebarElement?.classList.add('open');
-    this.overlayElement?.classList.add('active');
-    document.body.style.overflow = 'hidden';
-
-    // 履歴を読み込み
+  /**
+   * タブがアクティブになったときに履歴を読み込んで表示する
+   */
+  public async activate(): Promise<void> {
     await this.loadHistory();
-  }
-
-  public close(): void {
-    if (!this.isOpen) return;
-
-    this.isOpen = false;
-    this.sidebarElement?.classList.remove('open');
-    this.overlayElement?.classList.remove('active');
-    document.body.style.overflow = '';
   }
 
   private async loadHistory(): Promise<void> {
@@ -137,17 +74,14 @@ export class HistorySidebar {
   }
 
   private renderHistory(): void {
-    const content = this.sidebarElement?.querySelector(
-      '.history-sidebar-content'
-    );
-    if (!content) return;
+    if (!this.contentElement) return;
 
     if (this.filteredHistoryItems.length === 0) {
       if (this.historyItems.length === 0) {
-        content.innerHTML =
+        this.contentElement.innerHTML =
           '<div class="history-empty">履歴が見つかりませんでした</div>';
       } else {
-        content.innerHTML =
+        this.contentElement.innerHTML =
           '<div class="history-empty">検索結果が見つかりませんでした</div>';
       }
       return;
@@ -156,7 +90,7 @@ export class HistorySidebar {
     const html = this.filteredHistoryItems
       .map((item) => this.renderHistoryItem(item))
       .join('');
-    content.innerHTML = `<div class="history-list">${html}</div>`;
+    this.contentElement.innerHTML = `<div class="history-list">${html}</div>`;
 
     // Faviconの非同期読み込み
     this.loadFavicons();
@@ -169,15 +103,18 @@ export class HistorySidebar {
       minute: '2-digit',
     });
 
+    const safeUrl = escapeHtml(item.url);
+    const safeTitle = escapeHtml(item.title);
+
     return `
       <div class="history-item">
         <div class="history-item-icon">
-          <img class="history-favicon hidden" data-history-url="${item.url}" alt="favicon">
+          <img class="history-favicon hidden" data-history-url="${safeUrl}" alt="favicon">
           <span class="favicon-placeholder">🌐</span>
         </div>
         <div class="history-item-content">
-          <a href="${item.url}" class="history-item-title" target="_blank">${item.title}</a>
-          <div class="history-item-url">${item.url}</div>
+          <a href="#" class="history-item-title" data-url="${safeUrl}">${safeTitle}</a>
+          <div class="history-item-url">${safeUrl}</div>
           <div class="history-item-meta">
             <span class="history-item-date">${date} ${time}</span>
             <span class="history-item-count">訪問回数: ${item.visitCount}</span>
@@ -188,20 +125,16 @@ export class HistorySidebar {
   }
 
   private renderError(): void {
-    const content = this.sidebarElement?.querySelector(
-      '.history-sidebar-content'
-    );
-    if (!content) return;
-
-    content.innerHTML =
+    if (!this.contentElement) return;
+    this.contentElement.innerHTML =
       '<div class="history-error">履歴の読み込みに失敗しました</div>';
   }
 
   private async loadFavicons(): Promise<void> {
-    const faviconImages = this.sidebarElement?.querySelectorAll(
+    const faviconImages = this.container.querySelectorAll(
       '.history-favicon'
     ) as NodeListOf<HTMLImageElement>;
-    const faviconPlaceholders = this.sidebarElement?.querySelectorAll(
+    const faviconPlaceholders = this.container.querySelectorAll(
       '.favicon-placeholder'
     ) as NodeListOf<HTMLElement>;
 

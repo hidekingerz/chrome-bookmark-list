@@ -10,18 +10,36 @@
     <div class="container">
         <header>
             <h1>📚 Bookmarks</h1>
-            <div class="search-container">
-                <input type="text" id="searchInput" placeholder="ブックマークを検索...">
-            </div>
+            <nav class="tab-nav" role="tablist" aria-label="表示の切り替え">
+                <button class="tab-button active" data-tab="bookmarks" role="tab"
+                        id="tab-bookmarks" aria-selected="true" aria-controls="tab-panel-bookmarks">
+                    <span class="tab-icon">📚</span><span class="tab-label">ブックマーク</span>
+                </button>
+                <button class="tab-button" data-tab="history" role="tab"
+                        id="tab-history" aria-selected="false" aria-controls="tab-panel-history">
+                    <span class="tab-icon">🕐</span><span class="tab-label">最近の履歴</span>
+                </button>
+                <button class="tab-button" data-tab="calendar" role="tab"
+                        id="tab-calendar" aria-selected="false" aria-controls="tab-panel-calendar">
+                    <span class="tab-icon">📅</span><span class="tab-label">カレンダー</span>
+                </button>
+            </nav>
         </header>
-        
+
         <main>
-            <div id="bookmarkContainer" class="bookmark-container">
-                <div class="loading">ブックマークを読み込み中...</div>
-            </div>
+            <section class="tab-panel active" id="tab-panel-bookmarks" role="tabpanel" aria-labelledby="tab-bookmarks">
+                <div class="panel-search">
+                    <input type="text" id="searchInput" placeholder="ブックマークを検索...">
+                </div>
+                <div id="bookmarkContainer" class="bookmark-container">
+                    <div class="loading">ブックマークを読み込み中...</div>
+                </div>
+            </section>
+            <section class="tab-panel" id="tab-panel-history" role="tabpanel" aria-labelledby="tab-history" hidden></section>
+            <section class="tab-panel" id="tab-panel-calendar" role="tabpanel" aria-labelledby="tab-calendar" hidden></section>
         </main>
     </div>
-    
+
     <script type="module" src="scripts/newtab.js"></script>
 </body>
 </html>

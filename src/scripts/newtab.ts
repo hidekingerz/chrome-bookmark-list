@@ -1,6 +1,7 @@
 import { BookmarkDragAndDrop } from '../components/BookmarkDragAndDrop/index.js';
-import { CalendarHistorySidebar } from '../components/CalendarHistorySidebar/index.js';
-import { HistorySidebar } from '../components/HistorySidebar/index.js';
+import { CalendarHistoryPanel } from '../components/CalendarHistoryPanel/index.js';
+import { HistoryPanel } from '../components/HistoryPanel/index.js';
+import { TabController } from '../components/TabController/index.js';
 import { SELECTORS } from '../constants/index.js';
 import type { BookmarkFolder, ChromeBookmarkNode } from '../types/bookmark.js';
 import { renderFolder, setupFolderClickHandler } from './newtab-core.js';
@@ -13,8 +14,9 @@ import {
 
 // グローバル変数として定義
 let allBookmarks: BookmarkFolder[] = [];
-let _historySidebar: HistorySidebar;
-let _calendarHistorySidebar: CalendarHistorySidebar;
+let _historyPanel: HistoryPanel;
+let _calendarHistoryPanel: CalendarHistoryPanel;
+let _tabController: TabController;
 let bookmarkDragAndDrop: BookmarkDragAndDrop;
 
 // ブックマークデータを取得して表示する
@@ -39,11 +41,29 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
   // Favicon キャッシュの初期化
   await initFaviconCache();
 
-  // 履歴サイドバーの初期化
-  _historySidebar = new HistorySidebar();
+  // 履歴パネル・カレンダーパネルの初期化（各タブパネル内に構築）
+  const historyPanelContainer = document.querySelector(
+    '#tab-panel-history'
+  ) as HTMLElement | null;
+  const calendarPanelContainer = document.querySelector(
+    '#tab-panel-calendar'
+  ) as HTMLElement | null;
 
-  // カレンダー履歴サイドバーの初期化
-  _calendarHistorySidebar = new CalendarHistorySidebar();
+  if (historyPanelContainer) {
+    _historyPanel = new HistoryPanel(historyPanelContainer);
+  }
+  if (calendarPanelContainer) {
+    _calendarHistoryPanel = new CalendarHistoryPanel(calendarPanelContainer);
+  }
+
+  // タブの初期化（タブがアクティブになったときに各パネルのデータを読み込む）
+  _tabController = new TabController();
+  _tabController.onActivate('history', async () => {
+    await _historyPanel?.activate();
+  });
+  _tabController.onActivate('calendar', async () => {
+    await _calendarHistoryPanel?.activate();
+  });
 
   // ドラッグ&ドロップ機能の初期化
   bookmarkDragAndDrop = new BookmarkDragAndDrop();

@@ -1,5 +1,5 @@
 import type { HistoryItem } from '../../scripts/history.js';
-import { getFavicon } from '../../scripts/utils.js';
+import { escapeHtml, getFavicon } from '../../scripts/utils.js';
 
 interface DayHistory {
   date: Date;
@@ -12,18 +12,23 @@ interface HourGroup {
   items: HistoryItem[];
 }
 
-export class CalendarHistorySidebar {
-  private isOpen = false;
-  private sidebarElement: HTMLElement | null = null;
-  private overlayElement: HTMLElement | null = null;
-  private toggleButton: HTMLElement | null = null;
+/**
+ * 「カレンダー」タブパネル
+ *
+ * 月単位のカレンダー上に履歴の有無を表示し、日付を選択すると
+ * その日のタイムラインを時間帯ごとに表示する。
+ * 与えられたコンテナ要素の中にUIを構築する。
+ */
+export class CalendarHistoryPanel {
+  private container: HTMLElement;
   private currentMonth: Date;
   private selectedDate: Date | null = null;
   private monthHistory: Map<string, DayHistory> = new Map();
   private searchInput: HTMLInputElement | null = null;
   private searchTerm = '';
 
-  constructor() {
+  constructor(container: HTMLElement) {
+    this.container = container;
     this.currentMonth = new Date();
     this.currentMonth.setDate(1);
     this.currentMonth.setHours(0, 0, 0, 0);
@@ -31,24 +36,12 @@ export class CalendarHistorySidebar {
   }
 
   private init(): void {
-    this.createSidebar();
-    this.createToggleButton();
-    this.setupEventListeners();
-  }
-
-  private createSidebar(): void {
-    // サイドバーの作成
-    this.sidebarElement = document.createElement('div');
-    this.sidebarElement.className = 'calendar-history-sidebar';
-    this.sidebarElement.innerHTML = `
-      <div class="calendar-history-sidebar-header">
-        <h2>📅 履歴カレンダー</h2>
-        <button class="calendar-history-sidebar-close" aria-label="閉じる">×</button>
-      </div>
-      <div class="calendar-history-sidebar-search">
+    this.container.classList.add('calendar-history-panel');
+    this.container.innerHTML = `
+      <div class="panel-search">
         <input type="text" class="calendar-history-search-input" placeholder="履歴を検索..." />
       </div>
-      <div class="calendar-history-sidebar-content">
+      <div class="calendar-history-panel-content">
         <div class="calendar-view">
           <div class="calendar-header">
             <button class="calendar-nav-btn prev-month" aria-label="前月">‹</button>
@@ -72,67 +65,23 @@ export class CalendarHistorySidebar {
       </div>
     `;
 
-    // オーバーレイの作成
-    this.overlayElement = document.createElement('div');
-    this.overlayElement.className = 'calendar-history-sidebar-overlay';
-
-    document.body.appendChild(this.sidebarElement);
-    document.body.appendChild(this.overlayElement);
-
-    // 検索入力要素を取得
-    this.searchInput = this.sidebarElement.querySelector(
+    this.searchInput = this.container.querySelector(
       '.calendar-history-search-input'
-    ) as HTMLInputElement;
-  }
+    );
 
-  private createToggleButton(): void {
-    this.toggleButton = document.createElement('button');
-    this.toggleButton.className = 'calendar-history-toggle-btn';
-    this.toggleButton.innerHTML = '📅';
-    this.toggleButton.setAttribute('aria-label', '履歴カレンダーを表示');
-    this.toggleButton.title = '履歴カレンダーを表示';
-
-    // ヘッダーに追加
-    const header = document.querySelector('header');
-    if (header) {
-      header.appendChild(this.toggleButton);
-    }
+    this.setupEventListeners();
   }
 
   private setupEventListeners(): void {
-    // トグルボタンのクリック
-    this.toggleButton?.addEventListener('click', () => {
-      this.toggle();
-    });
-
-    // 閉じるボタンのクリック
-    this.sidebarElement
-      ?.querySelector('.calendar-history-sidebar-close')
-      ?.addEventListener('click', () => {
-        this.close();
-      });
-
-    // オーバーレイのクリック
-    this.overlayElement?.addEventListener('click', () => {
-      this.close();
-    });
-
-    // ESCキーで閉じる
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.isOpen) {
-        this.close();
-      }
-    });
-
     // 月の切り替えボタン
-    this.sidebarElement
-      ?.querySelector('.prev-month')
+    this.container
+      .querySelector('.prev-month')
       ?.addEventListener('click', async () => {
         await this.changeMonth(-1);
       });
 
-    this.sidebarElement
-      ?.querySelector('.next-month')
+    this.container
+      .querySelector('.next-month')
       ?.addEventListener('click', async () => {
         await this.changeMonth(1);
       });
@@ -145,36 +94,30 @@ export class CalendarHistorySidebar {
         this.renderTimeline(this.selectedDate);
       }
     });
+
+    // タイムラインアイテムのクリックで新しいタブを開く（イベント委譲）
+    this.container
+      .querySelector('.history-timeline')
+      ?.addEventListener('click', (e) => {
+        const link = (e.target as HTMLElement).closest(
+          '.timeline-item-title'
+        ) as HTMLElement | null;
+        if (!link) return;
+
+        e.preventDefault();
+        const url = link.getAttribute('data-url');
+        if (url) {
+          chrome.tabs.create({ url });
+        }
+      });
   }
 
-  public async toggle(): Promise<void> {
-    if (this.isOpen) {
-      this.close();
-    } else {
-      await this.open();
-    }
-  }
-
-  public async open(): Promise<void> {
-    if (this.isOpen) return;
-
-    this.isOpen = true;
-    this.sidebarElement?.classList.add('open');
-    this.overlayElement?.classList.add('active');
-    document.body.style.overflow = 'hidden';
-
-    // 履歴を読み込み
+  /**
+   * タブがアクティブになったときに当月の履歴を読み込んでカレンダーを描画する
+   */
+  public async activate(): Promise<void> {
     await this.loadMonthHistory();
     this.renderCalendar();
-  }
-
-  public close(): void {
-    if (!this.isOpen) return;
-
-    this.isOpen = false;
-    this.sidebarElement?.classList.remove('open');
-    this.overlayElement?.classList.remove('active');
-    document.body.style.overflow = '';
   }
 
   private async changeMonth(delta: number): Promise<void> {
@@ -240,10 +183,10 @@ export class CalendarHistorySidebar {
   }
 
   private renderCalendar(): void {
-    const monthYearElement = this.sidebarElement?.querySelector(
+    const monthYearElement = this.container.querySelector(
       '.calendar-month-year'
     );
-    const daysElement = this.sidebarElement?.querySelector('.calendar-days');
+    const daysElement = this.container.querySelector('.calendar-days');
 
     if (!monthYearElement || !daysElement) return;
 
@@ -338,7 +281,7 @@ export class CalendarHistorySidebar {
   }
 
   private renderTimeline(date: Date): void {
-    const timelineElement = this.sidebarElement?.querySelector(
+    const timelineElement = this.container.querySelector(
       '.history-timeline'
     ) as HTMLElement;
     if (!timelineElement) return;
@@ -446,15 +389,15 @@ export class CalendarHistorySidebar {
     );
 
     const domainStatsHtml = sortedDomains
-      .map(
-        ([domain, count]) =>
-          `<span class="domain-stat">
-            <img class="domain-favicon hidden" data-domain="${domain}" alt="favicon">
+      .map(([domain, count]) => {
+        const safeDomain = escapeHtml(domain);
+        return `<span class="domain-stat">
+            <img class="domain-favicon hidden" data-domain="${safeDomain}" alt="favicon">
             <span class="favicon-placeholder">🌐</span>
-            <span class="domain-name">${domain}</span>
+            <span class="domain-name">${safeDomain}</span>
             <span class="domain-count">${count}</span>
-          </span>`
-      )
+          </span>`;
+      })
       .join('');
 
     const itemsHtml = group.items
@@ -484,15 +427,18 @@ export class CalendarHistorySidebar {
       second: '2-digit',
     });
 
+    const safeUrl = escapeHtml(item.url);
+    const safeTitle = escapeHtml(item.title);
+
     return `
       <div class="timeline-item">
         <div class="timeline-item-icon">
-          <img class="timeline-favicon hidden" data-timeline-url="${item.url}" alt="favicon">
+          <img class="timeline-favicon hidden" data-timeline-url="${safeUrl}" alt="favicon">
           <span class="favicon-placeholder">🌐</span>
         </div>
         <div class="timeline-item-content">
-          <a href="${item.url}" class="timeline-item-title" target="_blank">${item.title}</a>
-          <div class="timeline-item-url">${item.url}</div>
+          <a href="#" class="timeline-item-title" data-url="${safeUrl}">${safeTitle}</a>
+          <div class="timeline-item-url">${safeUrl}</div>
           <div class="timeline-item-meta">
             <span class="timeline-item-time">${time}</span>
             <span class="timeline-item-count">訪問回数: ${item.visitCount}</span>
@@ -503,10 +449,10 @@ export class CalendarHistorySidebar {
   }
 
   private async loadTimelineFavicons(): Promise<void> {
-    const faviconImages = this.sidebarElement?.querySelectorAll(
+    const faviconImages = this.container.querySelectorAll(
       '.timeline-favicon'
     ) as NodeListOf<HTMLImageElement>;
-    const faviconPlaceholders = this.sidebarElement?.querySelectorAll(
+    const faviconPlaceholders = this.container.querySelectorAll(
       '.timeline-item-icon .favicon-placeholder'
     ) as NodeListOf<HTMLElement>;
 
@@ -546,10 +492,10 @@ export class CalendarHistorySidebar {
   }
 
   private async loadDomainFavicons(): Promise<void> {
-    const domainFaviconImages = this.sidebarElement?.querySelectorAll(
+    const domainFaviconImages = this.container.querySelectorAll(
       '.domain-favicon'
     ) as NodeListOf<HTMLImageElement>;
-    const domainPlaceholders = this.sidebarElement?.querySelectorAll(
+    const domainPlaceholders = this.container.querySelectorAll(
       '.timeline-domain-stats .favicon-placeholder'
     ) as NodeListOf<HTMLElement>;
 
@@ -591,8 +537,7 @@ export class CalendarHistorySidebar {
   }
 
   private setupHourNavigation(): void {
-    const hourNavLinks =
-      this.sidebarElement?.querySelectorAll('.hour-nav-link');
+    const hourNavLinks = this.container.querySelectorAll('.hour-nav-link');
     if (!hourNavLinks) return;
 
     for (const link of hourNavLinks) {
@@ -602,13 +547,10 @@ export class CalendarHistorySidebar {
         if (!href) return;
 
         const targetId = href.substring(1); // Remove '#'
-        const targetElement = this.sidebarElement?.querySelector(
-          `#${targetId}`
-        );
+        const targetElement = this.container.querySelector(`#${targetId}`);
         const timelineElement =
-          this.sidebarElement?.querySelector('.history-timeline');
-        const navElement =
-          this.sidebarElement?.querySelector('.timeline-hour-nav');
+          this.container.querySelector('.history-timeline');
+        const navElement = this.container.querySelector('.timeline-hour-nav');
 
         if (targetElement && timelineElement && navElement) {
           // スティッキーナビゲーションバーの高さを取得

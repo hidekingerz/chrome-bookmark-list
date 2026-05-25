@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HistorySidebar } from '../src/components/HistorySidebar/HistorySidebar';
+import { HistoryPanel } from '../src/components/HistoryPanel/HistoryPanel';
 import { getRecentHistory } from '../src/scripts/history';
 import {
   renderFolder,
@@ -129,6 +129,7 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
             </div>
           </header>
           <div id="bookmarkContainer" class="bookmark-container"></div>
+          <section id="tab-panel-history"></section>
         </body>
       </html>
     `,
@@ -203,24 +204,21 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
     vi.resetAllMocks();
   });
 
-  describe('履歴サイドバー統合テスト', () => {
-    it('履歴サイドバーが正しく初期化される', () => {
-      new HistorySidebar();
+  describe('履歴パネル統合テスト', () => {
+    const getHistoryContainer = () =>
+      document.getElementById('tab-panel-history') as HTMLElement;
 
-      // トグルボタンがheaderに追加される
-      const toggleButton = document.querySelector('.history-toggle-btn');
-      expect(toggleButton).toBeTruthy();
-      expect(toggleButton?.parentElement?.tagName).toBe('HEADER');
+    it('履歴パネルがコンテナ内に正しく初期化される', () => {
+      new HistoryPanel(getHistoryContainer());
 
-      // サイドバーとオーバーレイが作成される
-      const sidebar = document.querySelector('.history-sidebar');
-      const overlay = document.querySelector('.history-sidebar-overlay');
-      expect(sidebar).toBeTruthy();
-      expect(overlay).toBeTruthy();
+      const container = getHistoryContainer();
+      expect(container.classList.contains('history-panel')).toBe(true);
+      expect(container.querySelector('.history-search-input')).toBeTruthy();
+      expect(container.querySelector('.history-panel-content')).toBeTruthy();
     });
 
-    it('履歴サイドバーの開閉がブックマーク表示に影響しない', async () => {
-      const historySidebar = new HistorySidebar();
+    it('履歴パネルのactivateがブックマーク表示に影響しない', async () => {
+      const historyPanel = new HistoryPanel(getHistoryContainer());
       const bookmarkContainer = document.getElementById('bookmarkContainer')!;
 
       // ブックマークをレンダリング
@@ -228,12 +226,10 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
       bookmarkContainer.innerHTML = html;
       setupFolderClickHandler(bookmarkContainer, allBookmarks);
 
-      // 初期状態のブックマーク数を確認
       const initialBookmarks =
         bookmarkContainer.querySelectorAll('.bookmark-item').length;
       expect(initialBookmarks).toBeGreaterThan(0);
 
-      // 履歴サイドバーを開く
       mockGetRecentHistory.mockResolvedValue([
         {
           id: '1',
@@ -245,39 +241,30 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
         },
       ]);
 
-      await historySidebar.open();
+      await historyPanel.activate();
 
-      // サイドバーが開いた状態でもブックマークは変わらない
-      const bookmarksAfterOpen =
+      // 履歴を読み込んでもブックマークは変わらない
+      const bookmarksAfter =
         bookmarkContainer.querySelectorAll('.bookmark-item').length;
-      expect(bookmarksAfterOpen).toBe(initialBookmarks);
+      expect(bookmarksAfter).toBe(initialBookmarks);
 
-      // サイドバーが開いていることを確認
-      const sidebar = document.querySelector('.history-sidebar');
-      expect(sidebar?.classList.contains('open')).toBe(true);
-
-      // サイドバーを閉じる
-      historySidebar.close();
-
-      // サイドバーが閉じてもブックマークは変わらない
-      const bookmarksAfterClose =
-        bookmarkContainer.querySelectorAll('.bookmark-item').length;
-      expect(bookmarksAfterClose).toBe(initialBookmarks);
+      // 履歴アイテムが表示されている
+      expect(
+        getHistoryContainer().querySelectorAll('.history-item').length
+      ).toBe(1);
     });
 
-    it('履歴サイドバーと検索機能が同時に動作する', async () => {
-      const historySidebar = new HistorySidebar();
+    it('ブックマーク検索と履歴パネルが独立して動作する', async () => {
+      const historyPanel = new HistoryPanel(getHistoryContainer());
       const bookmarkContainer = document.getElementById('bookmarkContainer')!;
       const searchInput = document.getElementById(
         'searchInput'
       ) as HTMLInputElement;
 
-      // ブックマークをレンダリング
       const html = allBookmarks.map((folder) => renderFolder(folder)).join('');
       bookmarkContainer.innerHTML = html;
       setupFolderClickHandler(bookmarkContainer, allBookmarks);
 
-      // 履歴サイドバーを開く
       mockGetRecentHistory.mockResolvedValue([
         {
           id: '1',
@@ -289,55 +276,30 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
         },
       ]);
 
-      await historySidebar.open();
+      await historyPanel.activate();
 
-      // サイドバーが開いた状態で検索を実行
+      // ブックマーク検索を実行しても履歴アイテムには影響しない
       searchInput.value = 'GitHub';
-      const inputEvent = new Event('input', { bubbles: true });
-      searchInput.dispatchEvent(inputEvent);
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-      // サイドバーが開いたままであることを確認
-      const sidebar = document.querySelector('.history-sidebar');
-      expect(sidebar?.classList.contains('open')).toBe(true);
-
-      // 履歴アイテムが表示されていることを確認
-      const historyItems = document.querySelectorAll('.history-item');
-      expect(historyItems.length).toBe(1);
-    });
-
-    it('履歴サイドバーのESCキーでの閉じる機能が動作する', async () => {
-      const historySidebar = new HistorySidebar();
-
-      // サイドバーを開く
-      await historySidebar.open();
-
-      const sidebar = document.querySelector('.history-sidebar');
-      expect(sidebar?.classList.contains('open')).toBe(true);
-
-      // ESCキーを押す
-      const escEvent = new window.KeyboardEvent('keydown', { key: 'Escape' });
-      document.dispatchEvent(escEvent);
-
-      // サイドバーが閉じることを確認
-      expect(sidebar?.classList.contains('open')).toBe(false);
+      expect(
+        getHistoryContainer().querySelectorAll('.history-item').length
+      ).toBe(1);
     });
 
     it('履歴読み込み失敗時のエラーハンドリング', async () => {
-      const historySidebar = new HistorySidebar();
+      const historyPanel = new HistoryPanel(getHistoryContainer());
       const consoleSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
-      // 履歴読み込みを失敗させる
       mockGetRecentHistory.mockRejectedValue(new Error('History API Error'));
 
-      await historySidebar.open();
+      await historyPanel.activate();
 
-      // エラーメッセージが表示されることを確認
-      const errorMessage = document.querySelector('.history-error');
+      const errorMessage =
+        getHistoryContainer().querySelector('.history-error');
       expect(errorMessage?.textContent).toBe('履歴の読み込みに失敗しました');
-
-      // コンソールにエラーが出力されることを確認
       expect(consoleSpy).toHaveBeenCalledWith(
         '履歴の読み込みに失敗しました:',
         expect.any(Error)
@@ -346,10 +308,9 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
       consoleSpy.mockRestore();
     });
 
-    it('履歴サイドバーの検索機能が動作する', async () => {
-      const historySidebar = new HistorySidebar();
+    it('履歴パネルの検索機能が動作する', async () => {
+      const historyPanel = new HistoryPanel(getHistoryContainer());
 
-      // 履歴データを設定
       mockGetRecentHistory.mockResolvedValue([
         {
           id: '1',
@@ -369,25 +330,21 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
         },
       ]);
 
-      await historySidebar.open();
+      await historyPanel.activate();
 
-      // 検索バーが存在することを確認
-      const searchInput = document.querySelector(
+      const searchInput = getHistoryContainer().querySelector(
         '.history-search-input'
       ) as HTMLInputElement;
       expect(searchInput).toBeTruthy();
+      expect(
+        getHistoryContainer().querySelectorAll('.history-item').length
+      ).toBe(2);
 
-      // 初期状態で全アイテムが表示されることを確認
-      let historyItems = document.querySelectorAll('.history-item');
-      expect(historyItems.length).toBe(2);
-
-      // 検索実行
       searchInput.value = 'GitHub';
-      const inputEvent = new Event('input', { bubbles: true });
-      searchInput.dispatchEvent(inputEvent);
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-      // フィルタリング結果を確認
-      historyItems = document.querySelectorAll('.history-item');
+      const historyItems =
+        getHistoryContainer().querySelectorAll('.history-item');
       expect(historyItems.length).toBe(1);
       expect(
         historyItems[0].querySelector('.history-item-title')?.textContent
