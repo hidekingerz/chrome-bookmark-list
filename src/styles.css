@@ -1391,23 +1391,44 @@ header h1 {
   background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
 }
+
+/* =========================================================================
    コンテキストメニュー
    ========================================================================= */
 .context-menu {
   position: fixed;
   min-width: 220px;
-  background: var(--surface);
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  /* デフォルトはライトモード想定。
+     ページ背景 (#eef1f8) ・カード (#ffffff) のどちらとも区別がつくよう、
+     純白に強い影と明確な border で立体感を出す。 */
+  background-color: #ffffff;
+  background-image: none;
+  border: 1px solid #d4d8e6;
   border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  box-shadow:
+    0 16px 48px rgba(20, 24, 51, 0.18),
+    0 2px 8px rgba(20, 24, 51, 0.1);
   padding: 6px;
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   font-size: 14px;
   color: var(--text);
   user-select: none;
+  opacity: 1;
+  isolation: isolate;
+}
+
+/* ダークモードでも明確に浮き上がらせる */
+@media (prefers-color-scheme: dark) {
+  .context-menu {
+    background-color: #262b3a;
+    border-color: #3f475a;
+    box-shadow:
+      0 16px 48px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  }
 }
 
 .context-menu-item {
@@ -1428,7 +1449,8 @@ header h1 {
 
 .context-menu-item:hover:not(.disabled),
 .context-menu-item:focus:not(.disabled) {
-  background: var(--accent-soft);
+  background: var(--accent-soft-strong);
+  color: var(--text);
   outline: none;
 }
 
