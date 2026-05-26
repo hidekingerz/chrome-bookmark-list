@@ -27,7 +27,11 @@ export class FolderCreator {
     const collect = (nodes: ChromeBookmarkNode[]) => {
       for (const node of nodes) {
         if (node.children && !node.url) {
-          folders.push(node);
+          // id='0' はツリーの仮想ルートで、ここを親に指定した chrome.bookmarks.create
+          // は失敗するため候補から除外する
+          if (node.id !== '0') {
+            folders.push(node);
+          }
           collect(node.children);
         }
       }
