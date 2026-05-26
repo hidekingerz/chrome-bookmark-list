@@ -1396,18 +1396,23 @@ header h1 {
 .context-menu {
   position: fixed;
   min-width: 220px;
-  background: var(--surface);
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  /* ページ背景・カード背景と区別がつくようサーフェスを浮かせる */
+  background-color: var(--surface);
+  background-image: none;
+  border: 1px solid var(--border-strong, var(--border));
   border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-lg);
   padding: 6px;
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   font-size: 14px;
   color: var(--text);
   user-select: none;
+  /* 半透明な要素が背後に来ても視認できるよう、明示的に不透明にする */
+  opacity: 1;
+  isolation: isolate;
 }
 
 .context-menu-item {
@@ -1428,7 +1433,8 @@ header h1 {
 
 .context-menu-item:hover:not(.disabled),
 .context-menu-item:focus:not(.disabled) {
-  background: var(--accent-soft);
+  background: var(--accent-soft-strong);
+  color: var(--text);
   outline: none;
 }
 
