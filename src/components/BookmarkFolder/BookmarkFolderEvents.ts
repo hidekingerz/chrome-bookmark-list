@@ -4,6 +4,7 @@ import { FolderCreator } from '../BookmarkActions/FolderCreator.js';
 import { FolderDeleter } from '../BookmarkActions/FolderDeleter.js';
 import { FolderRenamer } from '../BookmarkActions/FolderRenamer.js';
 import { BookmarkActions } from '../BookmarkActions/index.js';
+import { BookmarkSelection } from '../BookmarkSelection/index.js';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index.js';
 
 // Chrome のパーマネントフォルダの ID
@@ -24,13 +25,22 @@ export class BookmarkFolderEvents {
   private folderCreator: FolderCreator;
   private folderRenamer: FolderRenamer;
   private folderDeleter: FolderDeleter;
+  private selection: BookmarkSelection;
 
-  constructor() {
+  constructor(selection?: BookmarkSelection) {
     this.bookmarkActions = new BookmarkActions();
     this.contextMenu = new ContextMenu();
     this.folderCreator = new FolderCreator();
     this.folderRenamer = new FolderRenamer();
     this.folderDeleter = new FolderDeleter();
+    this.selection = selection ?? new BookmarkSelection();
+  }
+
+  /**
+   * 現在の選択管理オブジェクトを返す。
+   */
+  getSelection(): BookmarkSelection {
+    return this.selection;
   }
 
   /**
@@ -44,6 +54,9 @@ export class BookmarkFolderEvents {
     if (this.clickHandler) {
       container.removeEventListener('click', this.clickHandler);
     }
+
+    // 複数選択モジュールに最新のコンテナを通知
+    this.selection.refresh(container);
 
     // 新しいイベントリスナーを作成して保存
     this.clickHandler = (e: Event) => {
@@ -440,19 +453,42 @@ export class BookmarkFolderEvents {
   /**
    * ブックマークリンククリックの処理
    *
-   * - 通常クリック: 新しいタブ（アクティブ）で開く
-   * - Cmd/Ctrl + クリック: 新しいタブ（バックグラウンド）で開く
+   * - Shift+クリック: 複数選択 (範囲選択)。selection.handleClick が消費する
+   * - 既に選択中で修飾キーなしクリック: 選択解除を優先 (selection.handleClick が消費)
+   * - Cmd/Ctrl+クリック: 新しいタブをバックグラウンドで開く (#68)
+   * - 通常クリック: 現在のタブで開く
    */
   private handleBookmarkClick(e: Event, bookmarkLink: HTMLElement): void {
-    e.preventDefault();
+    const mouseEvent = e as MouseEvent;
     const url = bookmarkLink.getAttribute('data-url');
     if (!url) {
+      e.preventDefault();
       return;
     }
 
-    const mouseEvent = e as MouseEvent;
-    const openInBackground = Boolean(mouseEvent.metaKey || mouseEvent.ctrlKey);
+    const bookmarkItem = bookmarkLink.closest(
+      '.bookmark-item'
+    ) as HTMLElement | null;
+    const title =
+      bookmarkLink.querySelector('.bookmark-title')?.textContent?.trim() ?? '';
 
+    // 選択処理にイベントを渡す (Shift か、既に選択中の場合のみ消費される想定)
+    if (bookmarkItem) {
+      const consumed = this.selection.handleClick(
+        url,
+        title,
+        bookmarkItem,
+        mouseEvent
+      );
+      if (consumed) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
+
+    e.preventDefault();
+    const openInBackground = Boolean(mouseEvent.metaKey || mouseEvent.ctrlKey);
     chrome.tabs.create({ url, active: !openInBackground });
   }
 

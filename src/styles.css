@@ -1596,3 +1596,113 @@ header h1 {
   font-size: 14px;
   text-align: right;
 }
+
+/* =========================================================================
+   複数選択 (selection)
+   ========================================================================= */
+.bookmark-item.selected {
+  background-color: var(--accent-soft);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+.bookmark-item.selected .bookmark-link {
+  color: var(--accent-strong);
+}
+
+.bookmark-item.selected .bookmark-link:hover {
+  background-color: var(--accent-soft-strong);
+}
+
+.selection-toolbar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  font-size: 14px;
+}
+
+.selection-toolbar-count {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.selection-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selection-toolbar-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color var(--transition), color var(--transition),
+    border-color var(--transition), transform var(--transition),
+    box-shadow var(--transition), filter var(--transition);
+}
+
+.selection-toolbar-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.selection-toolbar-move {
+  background: var(--accent-gradient);
+  color: var(--accent-contrast);
+  border-color: transparent;
+  transition: background-color var(--transition), color var(--transition),
+    border-color var(--transition), transform var(--transition),
+    box-shadow var(--transition), filter var(--transition);
+}
+
+.selection-toolbar-move:hover {
+  /* .selection-toolbar-btn:hover の上書きを打ち消し、視覚変化を強める。
+     gradient を維持しつつ、明度・シャドウ・浮き上がりを加えて、
+     削除ボタンと同様にホバーが明確に分かるようにする。 */
+  background: var(--accent-gradient);
+  border-color: transparent;
+  filter: brightness(1.12) saturate(1.1);
+  box-shadow: 0 6px 18px var(--accent-soft-strong), var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.selection-toolbar-delete {
+  color: var(--danger);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.selection-toolbar-delete:hover {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: var(--danger);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.18);
+}
+
+.selection-toolbar-clear {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 50%;
+}
