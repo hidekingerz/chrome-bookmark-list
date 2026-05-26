@@ -1665,15 +1665,20 @@ header h1 {
   background: var(--accent-gradient);
   color: var(--accent-contrast);
   border-color: transparent;
+  transition: background-color var(--transition), color var(--transition),
+    border-color var(--transition), transform var(--transition),
+    box-shadow var(--transition), filter var(--transition);
 }
 
 .selection-toolbar-move:hover {
-  /* .selection-toolbar-btn:hover の background/border を打ち消して
-     accent gradient を維持したまま明るくする */
+  /* .selection-toolbar-btn:hover の上書きを打ち消し、視覚変化を強める。
+     gradient を維持しつつ、明度・シャドウ・浮き上がりを加えて、
+     削除ボタンと同様にホバーが明確に分かるようにする。 */
   background: var(--accent-gradient);
   border-color: transparent;
-  filter: brightness(1.08);
-  box-shadow: var(--shadow-md);
+  filter: brightness(1.12) saturate(1.1);
+  box-shadow: 0 6px 18px var(--accent-soft-strong), var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .selection-toolbar-delete {
