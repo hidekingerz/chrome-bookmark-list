@@ -2,6 +2,7 @@ import { BookmarkDragAndDrop } from '../components/BookmarkDragAndDrop/index.js'
 import { CalendarHistoryPanel } from '../components/CalendarHistoryPanel/index.js';
 import { HistoryPanel } from '../components/HistoryPanel/index.js';
 import { TabController } from '../components/TabController/index.js';
+import { UndoManager } from '../components/UndoManager/index.js';
 import { SELECTORS } from '../constants/index.js';
 import type { BookmarkFolder, ChromeBookmarkNode } from '../types/bookmark.js';
 import { renderFolder, setupFolderClickHandler } from './newtab-core.js';
@@ -68,6 +69,9 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
   // ドラッグ&ドロップ機能の初期化
   bookmarkDragAndDrop = new BookmarkDragAndDrop();
   bookmarkDragAndDrop.initialize();
+
+  // Undo 機能 (Cmd/Ctrl+Z) の初期化
+  UndoManager.getInstance().initialize();
 
   // ブックマーク変更イベントリスナーを追加
   document.addEventListener('bookmarks-changed', async () => {
