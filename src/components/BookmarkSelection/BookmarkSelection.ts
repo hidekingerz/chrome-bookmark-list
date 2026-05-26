@@ -583,7 +583,11 @@ export class BookmarkSelection {
     const collect = (nodes: ChromeBookmarkNode[]) => {
       for (const node of nodes) {
         if (node.children && !node.url) {
-          folders.push(node);
+          // id='0' はツリーの仮想ルートで、ここへの move は Chrome API で
+          // 必ず失敗するため移動先候補から除外する
+          if (node.id !== '0') {
+            folders.push(node);
+          }
           collect(node.children);
         }
       }
