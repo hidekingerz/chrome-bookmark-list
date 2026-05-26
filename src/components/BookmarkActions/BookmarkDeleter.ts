@@ -1,4 +1,5 @@
 import { escapeHtml } from '../../scripts/utils.js';
+import { UndoManager } from '../UndoManager/index.js';
 
 /**
  * ブックマーク削除機能を担当するクラス
@@ -24,15 +25,50 @@ export class BookmarkDeleter {
     }
 
     try {
-      // Chrome APIを使用してブックマークを削除
-      await this.deleteBookmarkByUrl(url);
+      // Undo に必要な情報を削除前に取得
+      const bookmarks = await chrome.bookmarks.search({ url });
+      if (bookmarks.length === 0) {
+        throw new Error('削除対象のブックマークが見つかりませんでした');
+      }
+      const target = bookmarks[0];
+      const restoreInfo = {
+        parentId: target.parentId,
+        index: target.index,
+        title: target.title,
+        url: target.url,
+      };
 
-      // 削除後、ページを再読み込みして表示を更新
-      window.location.reload();
+      // Chrome APIを使用してブックマークを削除
+      await chrome.bookmarks.remove(target.id);
+
+      // UI を更新するイベントを発火
+      this.dispatchBookmarksChanged('delete');
+
+      // Undo 可能な操作として登録
+      UndoManager.getInstance().register({
+        message: `「${title}」を削除しました`,
+        undo: async () => {
+          await chrome.bookmarks.create({
+            parentId: restoreInfo.parentId,
+            index: restoreInfo.index,
+            title: restoreInfo.title,
+            url: restoreInfo.url,
+          });
+          this.dispatchBookmarksChanged('undo-delete');
+        },
+      });
     } catch (error) {
       console.error('❌ ブックマークの削除に失敗しました:', error);
       this.showErrorDialog('ブックマークの削除に失敗しました。');
     }
+  }
+
+  /**
+   * ブックマーク変更通知イベントを発火する
+   */
+  private dispatchBookmarksChanged(action: string): void {
+    const event = new CustomEvent('bookmarks-changed', { detail: { action } });
+    document.dispatchEvent(event);
   }
 
   /**
@@ -188,19 +224,5 @@ export class BookmarkDeleter {
       }
     };
     document.addEventListener('keydown', handleKeydown);
-  }
-
-  /**
-   * URLを指定してブックマークを削除する
-   */
-  private async deleteBookmarkByUrl(url: string): Promise<void> {
-    const bookmarks = await chrome.bookmarks.search({ url: url });
-
-    if (bookmarks.length === 0) {
-      throw new Error('削除対象のブックマークが見つかりませんでした');
-    }
-
-    // 最初に見つかったブックマークを削除
-    await chrome.bookmarks.remove(bookmarks[0].id);
   }
 }

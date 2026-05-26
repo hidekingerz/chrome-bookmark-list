@@ -22,6 +22,16 @@ describe('ブックマーク削除機能のテスト', () => {
       writable: true,
       configurable: true,
     });
+    Object.defineProperty(globalThis, 'window', {
+      value: dom.window,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(globalThis, 'CustomEvent', {
+      value: dom.window.CustomEvent,
+      writable: true,
+      configurable: true,
+    });
 
     // Chrome API のモック設定
     const mockChrome = globalThis.chrome as any;
@@ -95,21 +105,24 @@ describe('ブックマーク削除機能のテスト', () => {
     expect(document.getElementById('delete-dialog')).toBeNull();
   });
 
-  it('削除確認でOKを選択した場合はChrome APIを使用して削除処理が実行される', async () => {
+  it('削除確認でOKを選択した場合はChrome APIで削除し bookmarks-changed イベントを発火する', async () => {
     // Chrome API のモック設定
     const mockChrome = globalThis.chrome as any;
     mockChrome.bookmarks.search.mockResolvedValue([
       {
         id: 'bookmark-1',
+        parentId: 'folder-1',
+        index: 2,
         title: 'テストブックマーク',
         url: 'https://example.com',
       },
     ]);
     mockChrome.bookmarks.remove.mockResolvedValue(undefined);
+    mockChrome.bookmarks.create = vi.fn().mockResolvedValue({});
 
-    // location.reload のモック
-    const reloadSpy = vi.fn();
-    globalThis.location = { reload: reloadSpy } as any;
+    // bookmarks-changed イベントを監視
+    const changedSpy = vi.fn();
+    document.addEventListener('bookmarks-changed', changedSpy);
 
     // テスト用の削除ボタン要素を作成
     const deleteBtn = document.createElement('button');
@@ -122,16 +135,11 @@ describe('ブックマーク削除機能のテスト', () => {
     // 少し待ってダイアログが表示されることを確認
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    // 削除ダイアログが表示されていることを確認
-    const dialog = document.getElementById('delete-dialog');
-    expect(dialog).toBeTruthy();
-    expect(dialog?.textContent).toContain('テストブックマーク');
-
     // 確認ボタンをクリック
+    const dialog = document.getElementById('delete-dialog');
     const confirmBtn = dialog?.querySelector(
       '.delete-dialog-confirm'
     ) as HTMLElement;
-    expect(confirmBtn).toBeTruthy();
     confirmBtn.click();
 
     // 削除処理の完了を待機
@@ -142,10 +150,29 @@ describe('ブックマーク削除機能のテスト', () => {
       url: 'https://example.com',
     });
     expect(chrome.bookmarks.remove).toHaveBeenCalledWith('bookmark-1');
-    expect(reloadSpy).toHaveBeenCalled();
 
-    // ダイアログが削除されていることを確認
-    expect(document.getElementById('delete-dialog')).toBeNull();
+    // bookmarks-changed イベントが発火されている
+    expect(changedSpy).toHaveBeenCalled();
+
+    // Undo Toast が表示されている
+    const toast = document.querySelector('.app-toast');
+    expect(toast).not.toBeNull();
+    expect(toast?.textContent).toContain('テストブックマーク');
+    expect(toast?.querySelector('.app-toast-action')?.textContent).toContain(
+      '元に戻す'
+    );
+
+    // 「元に戻す」を押すと chrome.bookmarks.create が呼ばれる
+    (toast?.querySelector('.app-toast-action') as HTMLButtonElement).click();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(chrome.bookmarks.create).toHaveBeenCalledWith({
+      parentId: 'folder-1',
+      index: 2,
+      title: 'テストブックマーク',
+      url: 'https://example.com',
+    });
+
+    document.removeEventListener('bookmarks-changed', changedSpy);
   });
 
   it('削除対象のブックマークが見つからない場合はエラーメッセージが表示される', async () => {
@@ -157,10 +184,6 @@ describe('ブックマーク削除機能のテスト', () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => {});
-
-    // location.reload のモック
-    const reloadSpy = vi.fn();
-    globalThis.location = { reload: reloadSpy } as any;
 
     // テスト用の削除ボタン要素を作成
     const deleteBtn = document.createElement('button');
@@ -196,7 +219,6 @@ describe('ブックマーク削除機能のテスト', () => {
       expect.any(Error)
     );
     expect(chrome.bookmarks.remove).not.toHaveBeenCalled();
-    expect(reloadSpy).not.toHaveBeenCalled();
   });
 
   it('削除処理でエラーが発生した場合はエラーメッセージが表示される', async () => {
@@ -217,10 +239,6 @@ describe('ブックマーク削除機能のテスト', () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => {});
-
-    // location.reload のモック
-    const reloadSpy = vi.fn();
-    globalThis.location = { reload: reloadSpy } as any;
 
     // テスト用の削除ボタン要素を作成
     const deleteBtn = document.createElement('button');
@@ -255,7 +273,6 @@ describe('ブックマーク削除機能のテスト', () => {
       '❌ ブックマークの削除に失敗しました:',
       expect.any(Error)
     );
-    expect(reloadSpy).not.toHaveBeenCalled();
   });
 
   it('URLやタイトルが取得できない場合はエラーメッセージが表示される', async () => {

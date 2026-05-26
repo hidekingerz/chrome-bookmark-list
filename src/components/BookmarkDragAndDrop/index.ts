@@ -1,3 +1,5 @@
+import { UndoManager } from '../UndoManager/index.js';
+
 /**
  * ブックマークのドラッグ&ドロップ機能を管理するクラス
  */
@@ -219,6 +221,9 @@ export class BookmarkDragAndDrop {
       }
 
       const bookmark = bookmarks[0];
+      const originalParentId = bookmark.parentId;
+      const originalIndex = bookmark.index;
+      const bookmarkTitle = bookmark.title;
 
       // ブックマークを移動
       await chrome.bookmarks.move(bookmark.id, {
@@ -229,6 +234,23 @@ export class BookmarkDragAndDrop {
         bookmarkId: bookmark.id,
         newParentId: targetFolderId,
       });
+
+      // Undo 可能な操作として登録 (id は move では維持される)
+      if (originalParentId !== undefined) {
+        UndoManager.getInstance().register({
+          message: `「${bookmarkTitle}」を移動しました`,
+          undo: async () => {
+            await chrome.bookmarks.move(bookmark.id, {
+              parentId: originalParentId,
+              index: originalIndex,
+            });
+            const event = new CustomEvent('bookmarks-changed', {
+              detail: { action: 'undo-move' },
+            });
+            document.dispatchEvent(event);
+          },
+        });
+      }
     } catch (error) {
       console.error('Chrome Bookmarks API エラー:', error);
       throw error;
