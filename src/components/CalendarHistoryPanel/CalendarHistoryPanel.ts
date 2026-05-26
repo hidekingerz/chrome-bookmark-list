@@ -87,11 +87,15 @@ export class CalendarHistoryPanel {
       });
 
     // 検索入力の監視
+    // selectedDate が無くても毎回 renderTimeline を呼ぶことで、入力ごとに DOM が更新され
+    // ブラウザの undo (Cmd+Z) が他の検索欄と同様に細かい単位で動くようにする
     this.searchInput?.addEventListener('input', (e) => {
       const target = e.target as HTMLInputElement;
       this.searchTerm = target.value;
       if (this.selectedDate) {
         this.renderTimeline(this.selectedDate);
+      } else {
+        this.renderEmptyTimeline();
       }
     });
 
@@ -278,6 +282,20 @@ export class CalendarHistoryPanel {
         }
       });
     }
+  }
+
+  /**
+   * 日付未選択時のプレースホルダー表示。
+   * 検索入力時にも毎回呼び出すことで DOM を更新し、ブラウザの undo 履歴を
+   * 細かい単位で記録させる目的も兼ねる。
+   */
+  private renderEmptyTimeline(): void {
+    const timelineElement = this.container.querySelector(
+      '.history-timeline'
+    ) as HTMLElement;
+    if (!timelineElement) return;
+    timelineElement.innerHTML =
+      '<div class="timeline-placeholder">日付を選択してください</div>';
   }
 
   private renderTimeline(date: Date): void {
