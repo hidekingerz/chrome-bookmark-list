@@ -259,6 +259,10 @@ export class BookmarkFolderEvents {
     const hasBookmarks = allUrls.length > 0;
     const isExpandable =
       folder.subfolders.length > 0 || folder.bookmarks.length > 0;
+    // ブックマークバー・その他のブックマーク等の最上位パーマネントフォルダは
+    // Chrome の制約でリネーム不可。allBookmarks 配列のトップレベルに含まれる
+    // フォルダがそれに該当する
+    const isPermanentRoot = allBookmarks.some((f) => f.id === folder.id);
 
     const items: ContextMenuItem[] = [
       {
@@ -291,6 +295,7 @@ export class BookmarkFolderEvents {
       {
         label: 'フォルダ名を変更',
         icon: '✏️',
+        disabled: isPermanentRoot,
         onSelect: () => {
           void this.folderRenamer.openRenameDialog(folder.id);
         },

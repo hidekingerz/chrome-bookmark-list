@@ -155,7 +155,7 @@ describe('右クリックコンテキストメニュー統合', () => {
     expect(labels).toContain('フォルダを削除');
   });
 
-  it('フォルダ削除のみ disabled、新規サブフォルダ・リネームは有効', () => {
+  it('最上位フォルダ（ブックマークバー相当）はリネーム disabled、フォルダ削除も disabled、新規サブフォルダは有効', () => {
     const folderHeader = container.querySelector(
       '.folder-header'
     ) as HTMLElement;
@@ -174,9 +174,48 @@ describe('右クリックコンテキストメニュー統合', () => {
       b.textContent?.includes('新規サブフォルダ')
     );
 
-    expect(rename?.disabled).toBe(false);
+    // 最上位フォルダは Chrome の制約でリネーム不可
+    expect(rename?.disabled).toBe(true);
     expect(remove?.disabled).toBe(true);
     expect(newSub?.disabled).toBe(false);
+  });
+
+  it('サブフォルダではリネームが有効になる', () => {
+    const parentFolder: BookmarkFolder = {
+      id: 'parent-1',
+      title: '親',
+      expanded: true,
+      bookmarks: [],
+      subfolders: [
+        {
+          id: 'child-1',
+          title: '子',
+          expanded: true,
+          bookmarks: [],
+          subfolders: [],
+        },
+      ],
+    };
+    const subBookmarks = [parentFolder];
+    const renderer = new BookmarkFolderRenderer();
+    container.innerHTML = renderer.renderFolders(subBookmarks);
+    events.setupFolderClickHandler(container, subBookmarks);
+
+    const childFolderEl = container.querySelector(
+      '[data-folder-id="child-1"]'
+    ) as HTMLElement;
+    const childHeader = childFolderEl.querySelector(
+      '.folder-header'
+    ) as HTMLElement;
+    dispatchContextMenu(childHeader);
+
+    const buttons = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.context-menu-item')
+    );
+    const rename = buttons.find((b) =>
+      b.textContent?.includes('フォルダ名を変更')
+    );
+    expect(rename?.disabled).toBe(false);
   });
 
   it('「中のブックマークを全て新しいタブで開く」を選択すると全URLが開かれる', () => {
