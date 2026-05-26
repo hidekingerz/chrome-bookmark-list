@@ -155,7 +155,7 @@ describe('右クリックコンテキストメニュー統合', () => {
     expect(labels).toContain('フォルダを削除');
   });
 
-  it('フォルダの未実装メニュー項目は disabled になっている', () => {
+  it('フォルダの未実装メニュー項目（リネーム・削除）は disabled、新規サブフォルダは有効', () => {
     const folderHeader = container.querySelector(
       '.folder-header'
     ) as HTMLElement;
@@ -176,7 +176,7 @@ describe('右クリックコンテキストメニュー統合', () => {
 
     expect(rename?.disabled).toBe(true);
     expect(remove?.disabled).toBe(true);
-    expect(newSub?.disabled).toBe(true);
+    expect(newSub?.disabled).toBe(false);
   });
 
   it('「中のブックマークを全て新しいタブで開く」を選択すると全URLが開かれる', () => {

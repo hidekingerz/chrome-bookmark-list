@@ -1,5 +1,6 @@
 import { findFolderById } from '../../scripts/utils.js';
 import type { BookmarkFolder, BookmarkItem } from '../../types/bookmark.js';
+import { FolderCreator } from '../BookmarkActions/FolderCreator.js';
 import { BookmarkActions } from '../BookmarkActions/index.js';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index.js';
 
@@ -12,10 +13,12 @@ export class BookmarkFolderEvents {
   private contextMenuHandler: ((e: Event) => void) | null = null;
   private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
   private contextMenu: ContextMenu;
+  private folderCreator: FolderCreator;
 
   constructor() {
     this.bookmarkActions = new BookmarkActions();
     this.contextMenu = new ContextMenu();
+    this.folderCreator = new FolderCreator();
   }
 
   /**
@@ -278,9 +281,8 @@ export class BookmarkFolderEvents {
         label: '新規サブフォルダ',
         icon: '➕',
         separatorBefore: true,
-        disabled: true,
         onSelect: () => {
-          console.warn('新規サブフォルダ機能は別 issue (#51) で実装予定です');
+          void this.folderCreator.openCreateDialog(folder.id);
         },
       },
       {
