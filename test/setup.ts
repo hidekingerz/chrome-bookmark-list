@@ -13,6 +13,7 @@ const mockChrome = {
     search: vi.fn(),
     update: vi.fn(),
     getChildren: vi.fn(),
+    getSubTree: vi.fn(),
   },
   tabs: {
     create: vi.fn(),

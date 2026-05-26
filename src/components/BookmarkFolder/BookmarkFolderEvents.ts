@@ -1,6 +1,7 @@
 import { findFolderById } from '../../scripts/utils.js';
 import type { BookmarkFolder, BookmarkItem } from '../../types/bookmark.js';
 import { FolderCreator } from '../BookmarkActions/FolderCreator.js';
+import { FolderDeleter } from '../BookmarkActions/FolderDeleter.js';
 import { FolderRenamer } from '../BookmarkActions/FolderRenamer.js';
 import { BookmarkActions } from '../BookmarkActions/index.js';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index.js';
@@ -20,12 +21,14 @@ export class BookmarkFolderEvents {
   private contextMenu: ContextMenu;
   private folderCreator: FolderCreator;
   private folderRenamer: FolderRenamer;
+  private folderDeleter: FolderDeleter;
 
   constructor() {
     this.bookmarkActions = new BookmarkActions();
     this.contextMenu = new ContextMenu();
     this.folderCreator = new FolderCreator();
     this.folderRenamer = new FolderRenamer();
+    this.folderDeleter = new FolderDeleter();
   }
 
   /**
@@ -308,9 +311,9 @@ export class BookmarkFolderEvents {
       {
         label: 'フォルダを削除',
         icon: '🗑️',
-        disabled: true,
+        disabled: isPermanentRoot,
         onSelect: () => {
-          console.warn('フォルダ削除機能は別 issue (#53) で実装予定です');
+          void this.folderDeleter.openDeleteDialog(folder.id);
         },
       },
     ];

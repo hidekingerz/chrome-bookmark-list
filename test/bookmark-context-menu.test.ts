@@ -164,8 +164,7 @@ describe('右クリックコンテキストメニュー統合', () => {
     expect(labels).toContain('フォルダを削除');
   });
 
-  it('ユーザーフォルダではリネームが有効', () => {
-    // folder-1 はユーザーフォルダ（ブックマークバー直下相当）
+  it('ユーザーフォルダではリネーム・削除・新規サブフォルダがすべて有効', () => {
     const folderHeader = container.querySelector(
       '[data-folder-id="folder-1"] .folder-header'
     ) as HTMLElement;
@@ -185,12 +184,11 @@ describe('右クリックコンテキストメニュー統合', () => {
     );
 
     expect(rename?.disabled).toBe(false);
-    expect(remove?.disabled).toBe(true);
+    expect(remove?.disabled).toBe(false);
     expect(newSub?.disabled).toBe(false);
   });
 
-  it('Chrome のパーマネントフォルダ (id=2) ではリネームが disabled', () => {
-    // id=2 (その他のブックマーク) を右クリック
+  it('Chrome のパーマネントフォルダ (id=2) ではリネーム・削除ともに disabled', () => {
     const folderHeader = container.querySelector(
       '[data-folder-id="2"] .folder-header'
     ) as HTMLElement;
@@ -202,7 +200,11 @@ describe('右クリックコンテキストメニュー統合', () => {
     const rename = buttons.find((b) =>
       b.textContent?.includes('フォルダ名を変更')
     );
+    const remove = buttons.find((b) =>
+      b.textContent?.includes('フォルダを削除')
+    );
     expect(rename?.disabled).toBe(true);
+    expect(remove?.disabled).toBe(true);
   });
 
   it('「中のブックマークを全て新しいタブで開く」を選択すると全URLが開かれる', () => {
