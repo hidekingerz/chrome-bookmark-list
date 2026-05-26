@@ -1,6 +1,7 @@
 import { findFolderById } from '../../scripts/utils.js';
-import type { BookmarkFolder } from '../../types/bookmark.js';
+import type { BookmarkFolder, BookmarkItem } from '../../types/bookmark.js';
 import { BookmarkActions } from '../BookmarkActions/index.js';
+import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index.js';
 
 /**
  * ブックマークフォルダーのイベント処理を担当するクラス
@@ -8,9 +9,13 @@ import { BookmarkActions } from '../BookmarkActions/index.js';
 export class BookmarkFolderEvents {
   private bookmarkActions: BookmarkActions;
   private clickHandler: ((e: Event) => void) | null = null;
+  private contextMenuHandler: ((e: Event) => void) | null = null;
+  private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+  private contextMenu: ContextMenu;
 
   constructor() {
     this.bookmarkActions = new BookmarkActions();
+    this.contextMenu = new ContextMenu();
   }
 
   /**
@@ -57,6 +62,301 @@ export class BookmarkFolderEvents {
 
     // イベントリスナーを登録
     container.addEventListener('click', this.clickHandler);
+
+    // コンテキストメニューのイベントリスナーを設定
+    this.setupContextMenuHandler(container, allBookmarks);
+  }
+
+  /**
+   * 右クリック・Shift+F10 によるコンテキストメニュー表示を設定する
+   */
+  private setupContextMenuHandler(
+    container: HTMLElement,
+    allBookmarks: BookmarkFolder[]
+  ): void {
+    if (this.contextMenuHandler) {
+      container.removeEventListener('contextmenu', this.contextMenuHandler);
+    }
+    if (this.keydownHandler) {
+      container.removeEventListener('keydown', this.keydownHandler);
+    }
+
+    this.contextMenuHandler = (e: Event) => {
+      const mouseEvent = e as MouseEvent;
+      const target = mouseEvent.target as HTMLElement;
+
+      const bookmarkItem = target.closest(
+        '.bookmark-item'
+      ) as HTMLElement | null;
+      const folderHeader = target.closest(
+        '.folder-header'
+      ) as HTMLElement | null;
+
+      if (bookmarkItem) {
+        mouseEvent.preventDefault();
+        this.openBookmarkContextMenu(
+          mouseEvent.clientX,
+          mouseEvent.clientY,
+          bookmarkItem
+        );
+      } else if (folderHeader) {
+        mouseEvent.preventDefault();
+        this.openFolderContextMenu(
+          mouseEvent.clientX,
+          mouseEvent.clientY,
+          folderHeader,
+          allBookmarks
+        );
+      }
+    };
+
+    this.keydownHandler = (e: KeyboardEvent) => {
+      const isMenuKey =
+        e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10');
+      if (!isMenuKey) return;
+
+      const target = e.target as HTMLElement;
+      const bookmarkItem = target.closest(
+        '.bookmark-item'
+      ) as HTMLElement | null;
+      const folderHeader = target.closest(
+        '.folder-header'
+      ) as HTMLElement | null;
+
+      const activeElement = (bookmarkItem ??
+        folderHeader) as HTMLElement | null;
+      if (!activeElement) return;
+
+      e.preventDefault();
+      const rect = activeElement.getBoundingClientRect();
+      const x = rect.left + 8;
+      const y = rect.bottom;
+
+      if (bookmarkItem) {
+        this.openBookmarkContextMenu(x, y, bookmarkItem);
+      } else if (folderHeader) {
+        this.openFolderContextMenu(x, y, folderHeader, allBookmarks);
+      }
+    };
+
+    container.addEventListener('contextmenu', this.contextMenuHandler);
+    container.addEventListener('keydown', this.keydownHandler);
+  }
+
+  /**
+   * ブックマーク用コンテキストメニューを開く
+   */
+  private openBookmarkContextMenu(
+    x: number,
+    y: number,
+    bookmarkItem: HTMLElement
+  ): void {
+    const link = bookmarkItem.querySelector(
+      '.bookmark-link'
+    ) as HTMLElement | null;
+    const editBtn = bookmarkItem.querySelector(
+      '.bookmark-edit-btn'
+    ) as HTMLElement | null;
+    const deleteBtn = bookmarkItem.querySelector(
+      '.bookmark-delete-btn'
+    ) as HTMLElement | null;
+
+    const url = link?.getAttribute('data-url') ?? '';
+    const title =
+      editBtn?.getAttribute('data-bookmark-title') ??
+      bookmarkItem.querySelector('.bookmark-title')?.textContent?.trim() ??
+      '';
+
+    if (!url) {
+      return;
+    }
+
+    const items: ContextMenuItem[] = [
+      {
+        label: '開く',
+        icon: '🔗',
+        onSelect: () => {
+          chrome.tabs.update({ url });
+        },
+      },
+      {
+        label: '新しいタブで開く',
+        icon: '🆕',
+        onSelect: () => {
+          chrome.tabs.create({ url, active: true });
+        },
+      },
+      {
+        label: 'バックグラウンドで開く',
+        icon: '↗️',
+        onSelect: () => {
+          chrome.tabs.create({ url, active: false });
+        },
+      },
+      {
+        label: 'URLをコピー',
+        icon: '📋',
+        separatorBefore: true,
+        onSelect: async () => {
+          await this.copyToClipboard(url, title);
+        },
+      },
+      {
+        label: '編集',
+        icon: '✏️',
+        separatorBefore: true,
+        disabled: !editBtn,
+        onSelect: () => {
+          if (editBtn) {
+            this.bookmarkActions.handleEdit(editBtn);
+          }
+        },
+      },
+      {
+        label: '削除',
+        icon: '🗑️',
+        disabled: !deleteBtn,
+        onSelect: () => {
+          if (deleteBtn) {
+            this.bookmarkActions.handleDelete(deleteBtn);
+          }
+        },
+      },
+    ];
+
+    this.contextMenu.open(x, y, items);
+  }
+
+  /**
+   * フォルダ用コンテキストメニューを開く
+   */
+  private openFolderContextMenu(
+    x: number,
+    y: number,
+    folderHeader: HTMLElement,
+    allBookmarks: BookmarkFolder[]
+  ): void {
+    const folderElement = folderHeader.closest(
+      '.bookmark-folder'
+    ) as HTMLElement | null;
+    const folderId = folderElement?.getAttribute('data-folder-id');
+    if (!folderId || !folderElement) {
+      return;
+    }
+
+    const folder = this.findFolder(allBookmarks, folderId);
+    if (!folder) {
+      return;
+    }
+
+    const allUrls = this.collectAllBookmarkUrls(folder);
+    const hasBookmarks = allUrls.length > 0;
+    const isExpandable =
+      folder.subfolders.length > 0 || folder.bookmarks.length > 0;
+
+    const items: ContextMenuItem[] = [
+      {
+        label: folder.expanded ? '折りたたむ' : '展開する',
+        icon: folder.expanded ? '📁' : '📂',
+        disabled: !isExpandable,
+        onSelect: () => {
+          this.toggleFolder(folder, folderHeader, folderElement, allBookmarks);
+        },
+      },
+      {
+        label: `中のブックマークを全て新しいタブで開く (${allUrls.length})`,
+        icon: '🆕',
+        separatorBefore: true,
+        disabled: !hasBookmarks,
+        onSelect: () => {
+          for (const url of allUrls) {
+            chrome.tabs.create({ url, active: false });
+          }
+        },
+      },
+      {
+        label: '新規サブフォルダ',
+        icon: '➕',
+        separatorBefore: true,
+        disabled: true,
+        onSelect: () => {
+          console.warn('新規サブフォルダ機能は別 issue (#51) で実装予定です');
+        },
+      },
+      {
+        label: 'フォルダ名を変更',
+        icon: '✏️',
+        disabled: true,
+        onSelect: () => {
+          console.warn('フォルダリネーム機能は別 issue (#52) で実装予定です');
+        },
+      },
+      {
+        label: 'フォルダを削除',
+        icon: '🗑️',
+        disabled: true,
+        onSelect: () => {
+          console.warn('フォルダ削除機能は別 issue (#53) で実装予定です');
+        },
+      },
+    ];
+
+    this.contextMenu.open(x, y, items);
+  }
+
+  /**
+   * フォルダの展開状態を切り替える
+   */
+  private toggleFolder(
+    folder: BookmarkFolder,
+    folderHeader: HTMLElement,
+    folderElement: HTMLElement,
+    allBookmarks: BookmarkFolder[]
+  ): void {
+    if (folder.subfolders.length > 0) {
+      this.toggleFolderWithSubfolders(
+        folder,
+        folderHeader,
+        folderElement,
+        allBookmarks
+      );
+    } else if (folder.bookmarks.length > 0) {
+      this.toggleFolderWithBookmarks(folder, folderHeader, folderElement);
+    }
+  }
+
+  /**
+   * フォルダ内の全ブックマークURLを再帰的に収集する
+   */
+  private collectAllBookmarkUrls(folder: BookmarkFolder): string[] {
+    const urls: string[] = folder.bookmarks.map((b: BookmarkItem) => b.url);
+    for (const sub of folder.subfolders) {
+      urls.push(...this.collectAllBookmarkUrls(sub));
+    }
+    return urls;
+  }
+
+  /**
+   * クリップボードにテキストをコピーする
+   */
+  private async copyToClipboard(url: string, _title: string): Promise<void> {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        // フォールバック: 一時的なtextareaを使用
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+      }
+    } catch (error) {
+      console.error('❌ URLのコピーに失敗しました:', error);
+    }
   }
 
   /**
