@@ -175,9 +175,11 @@ export class BookmarkSelection {
 
   /**
    * すべての選択を解除する (ESC など)
+   * 範囲選択のアンカー (lastClickedUrl) もリセットして、状態を完全に初期化する。
    */
   clear(): void {
     this.clearInternal();
+    this.lastClickedUrl = null;
     this.updateToolbar();
     // ESC を押した瞬間に :focus-visible が活性化し、選択時と似た outline
     // だけが残って崩れて見える問題を防ぐため、ブックマーク項目のフォーカスを外す
