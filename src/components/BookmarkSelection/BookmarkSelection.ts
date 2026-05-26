@@ -179,6 +179,16 @@ export class BookmarkSelection {
   clear(): void {
     this.clearInternal();
     this.updateToolbar();
+    // ESC を押した瞬間に :focus-visible が活性化し、選択時と似た outline
+    // だけが残って崩れて見える問題を防ぐため、ブックマーク項目のフォーカスを外す
+    this.blurFocusedBookmarkItem();
+  }
+
+  private blurFocusedBookmarkItem(): void {
+    const active = document.activeElement as HTMLElement | null;
+    if (active?.closest('.bookmark-item, .bookmark-link')) {
+      active.blur();
+    }
   }
 
   private clearInternal(): void {
