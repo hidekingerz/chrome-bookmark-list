@@ -549,6 +549,12 @@ export class BookmarkFolderEvents {
 
     expandIcon.textContent = expanded ? '📂' : '📁';
     expandIcon.classList.toggle('expanded', expanded);
+
+    // フォルダヘッダの aria-expanded も更新する (キーボード操作・スクリーンリーダ用)
+    const folderHeader = expandIcon.closest(
+      '.folder-header'
+    ) as HTMLElement | null;
+    folderHeader?.setAttribute('aria-expanded', expanded ? 'true' : 'false');
   }
 
   /**

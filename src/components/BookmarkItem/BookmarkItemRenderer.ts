@@ -10,8 +10,8 @@ export class BookmarkItemRenderer {
    */
   renderBookmarkItem(bookmark: BookmarkItem): string {
     return `
-      <li class="bookmark-item">
-        <a href="#" class="bookmark-link" data-url="${escapeHtml(bookmark.url)}">
+      <li class="bookmark-item" tabindex="0" role="treeitem" data-bookmark-url="${escapeHtml(bookmark.url)}" data-bookmark-title="${escapeHtml(bookmark.title)}">
+        <a href="#" class="bookmark-link" data-url="${escapeHtml(bookmark.url)}" tabindex="-1">
           <div class="bookmark-favicon-container">
             <div class="favicon-placeholder">🔗</div>
             <img class="bookmark-favicon hidden" alt="" data-bookmark-url="${escapeHtml(bookmark.url)}">

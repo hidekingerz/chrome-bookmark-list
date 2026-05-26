@@ -49,7 +49,7 @@ export class BookmarkFolderRenderer {
         : '';
 
     return `
-      <div class="folder-header ${headerClass}">
+      <div class="folder-header ${headerClass}" tabindex="0" role="treeitem" aria-expanded="${folder.expanded ? 'true' : 'false'}">
         <div class="folder-info">
           ${this.renderFolderIcon(hasSubfolders, hasBookmarks, folder.expanded)}
           <h2 class="folder-title">${escapeHtml(folder.title)}</h2>
