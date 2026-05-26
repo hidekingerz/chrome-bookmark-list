@@ -1668,7 +1668,12 @@ header h1 {
 }
 
 .selection-toolbar-move:hover {
-  filter: brightness(1.05);
+  /* .selection-toolbar-btn:hover の background/border を打ち消して
+     accent gradient を維持したまま明るくする */
+  background: var(--accent-gradient);
+  border-color: transparent;
+  filter: brightness(1.08);
+  box-shadow: var(--shadow-md);
 }
 
 .selection-toolbar-delete {
