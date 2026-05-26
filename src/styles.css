@@ -1653,12 +1653,15 @@ header h1 {
   cursor: pointer;
   font-size: 13px;
   transition: background-color var(--transition), color var(--transition),
-    border-color var(--transition);
+    border-color var(--transition), transform var(--transition),
+    box-shadow var(--transition), filter var(--transition);
 }
 
 .selection-toolbar-btn:hover {
   background: var(--surface-hover);
   border-color: var(--border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .selection-toolbar-move {
@@ -1689,6 +1692,7 @@ header h1 {
 .selection-toolbar-delete:hover {
   background: rgba(220, 38, 38, 0.12);
   border-color: var(--danger);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.18);
 }
 
 .selection-toolbar-clear {
