@@ -8,6 +8,10 @@ const mockChrome = {
     get: vi.fn(),
     create: vi.fn(),
     remove: vi.fn(),
+    removeTree: vi.fn(),
+    move: vi.fn(),
+    search: vi.fn(),
+    update: vi.fn(),
   },
   tabs: {
     create: vi.fn(),
