@@ -50,6 +50,7 @@ describe('右クリックコンテキストメニュー統合', () => {
     mockChrome.tabs.update = vi.fn();
 
     allBookmarks = [
+      // ユーザーフォルダ（ブックマークバー直下に作ったフォルダ相当）
       {
         id: 'folder-1',
         title: 'テストフォルダ',
@@ -66,6 +67,14 @@ describe('右クリックコンテキストメニュー統合', () => {
             favicon: null,
           },
         ],
+        subfolders: [],
+      },
+      // パーマネントフォルダ「その他のブックマーク」相当
+      {
+        id: '2',
+        title: 'その他のブックマーク',
+        expanded: false,
+        bookmarks: [],
         subfolders: [],
       },
     ];
@@ -155,9 +164,10 @@ describe('右クリックコンテキストメニュー統合', () => {
     expect(labels).toContain('フォルダを削除');
   });
 
-  it('フォルダの未実装メニュー項目（リネーム・削除）は disabled、新規サブフォルダは有効', () => {
+  it('ユーザーフォルダではリネームが有効', () => {
+    // folder-1 はユーザーフォルダ（ブックマークバー直下相当）
     const folderHeader = container.querySelector(
-      '.folder-header'
+      '[data-folder-id="folder-1"] .folder-header'
     ) as HTMLElement;
     dispatchContextMenu(folderHeader);
 
@@ -174,9 +184,25 @@ describe('右クリックコンテキストメニュー統合', () => {
       b.textContent?.includes('新規サブフォルダ')
     );
 
-    expect(rename?.disabled).toBe(true);
+    expect(rename?.disabled).toBe(false);
     expect(remove?.disabled).toBe(true);
     expect(newSub?.disabled).toBe(false);
+  });
+
+  it('Chrome のパーマネントフォルダ (id=2) ではリネームが disabled', () => {
+    // id=2 (その他のブックマーク) を右クリック
+    const folderHeader = container.querySelector(
+      '[data-folder-id="2"] .folder-header'
+    ) as HTMLElement;
+    dispatchContextMenu(folderHeader);
+
+    const buttons = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.context-menu-item')
+    );
+    const rename = buttons.find((b) =>
+      b.textContent?.includes('フォルダ名を変更')
+    );
+    expect(rename?.disabled).toBe(true);
   });
 
   it('「中のブックマークを全て新しいタブで開く」を選択すると全URLが開かれる', () => {

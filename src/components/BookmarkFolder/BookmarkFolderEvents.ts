@@ -1,8 +1,13 @@
 import { findFolderById } from '../../scripts/utils.js';
 import type { BookmarkFolder, BookmarkItem } from '../../types/bookmark.js';
 import { FolderCreator } from '../BookmarkActions/FolderCreator.js';
+import { FolderRenamer } from '../BookmarkActions/FolderRenamer.js';
 import { BookmarkActions } from '../BookmarkActions/index.js';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index.js';
+
+// Chrome のパーマネントフォルダの ID
+// 1: ブックマークバー / 2: その他のブックマーク / 3: モバイルのブックマーク
+const PERMANENT_ROOT_IDS = new Set(['1', '2', '3']);
 
 /**
  * ブックマークフォルダーのイベント処理を担当するクラス
@@ -14,11 +19,13 @@ export class BookmarkFolderEvents {
   private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
   private contextMenu: ContextMenu;
   private folderCreator: FolderCreator;
+  private folderRenamer: FolderRenamer;
 
   constructor() {
     this.bookmarkActions = new BookmarkActions();
     this.contextMenu = new ContextMenu();
     this.folderCreator = new FolderCreator();
+    this.folderRenamer = new FolderRenamer();
   }
 
   /**
@@ -256,6 +263,11 @@ export class BookmarkFolderEvents {
     const hasBookmarks = allUrls.length > 0;
     const isExpandable =
       folder.subfolders.length > 0 || folder.bookmarks.length > 0;
+    // ブックマークバー (id=1)・その他のブックマーク (id=2)・モバイルのブックマーク
+    // (id=3) は Chrome のパーマネントフォルダで update / removeTree が必ず失敗する。
+    // ブックマークバー直下のユーザーフォルダはアプリ側で平坦化されて allBookmarks の
+    // トップレベルに並ぶが、それらはリネーム可能なので ID で厳密に判定する。
+    const isPermanentRoot = PERMANENT_ROOT_IDS.has(folder.id);
 
     const items: ContextMenuItem[] = [
       {
@@ -288,9 +300,9 @@ export class BookmarkFolderEvents {
       {
         label: 'フォルダ名を変更',
         icon: '✏️',
-        disabled: true,
+        disabled: isPermanentRoot,
         onSelect: () => {
-          console.warn('フォルダリネーム機能は別 issue (#52) で実装予定です');
+          void this.folderRenamer.openRenameDialog(folder.id);
         },
       },
       {
