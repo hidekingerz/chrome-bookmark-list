@@ -16,6 +16,8 @@ const PERMANENT_ROOT_IDS = new Set(['1', '2', '3']);
 export class BookmarkFolderEvents {
   private bookmarkActions: BookmarkActions;
   private clickHandler: ((e: Event) => void) | null = null;
+  private auxClickHandler: ((e: Event) => void) | null = null;
+  private mouseDownHandler: ((e: Event) => void) | null = null;
   private contextMenuHandler: ((e: Event) => void) | null = null;
   private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
   private contextMenu: ContextMenu;
@@ -75,6 +77,47 @@ export class BookmarkFolderEvents {
 
     // イベントリスナーを登録
     container.addEventListener('click', this.clickHandler);
+
+    // 中クリック（auxclick）でブックマークを新しいタブ（バックグラウンド）で開く
+    if (this.auxClickHandler) {
+      container.removeEventListener('auxclick', this.auxClickHandler);
+    }
+    this.auxClickHandler = (e: Event) => {
+      const mouseEvent = e as MouseEvent;
+      // ホイールクリック（中ボタン）のみを対象にする
+      if (mouseEvent.button !== 1) {
+        return;
+      }
+      const target = mouseEvent.target as HTMLElement;
+      const bookmarkLink = target.closest(
+        '.bookmark-link'
+      ) as HTMLElement | null;
+      if (!bookmarkLink) {
+        return;
+      }
+      this.handleBookmarkMiddleClick(mouseEvent, bookmarkLink);
+    };
+    container.addEventListener('auxclick', this.auxClickHandler);
+
+    // 中クリック時にブラウザのオートスクロールが発動しないよう mousedown で抑制
+    if (this.mouseDownHandler) {
+      container.removeEventListener('mousedown', this.mouseDownHandler);
+    }
+    this.mouseDownHandler = (e: Event) => {
+      const mouseEvent = e as MouseEvent;
+      if (mouseEvent.button !== 1) {
+        return;
+      }
+      const target = mouseEvent.target as HTMLElement;
+      const bookmarkLink = target.closest(
+        '.bookmark-link'
+      ) as HTMLElement | null;
+      if (!bookmarkLink) {
+        return;
+      }
+      mouseEvent.preventDefault();
+    };
+    container.addEventListener('mousedown', this.mouseDownHandler);
 
     // コンテキストメニューのイベントリスナーを設定
     this.setupContextMenuHandler(container, allBookmarks);
@@ -396,13 +439,39 @@ export class BookmarkFolderEvents {
 
   /**
    * ブックマークリンククリックの処理
+   *
+   * - 通常クリック: 新しいタブ（アクティブ）で開く
+   * - Cmd/Ctrl + クリック: 新しいタブ（バックグラウンド）で開く
    */
   private handleBookmarkClick(e: Event, bookmarkLink: HTMLElement): void {
     e.preventDefault();
     const url = bookmarkLink.getAttribute('data-url');
-    if (url) {
-      chrome.tabs.create({ url: url });
+    if (!url) {
+      return;
     }
+
+    const mouseEvent = e as MouseEvent;
+    const openInBackground = Boolean(mouseEvent.metaKey || mouseEvent.ctrlKey);
+
+    chrome.tabs.create({ url, active: !openInBackground });
+  }
+
+  /**
+   * ブックマークリンクの中クリック処理
+   *
+   * 中クリックでは新しいタブをバックグラウンドで開く（フォーカス移動なし）
+   */
+  private handleBookmarkMiddleClick(
+    e: MouseEvent,
+    bookmarkLink: HTMLElement
+  ): void {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = bookmarkLink.getAttribute('data-url');
+    if (!url) {
+      return;
+    }
+    chrome.tabs.create({ url, active: false });
   }
 
   /**
