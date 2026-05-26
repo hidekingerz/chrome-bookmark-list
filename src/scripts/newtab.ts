@@ -1,6 +1,7 @@
 import { BookmarkDragAndDrop } from '../components/BookmarkDragAndDrop/index.js';
 import { CalendarHistoryPanel } from '../components/CalendarHistoryPanel/index.js';
 import { HistoryPanel } from '../components/HistoryPanel/index.js';
+import { KeyboardShortcuts } from '../components/KeyboardShortcuts/index.js';
 import { TabController } from '../components/TabController/index.js';
 import { UndoManager } from '../components/UndoManager/index.js';
 import { SELECTORS } from '../constants/index.js';
@@ -72,6 +73,9 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
 
   // Undo 機能 (Cmd/Ctrl+Z) の初期化
   UndoManager.getInstance().initialize();
+
+  // キーボードショートカットの初期化 (矢印・Enter・Delete・F2・Cmd/Ctrl+F・?)
+  KeyboardShortcuts.getInstance().initialize();
 
   // ブックマーク変更イベントリスナーを追加
   document.addEventListener('bookmarks-changed', async () => {
