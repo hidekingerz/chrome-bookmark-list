@@ -89,7 +89,7 @@ export class FolderCreator {
           </div>
           <div class="edit-dialog-actions">
             <button type="button" class="edit-dialog-cancel">キャンセル</button>
-            <button type="button" class="folder-create-confirm">作成</button>
+            <button type="button" class="edit-dialog-save folder-create-confirm">作成</button>
           </div>
         </div>
       </div>
