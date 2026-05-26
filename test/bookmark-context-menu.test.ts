@@ -155,7 +155,7 @@ describe('右クリックコンテキストメニュー統合', () => {
     expect(labels).toContain('フォルダを削除');
   });
 
-  it('フォルダの未実装メニュー項目（リネーム・削除）は disabled、新規サブフォルダは有効', () => {
+  it('フォルダ削除のみ disabled、新規サブフォルダ・リネームは有効', () => {
     const folderHeader = container.querySelector(
       '.folder-header'
     ) as HTMLElement;
@@ -174,7 +174,7 @@ describe('右クリックコンテキストメニュー統合', () => {
       b.textContent?.includes('新規サブフォルダ')
     );
 
-    expect(rename?.disabled).toBe(true);
+    expect(rename?.disabled).toBe(false);
     expect(remove?.disabled).toBe(true);
     expect(newSub?.disabled).toBe(false);
   });

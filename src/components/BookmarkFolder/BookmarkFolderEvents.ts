@@ -1,6 +1,7 @@
 import { findFolderById } from '../../scripts/utils.js';
 import type { BookmarkFolder, BookmarkItem } from '../../types/bookmark.js';
 import { FolderCreator } from '../BookmarkActions/FolderCreator.js';
+import { FolderRenamer } from '../BookmarkActions/FolderRenamer.js';
 import { BookmarkActions } from '../BookmarkActions/index.js';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index.js';
 
@@ -14,11 +15,13 @@ export class BookmarkFolderEvents {
   private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
   private contextMenu: ContextMenu;
   private folderCreator: FolderCreator;
+  private folderRenamer: FolderRenamer;
 
   constructor() {
     this.bookmarkActions = new BookmarkActions();
     this.contextMenu = new ContextMenu();
     this.folderCreator = new FolderCreator();
+    this.folderRenamer = new FolderRenamer();
   }
 
   /**
@@ -288,9 +291,8 @@ export class BookmarkFolderEvents {
       {
         label: 'フォルダ名を変更',
         icon: '✏️',
-        disabled: true,
         onSelect: () => {
-          console.warn('フォルダリネーム機能は別 issue (#52) で実装予定です');
+          void this.folderRenamer.openRenameDialog(folder.id);
         },
       },
       {
