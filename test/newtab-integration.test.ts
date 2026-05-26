@@ -488,6 +488,7 @@ describe('実際のフォルダクリック機能の統合テスト', () => {
     // Chrome API が呼ばれたことを確認
     expect(chrome.tabs.create).toHaveBeenCalledWith({
       url: 'https://github.com',
+      active: true,
     });
   });
 
