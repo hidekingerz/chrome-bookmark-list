@@ -1396,14 +1396,16 @@ header h1 {
 .context-menu {
   position: fixed;
   min-width: 220px;
-  /* ブックマークカードと同じ --surface を使うと視覚的に同化するため、
-     より明度差のある --surface-2 をベースにする。
-     ライトモードでは少し青みのあるグレー、ダークモードでは少し明るい黒。 */
-  background-color: var(--surface-2);
+  /* デフォルトはライトモード想定。
+     ページ背景 (#eef1f8) ・カード (#ffffff) のどちらとも区別がつくよう、
+     純白に強い影と明確な border で立体感を出す。 */
+  background-color: #ffffff;
   background-image: none;
-  border: 1px solid var(--border-strong, var(--border));
+  border: 1px solid #d4d8e6;
   border-radius: 10px;
-  box-shadow: var(--shadow-lg);
+  box-shadow:
+    0 16px 48px rgba(20, 24, 51, 0.18),
+    0 2px 8px rgba(20, 24, 51, 0.1);
   padding: 6px;
   z-index: 10000;
   display: flex;
@@ -1416,7 +1418,7 @@ header h1 {
   isolation: isolate;
 }
 
-/* ダークモードでさらに明確に浮き上がらせる */
+/* ダークモードでも明確に浮き上がらせる */
 @media (prefers-color-scheme: dark) {
   .context-menu {
     background-color: #262b3a;
