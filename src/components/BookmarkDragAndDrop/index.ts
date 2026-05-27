@@ -1,4 +1,5 @@
 import { UndoManager } from '../UndoManager/index.js';
+import { Autoscroller } from './Autoscroller.js';
 
 /**
  * ブックマークのドラッグ&ドロップ機能を管理するクラス
@@ -11,6 +12,7 @@ export class BookmarkDragAndDrop {
   } | null = null;
 
   private dropIndicator: HTMLElement | null = null;
+  private autoscroller: Autoscroller = new Autoscroller();
 
   /**
    * ドラッグ&ドロップ機能を初期化する
@@ -108,6 +110,7 @@ export class BookmarkDragAndDrop {
     }
 
     this.draggedBookmark = null;
+    this.autoscroller.stop();
     console.log('ドラッグ終了');
   }
 
@@ -115,6 +118,11 @@ export class BookmarkDragAndDrop {
    * ドラッグオーバー時の処理
    */
   private handleDragOver(event: DragEvent): void {
+    // ドラッグ中なら、フォルダ上かに関係なくオートスクロールを更新する
+    if (this.draggedBookmark) {
+      this.autoscroller.update(event.clientY, window.innerHeight);
+    }
+
     const target = event.target as HTMLElement;
     const folderHeader = target.closest('.folder-header') as HTMLElement;
 
@@ -166,6 +174,7 @@ export class BookmarkDragAndDrop {
    */
   private handleDrop(event: DragEvent): void {
     event.preventDefault();
+    this.autoscroller.stop();
 
     const target = event.target as HTMLElement;
     const folderHeader = target.closest('.folder-header') as HTMLElement;
