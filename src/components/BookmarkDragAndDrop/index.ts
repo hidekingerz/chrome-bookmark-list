@@ -82,7 +82,6 @@ export class BookmarkDragAndDrop {
     // ドラッグ中の見た目を変更
     bookmarkLink.classList.add('dragging');
 
-    console.log('ドラッグ開始:', { url, title, folderId });
   }
 
   /**
@@ -111,7 +110,6 @@ export class BookmarkDragAndDrop {
 
     this.draggedBookmark = null;
     this.autoscroller.stop();
-    console.log('ドラッグ終了');
   }
 
   /**
@@ -196,13 +194,6 @@ export class BookmarkDragAndDrop {
     // ブックマーク移動処理を実行
     this.moveBookmark(this.draggedBookmark.url, targetFolderId)
       .then(() => {
-        console.log('ブックマーク移動成功:', {
-          from: this.draggedBookmark?.originalFolderId,
-          to: targetFolderId,
-          bookmark: this.draggedBookmark?.title,
-        });
-
-        // UIを更新
         this.refreshBookmarkList();
       })
       .catch((error) => {
@@ -237,11 +228,6 @@ export class BookmarkDragAndDrop {
       // ブックマークを移動
       await chrome.bookmarks.move(bookmark.id, {
         parentId: targetFolderId,
-      });
-
-      console.log('Chrome Bookmarks API: ブックマーク移動完了', {
-        bookmarkId: bookmark.id,
-        newParentId: targetFolderId,
       });
 
       // Undo 可能な操作として登録 (id は move では維持される)
