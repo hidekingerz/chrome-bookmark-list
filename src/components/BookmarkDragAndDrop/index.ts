@@ -207,6 +207,11 @@ export class BookmarkDragAndDrop {
       el.classList.remove('drop-target-invalid');
     }
     for (const el of Array.from(
+      document.querySelectorAll('.drop-zone-before, .drop-zone-after')
+    )) {
+      el.classList.remove('drop-zone-before', 'drop-zone-after');
+    }
+    for (const el of Array.from(
       document.querySelectorAll('.folder-header.dragging')
     )) {
       el.classList.remove('dragging');
@@ -273,8 +278,12 @@ export class BookmarkDragAndDrop {
     const folderHeader = target.closest('.folder-header') as HTMLElement;
 
     if (folderHeader) {
-      folderHeader.classList.remove('drop-target-highlight');
-      folderHeader.classList.remove('drop-target-invalid');
+      folderHeader.classList.remove(
+        'drop-target-highlight',
+        'drop-target-invalid',
+        'drop-zone-before',
+        'drop-zone-after'
+      );
     }
   }
 
@@ -463,7 +472,25 @@ export class BookmarkDragAndDrop {
   }
 
   /**
-   * 移動先として無効なフォルダか判定する。
+   * フォルダドロップのゾーンを判定する。
+   * - 上 40%: before (target の前に並び替え)
+   * - 中央 20%: into (target のサブフォルダ化)
+   * - 下 40%: after (target の後に並び替え)
+   * 並び替えの方が頻度が高いと想定し、上下を広めに取る。
+   */
+  private detectFolderDropZone(
+    clientY: number,
+    folderHeader: HTMLElement
+  ): 'before' | 'into' | 'after' {
+    const rect = folderHeader.getBoundingClientRect();
+    const ratio = (clientY - rect.top) / rect.height;
+    if (ratio < 0.4) return 'before';
+    if (ratio > 0.6) return 'after';
+    return 'into';
+  }
+
+  /**
+   * "into" ドロップが無効か判定する。
    * - 自分自身: 同じ要素への移動
    * - 自分の子孫: ループを防ぐ
    * - 現在の親フォルダ: 実質変化なしの no-op を防ぐ
@@ -480,6 +507,43 @@ export class BookmarkDragAndDrop {
       '.bookmark-folder'
     ) as HTMLElement | null;
     if (currentParent && currentParent === targetFolderElement) return true;
+
+    return false;
+  }
+
+  /**
+   * "before" / "after" の並び替えが無効か判定する。
+   * - 自分自身: 同じ要素を起点・目標にできない
+   * - 自分の子孫: ループを防ぐ
+   * - 並び替え後に同じ位置になる no-op (例: 既に「target の直前」にあるのに
+   *   target の "before" にドロップ): 混乱を避けて invalid にする
+   */
+  private isInvalidFolderReorder(
+    sourceElement: HTMLElement,
+    targetFolderElement: HTMLElement,
+    zone: 'before' | 'after'
+  ): boolean {
+    if (targetFolderElement === sourceElement) return true;
+    if (sourceElement.contains(targetFolderElement)) return true;
+
+    // 同じ親内で no-op になるケースを invalid 扱いにする
+    const sameParentContainer =
+      sourceElement.parentElement === targetFolderElement.parentElement;
+    if (sameParentContainer) {
+      // DOM 上の表示順を使った隣接判定
+      const siblings = Array.from(
+        targetFolderElement.parentElement?.children ?? []
+      ).filter((el) =>
+        (el as HTMLElement).classList.contains('bookmark-folder')
+      );
+      const srcIdx = siblings.indexOf(sourceElement);
+      const tgtIdx = siblings.indexOf(targetFolderElement);
+      if (srcIdx === -1 || tgtIdx === -1) return false;
+
+      // 既に対応位置に居る場合は no-op (例: src=0, tgt=1, "before" → src は既に tgt の前)
+      if (zone === 'before' && srcIdx === tgtIdx - 1) return true;
+      if (zone === 'after' && srcIdx === tgtIdx + 1) return true;
+    }
 
     return false;
   }
@@ -502,9 +566,18 @@ export class BookmarkDragAndDrop {
     if (!targetFolderId) return;
 
     const sourceElement = this.draggedFolder.sourceElement;
+    const zone = this.detectFolderDropZone(event.clientY, folderHeader);
 
-    // 自分自身・子孫・現在の親フォルダへのドロップは禁止 (実質変化なし)
-    if (this.isInvalidFolderDropTarget(sourceElement, targetFolderElement)) {
+    // ゾーンごとに無効判定: into は親フォルダも禁止、before/after は自分自身/子孫/隣接 no-op を禁止
+    const invalid =
+      zone === 'into'
+        ? this.isInvalidFolderDropTarget(sourceElement, targetFolderElement)
+        : this.isInvalidFolderReorder(sourceElement, targetFolderElement, zone);
+
+    // 既存の reorder インジケータと invalid クラスをクリア
+    folderHeader.classList.remove('drop-zone-before', 'drop-zone-after');
+
+    if (invalid) {
       folderHeader.classList.add('drop-target-invalid');
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'none';
@@ -516,7 +589,15 @@ export class BookmarkDragAndDrop {
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = 'move';
     }
-    folderHeader.classList.add('drop-target-highlight');
+
+    if (zone === 'into') {
+      folderHeader.classList.add('drop-target-highlight');
+    } else {
+      folderHeader.classList.remove('drop-target-highlight');
+      folderHeader.classList.add(
+        zone === 'before' ? 'drop-zone-before' : 'drop-zone-after'
+      );
+    }
   }
 
   /**
@@ -536,16 +617,32 @@ export class BookmarkDragAndDrop {
     const targetFolderId = targetFolderElement.dataset.folderId;
     if (!targetFolderId) return;
 
-    // 自分自身・子孫・現在の親フォルダへの移動は禁止
-    if (
-      this.isInvalidFolderDropTarget(dragged.sourceElement, targetFolderElement)
-    ) {
-      return;
-    }
+    const zone = this.detectFolderDropZone(event.clientY, folderHeader);
+    const invalid =
+      zone === 'into'
+        ? this.isInvalidFolderDropTarget(
+            dragged.sourceElement,
+            targetFolderElement
+          )
+        : this.isInvalidFolderReorder(
+            dragged.sourceElement,
+            targetFolderElement,
+            zone
+          );
+    if (invalid) return;
 
-    folderHeader.classList.remove('drop-target-highlight');
+    folderHeader.classList.remove(
+      'drop-target-highlight',
+      'drop-zone-before',
+      'drop-zone-after'
+    );
 
-    this.moveFolder(dragged.id, targetFolderId, dragged.title)
+    const operation =
+      zone === 'into'
+        ? this.moveFolder(dragged.id, targetFolderId, dragged.title)
+        : this.reorderFolder(dragged.id, targetFolderId, zone, dragged.title);
+
+    operation
       .then(() => {
         this.dispatchBookmarksChanged('folder-move');
       })
@@ -587,6 +684,77 @@ export class BookmarkDragAndDrop {
       }
     } catch (error) {
       console.error('Chrome Bookmarks API エラー:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * フォルダを target の前後に並び替える。Undo に対応する。
+   */
+  private async reorderFolder(
+    folderId: string,
+    targetFolderId: string,
+    zone: 'before' | 'after',
+    title: string
+  ): Promise<void> {
+    try {
+      const [target] = await chrome.bookmarks.get(targetFolderId);
+      if (!target || target.parentId === undefined) {
+        throw new Error('並び替え先フォルダの親が取得できません');
+      }
+      const [source] = await chrome.bookmarks.get(folderId);
+      if (!source) {
+        throw new Error('並び替え対象のフォルダが見つかりません');
+      }
+      const originalParentId = source.parentId;
+      const originalIndex = source.index;
+
+      const targetIndex = target.index ?? 0;
+      const newParentId = target.parentId;
+      // Chrome の chrome.bookmarks.move は同じ親内 (= move) で index を
+      // 「元の配列での目標位置」として解釈し、source.currentIdx < index の場合
+      // 最終位置を index - 1 に補正する。
+      // → before: index = target.idx (Chrome が必要に応じて -1 補正)
+      // → after:  index = target.idx + 1
+      const newIndex = zone === 'before' ? targetIndex : targetIndex + 1;
+
+      await chrome.bookmarks.move(folderId, {
+        parentId: newParentId,
+        index: newIndex,
+      });
+
+      if (originalParentId !== undefined) {
+        UndoManager.getInstance().register({
+          message: `フォルダ「${title}」を並び替えました`,
+          undo: async () => {
+            // Undo 時、source の現在位置によって Chrome の補正方向が変わる。
+            // 元の位置 originalIndex に確実に戻すため、現在の index を取得して
+            // 補正を相殺する。
+            let undoIndex = originalIndex ?? 0;
+            try {
+              const [now] = await chrome.bookmarks.get(folderId);
+              if (
+                now?.parentId === originalParentId &&
+                now.index !== undefined &&
+                now.index < undoIndex
+              ) {
+                // Chrome は source.idx < index のとき index - 1 に補正するので
+                // 戻り先 = originalIndex を保証するため index = originalIndex + 1
+                undoIndex = undoIndex + 1;
+              }
+            } catch {
+              // 取得失敗時は originalIndex のまま (フォールバック)
+            }
+            await chrome.bookmarks.move(folderId, {
+              parentId: originalParentId,
+              index: undoIndex,
+            });
+            this.dispatchBookmarksChanged('undo-folder-reorder');
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Chrome Bookmarks API エラー (reorder):', error);
       throw error;
     }
   }

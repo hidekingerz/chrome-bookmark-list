@@ -13,9 +13,9 @@ export class BookmarkItemRenderer {
     const safeUrl = escapeHtml(bookmark.url);
     return `
       <li class="bookmark-item" tabindex="0" role="treeitem" aria-label="${safeTitle}" data-bookmark-url="${safeUrl}" data-bookmark-title="${safeTitle}">
-        <a href="#" class="bookmark-link" data-url="${safeUrl}" tabindex="-1" aria-hidden="true">
-          <div class="bookmark-favicon-container">
-            <div class="favicon-placeholder" aria-hidden="true">🔗</div>
+        <a href="#" class="bookmark-link" data-url="${safeUrl}" tabindex="-1">
+          <div class="bookmark-favicon-container" aria-hidden="true">
+            <div class="favicon-placeholder">🔗</div>
             <img class="bookmark-favicon hidden" alt="" data-bookmark-url="${safeUrl}">
           </div>
           <span class="bookmark-title">${safeTitle}</span>
