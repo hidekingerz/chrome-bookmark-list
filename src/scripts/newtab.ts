@@ -78,8 +78,8 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
   KeyboardShortcuts.getInstance().initialize();
 
   // ブックマーク変更イベントリスナーを追加
+  // 検索入力にフィルタが残っていれば reloadBookmarks 側で維持される
   document.addEventListener('bookmarks-changed', async () => {
-    console.log('ブックマークが変更されました。リロードします...');
     await reloadBookmarks();
   });
 
@@ -197,8 +197,6 @@ async function reloadBookmarks(): Promise<void> {
     } else {
       await displayBookmarks(allBookmarks);
     }
-
-    console.log('ブックマーク再読み込み完了');
   } catch (error) {
     console.error('ブックマーク再読み込みエラー:', error);
   }
