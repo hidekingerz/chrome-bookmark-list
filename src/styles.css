@@ -554,6 +554,20 @@ body.dragging-bookmark .bookmark-folder.drag-source-folder {
   opacity: 0.7;
 }
 
+/* フォルダヘッダーをドラッグ中の見た目 */
+.folder-header[draggable='true'] {
+  cursor: grab;
+}
+
+.folder-header.dragging {
+  opacity: 0.5;
+}
+
+/* フォルダ DnD 中はカーソルを変えて視覚的に分かりやすく */
+body.dragging-folder {
+  cursor: grabbing;
+}
+
 /* カスタムドラッグプレビュー */
 .bookmark-drag-preview {
   display: inline-flex;
