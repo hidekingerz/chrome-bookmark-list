@@ -463,6 +463,28 @@ export class BookmarkDragAndDrop {
   }
 
   /**
+   * 移動先として無効なフォルダか判定する。
+   * - 自分自身: 同じ要素への移動
+   * - 自分の子孫: ループを防ぐ
+   * - 現在の親フォルダ: 実質変化なしの no-op を防ぐ
+   */
+  private isInvalidFolderDropTarget(
+    sourceElement: HTMLElement,
+    targetFolderElement: HTMLElement
+  ): boolean {
+    if (targetFolderElement === sourceElement) return true;
+    if (sourceElement.contains(targetFolderElement)) return true;
+
+    // 現在の親フォルダ (描画 DOM 上の最近接 .bookmark-folder 祖先) と一致するか
+    const currentParent = sourceElement.parentElement?.closest(
+      '.bookmark-folder'
+    ) as HTMLElement | null;
+    if (currentParent && currentParent === targetFolderElement) return true;
+
+    return false;
+  }
+
+  /**
    * フォルダのドラッグオーバー処理
    */
   private handleFolderDragOver(
@@ -481,12 +503,8 @@ export class BookmarkDragAndDrop {
 
     const sourceElement = this.draggedFolder.sourceElement;
 
-    // 自分自身、または自分の子孫へのドロップは禁止
-    const isSelfOrDescendant =
-      targetFolderElement === sourceElement ||
-      sourceElement.contains(targetFolderElement);
-
-    if (isSelfOrDescendant) {
+    // 自分自身・子孫・現在の親フォルダへのドロップは禁止 (実質変化なし)
+    if (this.isInvalidFolderDropTarget(sourceElement, targetFolderElement)) {
       folderHeader.classList.add('drop-target-invalid');
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = 'none';
@@ -518,10 +536,9 @@ export class BookmarkDragAndDrop {
     const targetFolderId = targetFolderElement.dataset.folderId;
     if (!targetFolderId) return;
 
-    // 自分自身・子孫への移動は禁止
+    // 自分自身・子孫・現在の親フォルダへの移動は禁止
     if (
-      targetFolderElement === dragged.sourceElement ||
-      dragged.sourceElement.contains(targetFolderElement)
+      this.isInvalidFolderDropTarget(dragged.sourceElement, targetFolderElement)
     ) {
       return;
     }

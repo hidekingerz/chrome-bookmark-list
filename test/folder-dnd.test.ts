@@ -142,6 +142,28 @@ describe('BookmarkDragAndDrop — フォルダ DnD (#54)', () => {
     );
   });
 
+  it('子フォルダを現在の親フォルダ上にドロップしても無効 (no-op 防止)', () => {
+    // child-A1 (parent-A の子) を parent-A 上にドロップ
+    const childHeader = document.querySelector(
+      '[data-folder-id="child-A1"] .folder-header'
+    ) as HTMLElement;
+    document.dispatchEvent(createDragEvent('dragstart', childHeader));
+
+    const parentHeader = document.querySelector(
+      '[data-folder-id="parent-A"] .folder-header'
+    ) as HTMLElement;
+    document.dispatchEvent(createDragEvent('dragover', parentHeader));
+
+    expect(parentHeader.classList.contains('drop-target-invalid')).toBe(true);
+    expect(parentHeader.classList.contains('drop-target-highlight')).toBe(
+      false
+    );
+
+    // drop しても move は呼ばれない
+    document.dispatchEvent(createDragEvent('drop', parentHeader));
+    expect(chrome.bookmarks.move).not.toHaveBeenCalled();
+  });
+
   it('自分の子孫の上にドロップすると drop-target-invalid が付く', () => {
     const sourceHeader = document.querySelector(
       '[data-folder-id="parent-A"] .folder-header'
