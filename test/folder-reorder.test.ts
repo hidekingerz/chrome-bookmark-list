@@ -224,9 +224,9 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
     expect(targetHeader.classList.contains('drop-zone-after')).toBe(false);
   });
 
-  it('A(0) を C(2) の前にドロップ → shiftedTargetIndex(1) で move される', async () => {
-    // sameParent + src(0) < tgt(2) → shiftedTargetIndex = 2 - 1 = 1
-    // "before" → newIndex = 1
+  it('A(0) を C(2) の前にドロップ → move(A, {index: 2}) を呼ぶ (Chrome 側で -1 補正)', async () => {
+    // before zone なので newIndex = target.idx = 2
+    // Chrome 側で src(0) < 2 のため最終位置 1 に補正される (= C の直前)
     const sourceHeader = document.querySelector(
       '[data-folder-id="A"] .folder-header'
     ) as HTMLElement;
@@ -242,13 +242,13 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
 
     expect(chrome.bookmarks.move).toHaveBeenCalledWith('A', {
       parentId: '1',
-      index: 1,
+      index: 2,
     });
   });
 
-  it('C(2) を A(0) の後にドロップ → newIndex = 1 で move される', async () => {
-    // sameParent + src(2) > tgt(0) → shiftedTargetIndex = 0
-    // "after" → newIndex = 1
+  it('C(2) を A(0) の後にドロップ → move(C, {index: 1}) を呼ぶ', async () => {
+    // after zone なので newIndex = target.idx + 1 = 1
+    // Chrome 側で src(2) > 1 のため補正なし、最終位置 1 (= A の直後)
     const sourceHeader = document.querySelector(
       '[data-folder-id="C"] .folder-header'
     ) as HTMLElement;
@@ -280,28 +280,44 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
   });
 
   it('並び替え後 Undo Toast から元の位置に戻せる', async () => {
+    // C(idx=2) を A(idx=0) の後にドロップ → C は idx=1 へ移動
+    // Undo 時、C は現在 idx=1 で original=2 (現在 < original) のため
+    // undoIndex = 2 + 1 = 3 で move を呼ぶ。Chrome の補正で最終位置 2。
     const sourceHeader = document.querySelector(
-      '[data-folder-id="A"] .folder-header'
+      '[data-folder-id="C"] .folder-header'
     ) as HTMLElement;
     document.dispatchEvent(createDragEvent('dragstart', sourceHeader));
 
     const targetHeader = document.querySelector(
-      '[data-folder-id="B"] .folder-header'
+      '[data-folder-id="A"] .folder-header'
     ) as HTMLElement;
     document.dispatchEvent(createDragEvent('dragover', targetHeader, 45));
     document.dispatchEvent(createDragEvent('drop', targetHeader, 45));
 
     await new Promise((r) => setTimeout(r, 20));
 
+    // Undo 前に C の現在位置を mock で更新 (move() 後の状態を模す)
+    const mockChrome = globalThis.chrome as unknown as {
+      bookmarks: { get: ReturnType<typeof vi.fn> };
+    };
+    mockChrome.bookmarks.get.mockImplementation((id: string) => {
+      if (id === 'C') {
+        return Promise.resolve([
+          { id: 'C', parentId: '1', index: 1, title: 'C' },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+
     const toast = document.querySelector('.app-toast');
     expect(toast).not.toBeNull();
     (toast?.querySelector('.app-toast-action') as HTMLButtonElement).click();
-    await new Promise((r) => setTimeout(r, 20));
+    await new Promise((r) => setTimeout(r, 30));
 
-    // Undo で元の parentId/index に戻る
-    expect(chrome.bookmarks.move).toHaveBeenLastCalledWith('A', {
+    // Undo: 現在 idx=1 < originalIndex=2 のため undoIndex = 3
+    expect(chrome.bookmarks.move).toHaveBeenLastCalledWith('C', {
       parentId: '1',
-      index: 0,
+      index: 3,
     });
   });
 });

@@ -711,15 +711,12 @@ export class BookmarkDragAndDrop {
 
       const targetIndex = target.index ?? 0;
       const newParentId = target.parentId;
-      // Chrome の chrome.bookmarks.move は source 削除後の sibling 配列に対する
-      // index を解釈する。同じ親内で source.index < target.index の場合、
-      // source を取り除くと target の index が 1 つ前にずれるので補正する。
-      const sameParent = source.parentId === newParentId;
-      const sourceIndex = source.index ?? 0;
-      const shiftedTargetIndex =
-        sameParent && sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-      const newIndex =
-        zone === 'before' ? shiftedTargetIndex : shiftedTargetIndex + 1;
+      // Chrome の chrome.bookmarks.move は同じ親内 (= move) で index を
+      // 「元の配列での目標位置」として解釈し、source.currentIdx < index の場合
+      // 最終位置を index - 1 に補正する。
+      // → before: index = target.idx (Chrome が必要に応じて -1 補正)
+      // → after:  index = target.idx + 1
+      const newIndex = zone === 'before' ? targetIndex : targetIndex + 1;
 
       await chrome.bookmarks.move(folderId, {
         parentId: newParentId,
@@ -730,9 +727,27 @@ export class BookmarkDragAndDrop {
         UndoManager.getInstance().register({
           message: `フォルダ「${title}」を並び替えました`,
           undo: async () => {
+            // Undo 時、source の現在位置によって Chrome の補正方向が変わる。
+            // 元の位置 originalIndex に確実に戻すため、現在の index を取得して
+            // 補正を相殺する。
+            let undoIndex = originalIndex ?? 0;
+            try {
+              const [now] = await chrome.bookmarks.get(folderId);
+              if (
+                now?.parentId === originalParentId &&
+                now.index !== undefined &&
+                now.index < undoIndex
+              ) {
+                // Chrome は source.idx < index のとき index - 1 に補正するので
+                // 戻り先 = originalIndex を保証するため index = originalIndex + 1
+                undoIndex = undoIndex + 1;
+              }
+            } catch {
+              // 取得失敗時は originalIndex のまま (フォールバック)
+            }
             await chrome.bookmarks.move(folderId, {
               parentId: originalParentId,
-              index: originalIndex,
+              index: undoIndex,
             });
             this.dispatchBookmarksChanged('undo-folder-reorder');
           },
