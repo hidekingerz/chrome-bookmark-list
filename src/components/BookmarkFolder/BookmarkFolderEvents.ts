@@ -3,6 +3,7 @@ import type { BookmarkFolder, BookmarkItem } from '../../types/bookmark.js';
 import { FolderCreator } from '../BookmarkActions/FolderCreator.js';
 import { FolderDeleter } from '../BookmarkActions/FolderDeleter.js';
 import { FolderRenamer } from '../BookmarkActions/FolderRenamer.js';
+import { TabGroupOpener } from '../BookmarkActions/TabGroupOpener.js';
 import { BookmarkActions } from '../BookmarkActions/index.js';
 import { BookmarkSelection } from '../BookmarkSelection/index.js';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index.js';
@@ -29,6 +30,7 @@ export class BookmarkFolderEvents {
   private folderCreator: FolderCreator;
   private folderRenamer: FolderRenamer;
   private folderDeleter: FolderDeleter;
+  private tabGroupOpener: TabGroupOpener;
   private selection: BookmarkSelection;
 
   constructor(selection?: BookmarkSelection) {
@@ -37,6 +39,7 @@ export class BookmarkFolderEvents {
     this.folderCreator = new FolderCreator();
     this.folderRenamer = new FolderRenamer();
     this.folderDeleter = new FolderDeleter();
+    this.tabGroupOpener = new TabGroupOpener();
     this.selection = selection ?? new BookmarkSelection();
   }
 
@@ -450,6 +453,14 @@ export class BookmarkFolderEvents {
           for (const url of allUrls) {
             chrome.tabs.create({ url, active: false });
           }
+        },
+      },
+      {
+        label: `グループにまとめて開く (${allUrls.length})`,
+        icon: '🗂️',
+        disabled: !hasBookmarks,
+        onSelect: () => {
+          void this.tabGroupOpener.openAsGroup(allUrls, folder.title);
         },
       },
       {
