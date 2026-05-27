@@ -81,7 +81,6 @@ export class BookmarkDragAndDrop {
 
     // ドラッグ中の見た目を変更
     bookmarkLink.classList.add('dragging');
-
   }
 
   /**
