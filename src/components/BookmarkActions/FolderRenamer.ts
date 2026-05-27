@@ -48,7 +48,7 @@ export class FolderRenamer {
   private createDialogHTML(target: ChromeBookmarkNode): string {
     return `
       <div id="folder-rename-dialog" class="edit-dialog-overlay">
-        <div class="edit-dialog">
+        <div class="edit-dialog" role="dialog" aria-modal="true">
           <div class="edit-dialog-header">
             <h3>フォルダ名を変更</h3>
             <button class="edit-dialog-close" type="button">×</button>

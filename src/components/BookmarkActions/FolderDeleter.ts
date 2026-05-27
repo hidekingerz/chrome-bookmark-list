@@ -134,7 +134,7 @@ export class FolderDeleter {
 
     return `
       <div id="folder-delete-dialog" class="edit-dialog-overlay">
-        <div class="edit-dialog">
+        <div class="edit-dialog" role="dialog" aria-modal="true">
           <div class="edit-dialog-header">
             <h3>フォルダを削除</h3>
             <button class="edit-dialog-close" type="button">×</button>
@@ -179,6 +179,9 @@ export class FolderDeleter {
       }
     };
     document.addEventListener('keydown', keydownHandler);
+
+    // 開いた直後にキャンセルへフォーカス (誤操作防止 + a11y)
+    (cancelBtn as HTMLElement | null)?.focus();
   }
 
   private dispatchBookmarksChanged(action: string): void {

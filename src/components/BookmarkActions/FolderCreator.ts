@@ -74,7 +74,7 @@ export class FolderCreator {
 
     return `
       <div id="folder-create-dialog" class="edit-dialog-overlay">
-        <div class="edit-dialog">
+        <div class="edit-dialog" role="dialog" aria-modal="true">
           <div class="edit-dialog-header">
             <h3>新しいフォルダを作成</h3>
             <button class="edit-dialog-close" type="button">×</button>

@@ -9,14 +9,16 @@ export class BookmarkItemRenderer {
    * 単一のブックマークアイテムをHTMLとして生成する
    */
   renderBookmarkItem(bookmark: BookmarkItem): string {
+    const safeTitle = escapeHtml(bookmark.title);
+    const safeUrl = escapeHtml(bookmark.url);
     return `
-      <li class="bookmark-item" tabindex="0" role="treeitem" data-bookmark-url="${escapeHtml(bookmark.url)}" data-bookmark-title="${escapeHtml(bookmark.title)}">
-        <a href="#" class="bookmark-link" data-url="${escapeHtml(bookmark.url)}" tabindex="-1">
+      <li class="bookmark-item" tabindex="0" role="treeitem" aria-label="${safeTitle}" data-bookmark-url="${safeUrl}" data-bookmark-title="${safeTitle}">
+        <a href="#" class="bookmark-link" data-url="${safeUrl}" tabindex="-1" aria-hidden="true">
           <div class="bookmark-favicon-container">
-            <div class="favicon-placeholder">🔗</div>
-            <img class="bookmark-favicon hidden" alt="" data-bookmark-url="${escapeHtml(bookmark.url)}">
+            <div class="favicon-placeholder" aria-hidden="true">🔗</div>
+            <img class="bookmark-favicon hidden" alt="" data-bookmark-url="${safeUrl}">
           </div>
-          <span class="bookmark-title">${escapeHtml(bookmark.title)}</span>
+          <span class="bookmark-title">${safeTitle}</span>
         </a>
         ${this.renderBookmarkActions(bookmark)}
       </li>
@@ -27,19 +29,25 @@ export class BookmarkItemRenderer {
    * ブックマークのアクション（編集・削除）ボタンを生成する
    */
   renderBookmarkActions(bookmark: BookmarkItem): string {
+    const safeTitle = escapeHtml(bookmark.title);
+    const safeUrl = escapeHtml(bookmark.url);
     return `
       <div class="bookmark-actions">
-        <button class="bookmark-edit-btn" 
-                data-bookmark-url="${escapeHtml(bookmark.url)}" 
-                data-bookmark-title="${escapeHtml(bookmark.title)}" 
-                title="編集">
-          ✏️
+        <button class="bookmark-edit-btn"
+                type="button"
+                data-bookmark-url="${safeUrl}"
+                data-bookmark-title="${safeTitle}"
+                title="編集"
+                aria-label="「${safeTitle}」を編集">
+          <span aria-hidden="true">✏️</span>
         </button>
-        <button class="bookmark-delete-btn" 
-                data-bookmark-url="${escapeHtml(bookmark.url)}" 
-                data-bookmark-title="${escapeHtml(bookmark.title)}" 
-                title="削除">
-          🗑️
+        <button class="bookmark-delete-btn"
+                type="button"
+                data-bookmark-url="${safeUrl}"
+                data-bookmark-title="${safeTitle}"
+                title="削除"
+                aria-label="「${safeTitle}」を削除">
+          <span aria-hidden="true">🗑️</span>
         </button>
       </div>
     `;
@@ -58,7 +66,8 @@ export class BookmarkItemRenderer {
       .join('');
 
     return `
-      <ul class="bookmark-list ${expanded ? 'expanded' : 'collapsed'}" 
+      <ul class="bookmark-list ${expanded ? 'expanded' : 'collapsed'}"
+          role="group"
           style="display: ${expanded ? 'block' : 'none'}">
         ${bookmarkItems}
       </ul>

@@ -4,6 +4,7 @@ import type {
   BookmarkUpdateData,
   ChromeBookmarkNode,
 } from '../../types/bookmark.js';
+import { UndoManager } from '../UndoManager/index.js';
 
 /**
  * ブックマーク編集機能を担当するクラス
@@ -106,7 +107,7 @@ export class BookmarkEditor {
 
     return `
       <div id="edit-dialog" class="edit-dialog-overlay">
-        <div class="edit-dialog">
+        <div class="edit-dialog" role="dialog" aria-modal="true">
           <div class="edit-dialog-header">
             <h3>ブックマークを編集</h3>
             <button class="edit-dialog-close" type="button">×</button>
@@ -160,6 +161,13 @@ export class BookmarkEditor {
       }
     };
     document.addEventListener('keydown', handleKeydown);
+
+    // 開いた直後にタイトル入力欄へフォーカス (a11y)
+    const titleInput = document.getElementById(
+      'edit-title'
+    ) as HTMLInputElement | null;
+    titleInput?.focus();
+    titleInput?.select();
   }
 
   /**
@@ -187,23 +195,65 @@ export class BookmarkEditor {
       return;
     }
 
+    // Undo 用に元の値を保持
+    const original = {
+      title: bookmark.title,
+      url: bookmark.url ?? '',
+      parentId: bookmark.parentId,
+      index: bookmark.index,
+    };
+    const titleChanged = newTitle !== original.title;
+    const urlChanged = newUrl !== original.url;
+    const moved =
+      original.parentId !== undefined && newParentId !== original.parentId;
+
     try {
       // ブックマークを更新
-      await this.updateBookmark(bookmark.id, { title: newTitle, url: newUrl });
+      if (titleChanged || urlChanged) {
+        await this.updateBookmark(bookmark.id, {
+          title: newTitle,
+          url: newUrl,
+        });
+      }
 
       // フォルダーが変更された場合は移動
-      if (newParentId !== bookmark.parentId) {
+      if (moved) {
         await this.moveBookmark(bookmark.id, { parentId: newParentId });
       }
 
       this.closeEditDialog();
+      this.dispatchBookmarksChanged('edit');
 
-      // ページを再読み込みして表示を更新
-      window.location.reload();
+      // 何か変更があれば Undo を登録
+      if (titleChanged || urlChanged || moved) {
+        UndoManager.getInstance().register({
+          message: `「${newTitle}」を編集しました`,
+          undo: async () => {
+            if (titleChanged || urlChanged) {
+              await chrome.bookmarks.update(bookmark.id, {
+                title: original.title,
+                url: original.url,
+              });
+            }
+            if (moved && original.parentId !== undefined) {
+              await chrome.bookmarks.move(bookmark.id, {
+                parentId: original.parentId,
+                index: original.index,
+              });
+            }
+            this.dispatchBookmarksChanged('undo-edit');
+          },
+        });
+      }
     } catch (error) {
       console.error('❌ ブックマークの更新に失敗しました:', error);
       alert('ブックマークの更新に失敗しました。');
     }
+  }
+
+  private dispatchBookmarksChanged(action: string): void {
+    const event = new CustomEvent('bookmarks-changed', { detail: { action } });
+    document.dispatchEvent(event);
   }
 
   /**

@@ -99,7 +99,7 @@ export class BookmarkDeleter {
   private createDeleteDialogHTML(title: string): string {
     return `
       <div id="delete-dialog" class="edit-dialog-overlay">
-        <div class="edit-dialog">
+        <div class="edit-dialog" role="dialog" aria-modal="true">
           <div class="edit-dialog-header">
             <h3>ブックマークを削除</h3>
             <button class="edit-dialog-close" type="button">×</button>
@@ -143,6 +143,9 @@ export class BookmarkDeleter {
     // 削除確認ボタン
     confirmBtn?.addEventListener('click', () => closeDialog(true));
 
+    // 開いた直後にキャンセルへフォーカス (誤操作防止 + a11y)
+    (cancelBtn as HTMLElement | null)?.focus();
+
     // ESCキーで閉じる
     const handleKeydown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -181,7 +184,7 @@ export class BookmarkDeleter {
   private createErrorDialogHTML(message: string): string {
     return `
       <div id="error-dialog" class="edit-dialog-overlay">
-        <div class="edit-dialog">
+        <div class="edit-dialog" role="dialog" aria-modal="true">
           <div class="edit-dialog-header">
             <h3>エラー</h3>
             <button class="edit-dialog-close" type="button">×</button>
