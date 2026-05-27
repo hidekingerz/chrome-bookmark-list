@@ -21,6 +21,10 @@ export class BookmarkFolderEvents {
   private mouseDownHandler: ((e: Event) => void) | null = null;
   private contextMenuHandler: ((e: Event) => void) | null = null;
   private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+  private touchStartHandler: ((e: TouchEvent) => void) | null = null;
+  private touchEndHandler: ((e: TouchEvent) => void) | null = null;
+  private touchMoveHandler: ((e: TouchEvent) => void) | null = null;
+  private longPressTimerId: number | null = null;
   private contextMenu: ContextMenu;
   private folderCreator: FolderCreator;
   private folderRenamer: FolderRenamer;
@@ -210,6 +214,106 @@ export class BookmarkFolderEvents {
 
     container.addEventListener('contextmenu', this.contextMenuHandler);
     container.addEventListener('keydown', this.keydownHandler);
+
+    // タッチデバイスの長押しでコンテキストメニューを開く
+    this.setupLongPressHandler(container, allBookmarks);
+  }
+
+  /**
+   * タッチデバイスでの長押し (500ms) によるコンテキストメニュー表示。
+   */
+  private setupLongPressHandler(
+    container: HTMLElement,
+    allBookmarks: BookmarkFolder[]
+  ): void {
+    const LONG_PRESS_MS = 500;
+    const MOVE_THRESHOLD_PX = 10;
+
+    if (this.touchStartHandler) {
+      container.removeEventListener('touchstart', this.touchStartHandler);
+    }
+    if (this.touchEndHandler) {
+      container.removeEventListener('touchend', this.touchEndHandler);
+      container.removeEventListener('touchcancel', this.touchEndHandler);
+    }
+    if (this.touchMoveHandler) {
+      container.removeEventListener('touchmove', this.touchMoveHandler);
+    }
+
+    let startX = 0;
+    let startY = 0;
+    let activeTarget: HTMLElement | null = null;
+    let activeType: 'bookmark' | 'folder' | null = null;
+
+    const cancelTimer = () => {
+      if (this.longPressTimerId !== null) {
+        window.clearTimeout(this.longPressTimerId);
+        this.longPressTimerId = null;
+      }
+      activeTarget = null;
+      activeType = null;
+    };
+
+    this.touchStartHandler = (e: TouchEvent) => {
+      if (e.touches.length !== 1) {
+        cancelTimer();
+        return;
+      }
+      const touch = e.touches[0];
+      const target = touch.target as HTMLElement;
+      const bookmarkItem = target.closest(
+        '.bookmark-item'
+      ) as HTMLElement | null;
+      const folderHeader = target.closest(
+        '.folder-header'
+      ) as HTMLElement | null;
+
+      if (!bookmarkItem && !folderHeader) return;
+
+      startX = touch.clientX;
+      startY = touch.clientY;
+      activeTarget = bookmarkItem ?? folderHeader;
+      activeType = bookmarkItem ? 'bookmark' : 'folder';
+
+      this.longPressTimerId = window.setTimeout(() => {
+        if (!activeTarget) return;
+        if (activeType === 'bookmark') {
+          this.openBookmarkContextMenu(startX, startY, activeTarget);
+        } else if (activeType === 'folder') {
+          this.openFolderContextMenu(
+            startX,
+            startY,
+            activeTarget,
+            allBookmarks
+          );
+        }
+        cancelTimer();
+      }, LONG_PRESS_MS);
+    };
+
+    this.touchMoveHandler = (e: TouchEvent) => {
+      if (this.longPressTimerId === null) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const dx = Math.abs(touch.clientX - startX);
+      const dy = Math.abs(touch.clientY - startY);
+      if (dx > MOVE_THRESHOLD_PX || dy > MOVE_THRESHOLD_PX) {
+        cancelTimer();
+      }
+    };
+
+    this.touchEndHandler = () => {
+      cancelTimer();
+    };
+
+    container.addEventListener('touchstart', this.touchStartHandler, {
+      passive: true,
+    });
+    container.addEventListener('touchmove', this.touchMoveHandler, {
+      passive: true,
+    });
+    container.addEventListener('touchend', this.touchEndHandler);
+    container.addEventListener('touchcancel', this.touchEndHandler);
   }
 
   /**

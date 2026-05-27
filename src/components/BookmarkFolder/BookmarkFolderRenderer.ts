@@ -24,9 +24,10 @@ export class BookmarkFolderRenderer {
     const shouldHide = level > 0 && hasSubfolders && !folder.expanded;
 
     return `
-      <div class="bookmark-folder ${shouldHide ? 'hidden' : ''}" 
-           data-level="${level}" 
-           data-folder-id="${folder.id}">
+      <div class="bookmark-folder ${shouldHide ? 'hidden' : ''}"
+           data-level="${level}"
+           data-folder-id="${folder.id}"
+           role="${level === 0 ? 'tree' : 'group'}">
         ${this.renderFolderHeader(folder, hasSubfolders, hasBookmarks, totalBookmarks)}
         ${this.renderFolderContent(folder, level)}
       </div>
@@ -53,14 +54,15 @@ export class BookmarkFolderRenderer {
       folder.id === '1' || folder.id === '2' || folder.id === '3';
     const draggableAttr = isPermanent ? '' : 'draggable="true"';
 
+    const safeTitle = escapeHtml(folder.title);
     return `
-      <div class="folder-header ${headerClass}" tabindex="0" role="treeitem" aria-expanded="${folder.expanded ? 'true' : 'false'}" ${draggableAttr}>
+      <div class="folder-header ${headerClass}" tabindex="0" role="treeitem" aria-expanded="${folder.expanded ? 'true' : 'false'}" aria-label="フォルダ「${safeTitle}」 ${totalBookmarks}件" ${draggableAttr}>
         <div class="folder-info">
           ${this.renderFolderIcon(hasSubfolders, hasBookmarks, folder.expanded)}
-          <h2 class="folder-title">${escapeHtml(folder.title)}</h2>
+          <h2 class="folder-title">${safeTitle}</h2>
           ${hasSubfolders ? `<span class="subfolder-count">${folder.subfolders.length}個のフォルダ</span>` : ''}
         </div>
-        <span class="bookmark-count">${totalBookmarks}</span>
+        <span class="bookmark-count" aria-hidden="true">${totalBookmarks}</span>
       </div>
     `;
   }

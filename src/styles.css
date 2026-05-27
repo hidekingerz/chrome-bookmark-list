@@ -505,6 +505,32 @@ header h1 {
   opacity: 1;
 }
 
+/* キーボードフォーカス時もアクションボタンを表示 (a11y) */
+.bookmark-item:focus-within .bookmark-edit-btn,
+.bookmark-item:focus-within .bookmark-delete-btn {
+  opacity: 1;
+}
+
+/* アクションボタン自身のフォーカスリング */
+.bookmark-edit-btn:focus-visible,
+.bookmark-delete-btn:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.bookmark-delete-btn:focus-visible {
+  outline-color: var(--danger);
+}
+
+/* タッチデバイス (ホバーが効かない環境) ではアクションを常時表示 */
+@media (hover: none) {
+  .bookmark-edit-btn,
+  .bookmark-delete-btn {
+    opacity: 0.8;
+  }
+}
+
 /* =========================================================================
    状態表示
    ========================================================================= */
