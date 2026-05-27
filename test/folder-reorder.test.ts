@@ -6,9 +6,9 @@ import { UndoManager } from '../src/components/UndoManager/index';
 
 /**
  * フォルダ並び替え (#77) のテスト。
- * - ヘッダー上部 (30%) ドロップで before
- * - 中央 (40%) で into (既存挙動)
- * - 下部 (30%) で after
+ * - ヘッダー上部 (40%) ドロップで before
+ * - 中央 (20%) で into (既存挙動)
+ * - 下部 (40%) で after
  */
 describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
   let dom: JSDOM;

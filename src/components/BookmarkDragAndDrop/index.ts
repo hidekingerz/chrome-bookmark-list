@@ -473,9 +473,10 @@ export class BookmarkDragAndDrop {
 
   /**
    * フォルダドロップのゾーンを判定する。
-   * - 上 30%: before (target の前に並び替え)
-   * - 中央 40%: into (target のサブフォルダ化)
-   * - 下 30%: after (target の後に並び替え)
+   * - 上 40%: before (target の前に並び替え)
+   * - 中央 20%: into (target のサブフォルダ化)
+   * - 下 40%: after (target の後に並び替え)
+   * 並び替えの方が頻度が高いと想定し、上下を広めに取る。
    */
   private detectFolderDropZone(
     clientY: number,
@@ -483,8 +484,8 @@ export class BookmarkDragAndDrop {
   ): 'before' | 'into' | 'after' {
     const rect = folderHeader.getBoundingClientRect();
     const ratio = (clientY - rect.top) / rect.height;
-    if (ratio < 0.3) return 'before';
-    if (ratio > 0.7) return 'after';
+    if (ratio < 0.4) return 'before';
+    if (ratio > 0.6) return 'after';
     return 'into';
   }
 

@@ -585,20 +585,21 @@ header h1 {
 .folder-header.drop-zone-after::after {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
-  height: 3px;
+  left: -4px;
+  right: -4px;
+  height: 5px;
   background: var(--accent);
-  border-radius: 2px;
-  box-shadow: 0 0 8px var(--accent-soft-strong);
+  border-radius: 3px;
+  box-shadow: 0 0 12px var(--accent), 0 0 4px rgba(255, 255, 255, 0.4);
+  z-index: 2;
 }
 
 .folder-header.drop-zone-before::before {
-  top: -2px;
+  top: -4px;
 }
 
 .folder-header.drop-zone-after::after {
-  bottom: -2px;
+  bottom: -4px;
 }
 
 /* ドラッグ中の元フォルダを薄く表示 */
