@@ -1,4 +1,5 @@
 import { UndoManager } from '../UndoManager/index.js';
+import { Autoscroller } from './Autoscroller.js';
 
 /**
  * ブックマークのドラッグ&ドロップ機能を管理するクラス
@@ -11,6 +12,7 @@ export class BookmarkDragAndDrop {
   } | null = null;
 
   private dropIndicator: HTMLElement | null = null;
+  private autoscroller: Autoscroller = new Autoscroller();
 
   /**
    * ドラッグ&ドロップ機能を初期化する
@@ -79,8 +81,6 @@ export class BookmarkDragAndDrop {
 
     // ドラッグ中の見た目を変更
     bookmarkLink.classList.add('dragging');
-
-    console.log('ドラッグ開始:', { url, title, folderId });
   }
 
   /**
@@ -108,13 +108,18 @@ export class BookmarkDragAndDrop {
     }
 
     this.draggedBookmark = null;
-    console.log('ドラッグ終了');
+    this.autoscroller.stop();
   }
 
   /**
    * ドラッグオーバー時の処理
    */
   private handleDragOver(event: DragEvent): void {
+    // ドラッグ中なら、フォルダ上かに関係なくオートスクロールを更新する
+    if (this.draggedBookmark) {
+      this.autoscroller.update(event.clientY, window.innerHeight);
+    }
+
     const target = event.target as HTMLElement;
     const folderHeader = target.closest('.folder-header') as HTMLElement;
 
@@ -166,6 +171,7 @@ export class BookmarkDragAndDrop {
    */
   private handleDrop(event: DragEvent): void {
     event.preventDefault();
+    this.autoscroller.stop();
 
     const target = event.target as HTMLElement;
     const folderHeader = target.closest('.folder-header') as HTMLElement;
@@ -187,13 +193,6 @@ export class BookmarkDragAndDrop {
     // ブックマーク移動処理を実行
     this.moveBookmark(this.draggedBookmark.url, targetFolderId)
       .then(() => {
-        console.log('ブックマーク移動成功:', {
-          from: this.draggedBookmark?.originalFolderId,
-          to: targetFolderId,
-          bookmark: this.draggedBookmark?.title,
-        });
-
-        // UIを更新
         this.refreshBookmarkList();
       })
       .catch((error) => {
@@ -228,11 +227,6 @@ export class BookmarkDragAndDrop {
       // ブックマークを移動
       await chrome.bookmarks.move(bookmark.id, {
         parentId: targetFolderId,
-      });
-
-      console.log('Chrome Bookmarks API: ブックマーク移動完了', {
-        bookmarkId: bookmark.id,
-        newParentId: targetFolderId,
       });
 
       // Undo 可能な操作として登録 (id は move では維持される)
