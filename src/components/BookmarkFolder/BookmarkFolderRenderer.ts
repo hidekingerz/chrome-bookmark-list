@@ -48,8 +48,13 @@ export class BookmarkFolderRenderer {
         ? 'has-bookmarks'
         : '';
 
+    // Chrome のパーマネントフォルダ (id=1/2/3) はドラッグ不可
+    const isPermanent =
+      folder.id === '1' || folder.id === '2' || folder.id === '3';
+    const draggableAttr = isPermanent ? '' : 'draggable="true"';
+
     return `
-      <div class="folder-header ${headerClass}" tabindex="0" role="treeitem" aria-expanded="${folder.expanded ? 'true' : 'false'}">
+      <div class="folder-header ${headerClass}" tabindex="0" role="treeitem" aria-expanded="${folder.expanded ? 'true' : 'false'}" ${draggableAttr}>
         <div class="folder-info">
           ${this.renderFolderIcon(hasSubfolders, hasBookmarks, folder.expanded)}
           <h2 class="folder-title">${escapeHtml(folder.title)}</h2>

@@ -11,6 +11,12 @@ export class BookmarkDragAndDrop {
     originalFolderId: string;
   } | null = null;
 
+  private draggedFolder: {
+    id: string;
+    title: string;
+    sourceElement: HTMLElement;
+  } | null = null;
+
   private dropIndicator: HTMLElement | null = null;
   private autoscroller: Autoscroller = new Autoscroller();
 
@@ -49,6 +55,16 @@ export class BookmarkDragAndDrop {
    */
   private handleDragStart(event: DragEvent): void {
     const target = event.target as HTMLElement;
+
+    // フォルダヘッダーからのドラッグはフォルダ移動として処理する
+    const folderHeaderSource = target.closest(
+      '.folder-header[draggable="true"]'
+    ) as HTMLElement | null;
+    if (folderHeaderSource) {
+      this.handleFolderDragStart(event, folderHeaderSource);
+      return;
+    }
+
     const bookmarkLink = target.closest('.bookmark-link') as HTMLElement;
 
     if (!bookmarkLink) return;
@@ -174,10 +190,12 @@ export class BookmarkDragAndDrop {
     }
 
     this.draggedBookmark = null;
+    this.draggedFolder = null;
     this.autoscroller.stop();
 
     // ドラッグ状態の視覚的マーカーを除去
     document.body.classList.remove('dragging-bookmark');
+    document.body.classList.remove('dragging-folder');
     for (const el of Array.from(
       document.querySelectorAll('.drag-source-folder')
     )) {
@@ -188,6 +206,11 @@ export class BookmarkDragAndDrop {
     )) {
       el.classList.remove('drop-target-invalid');
     }
+    for (const el of Array.from(
+      document.querySelectorAll('.folder-header.dragging')
+    )) {
+      el.classList.remove('dragging');
+    }
   }
 
   /**
@@ -195,12 +218,17 @@ export class BookmarkDragAndDrop {
    */
   private handleDragOver(event: DragEvent): void {
     // ドラッグ中なら、フォルダ上かに関係なくオートスクロールを更新する
-    if (this.draggedBookmark) {
+    if (this.draggedBookmark || this.draggedFolder) {
       this.autoscroller.update(event.clientY, window.innerHeight);
     }
 
     const target = event.target as HTMLElement;
     const folderHeader = target.closest('.folder-header') as HTMLElement;
+
+    if (this.draggedFolder) {
+      this.handleFolderDragOver(event, folderHeader);
+      return;
+    }
 
     if (!folderHeader || !this.draggedBookmark) return;
 
@@ -259,6 +287,11 @@ export class BookmarkDragAndDrop {
 
     const target = event.target as HTMLElement;
     const folderHeader = target.closest('.folder-header') as HTMLElement;
+
+    if (this.draggedFolder) {
+      this.handleFolderDrop(event, folderHeader);
+      return;
+    }
 
     if (!folderHeader || !this.draggedBookmark) return;
 
@@ -360,6 +393,190 @@ export class BookmarkDragAndDrop {
       linkElement.draggable = true;
       linkElement.setAttribute('draggable', 'true');
     }
+  }
+
+  // ===========================================================================
+  // フォルダ DnD (#54)
+  // ===========================================================================
+
+  /**
+   * フォルダのドラッグ開始処理
+   */
+  private handleFolderDragStart(
+    event: DragEvent,
+    folderHeader: HTMLElement
+  ): void {
+    const folderElement = folderHeader.closest(
+      '.bookmark-folder'
+    ) as HTMLElement | null;
+    const folderId = folderElement?.dataset.folderId;
+    const title =
+      folderHeader.querySelector('.folder-title')?.textContent ?? '';
+
+    if (!folderElement || !folderId) return;
+
+    this.draggedFolder = {
+      id: folderId,
+      title,
+      sourceElement: folderElement,
+    };
+
+    if (event.dataTransfer) {
+      event.dataTransfer.setData('text/plain', folderId);
+      event.dataTransfer.setData(
+        'application/x-bookmark-folder-source',
+        folderId
+      );
+      event.dataTransfer.effectAllowed = 'move';
+    }
+
+    folderHeader.classList.add('dragging');
+    document.body.classList.add('dragging-bookmark');
+    document.body.classList.add('dragging-folder');
+    folderElement.classList.add('drag-source-folder');
+
+    this.setCustomFolderDragImage(event, title);
+  }
+
+  private setCustomFolderDragImage(event: DragEvent, title: string): void {
+    if (!event.dataTransfer) return;
+
+    const preview = document.createElement('div');
+    preview.className = 'bookmark-drag-preview folder-drag-preview';
+    preview.innerHTML = `
+      <span class="bookmark-drag-preview-icon-placeholder">📁</span>
+      <span class="bookmark-drag-preview-title"></span>
+    `;
+    const titleEl = preview.querySelector('.bookmark-drag-preview-title');
+    if (titleEl) titleEl.textContent = title;
+
+    preview.style.position = 'absolute';
+    preview.style.top = '-1000px';
+    preview.style.left = '-1000px';
+    document.body.appendChild(preview);
+
+    event.dataTransfer.setDragImage(preview, 16, 16);
+
+    requestAnimationFrame(() => {
+      preview.remove();
+    });
+  }
+
+  /**
+   * フォルダのドラッグオーバー処理
+   */
+  private handleFolderDragOver(
+    event: DragEvent,
+    folderHeader: HTMLElement | null
+  ): void {
+    if (!folderHeader || !this.draggedFolder) return;
+
+    const targetFolderElement = folderHeader.closest(
+      '.bookmark-folder'
+    ) as HTMLElement | null;
+    if (!targetFolderElement) return;
+
+    const targetFolderId = targetFolderElement.dataset.folderId;
+    if (!targetFolderId) return;
+
+    const sourceElement = this.draggedFolder.sourceElement;
+
+    // 自分自身、または自分の子孫へのドロップは禁止
+    const isSelfOrDescendant =
+      targetFolderElement === sourceElement ||
+      sourceElement.contains(targetFolderElement);
+
+    if (isSelfOrDescendant) {
+      folderHeader.classList.add('drop-target-invalid');
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'none';
+      }
+      return;
+    }
+
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    folderHeader.classList.add('drop-target-highlight');
+  }
+
+  /**
+   * フォルダのドロップ処理
+   */
+  private handleFolderDrop(
+    event: DragEvent,
+    folderHeader: HTMLElement | null
+  ): void {
+    const dragged = this.draggedFolder;
+    if (!dragged || !folderHeader) return;
+
+    const targetFolderElement = folderHeader.closest(
+      '.bookmark-folder'
+    ) as HTMLElement | null;
+    if (!targetFolderElement) return;
+    const targetFolderId = targetFolderElement.dataset.folderId;
+    if (!targetFolderId) return;
+
+    // 自分自身・子孫への移動は禁止
+    if (
+      targetFolderElement === dragged.sourceElement ||
+      dragged.sourceElement.contains(targetFolderElement)
+    ) {
+      return;
+    }
+
+    folderHeader.classList.remove('drop-target-highlight');
+
+    this.moveFolder(dragged.id, targetFolderId, dragged.title)
+      .then(() => {
+        this.dispatchBookmarksChanged('folder-move');
+      })
+      .catch((error) => {
+        console.error('フォルダ移動エラー:', error);
+        alert('フォルダの移動に失敗しました。');
+      });
+  }
+
+  /**
+   * Chrome Bookmarks API を使用してフォルダを移動する。Undo に対応する。
+   */
+  private async moveFolder(
+    folderId: string,
+    newParentId: string,
+    title: string
+  ): Promise<void> {
+    try {
+      const [node] = await chrome.bookmarks.get(folderId);
+      if (!node) {
+        throw new Error('移動対象のフォルダが見つかりません');
+      }
+      const originalParentId = node.parentId;
+      const originalIndex = node.index;
+
+      await chrome.bookmarks.move(folderId, { parentId: newParentId });
+
+      if (originalParentId !== undefined) {
+        UndoManager.getInstance().register({
+          message: `フォルダ「${title}」を移動しました`,
+          undo: async () => {
+            await chrome.bookmarks.move(folderId, {
+              parentId: originalParentId,
+              index: originalIndex,
+            });
+            this.dispatchBookmarksChanged('undo-folder-move');
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Chrome Bookmarks API エラー:', error);
+      throw error;
+    }
+  }
+
+  private dispatchBookmarksChanged(action: string): void {
+    const event = new CustomEvent('bookmarks-changed', { detail: { action } });
+    document.dispatchEvent(event);
   }
 
   /**
