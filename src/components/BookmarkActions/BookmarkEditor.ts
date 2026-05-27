@@ -106,7 +106,7 @@ export class BookmarkEditor {
 
     return `
       <div id="edit-dialog" class="edit-dialog-overlay">
-        <div class="edit-dialog">
+        <div class="edit-dialog" role="dialog" aria-modal="true">
           <div class="edit-dialog-header">
             <h3>ブックマークを編集</h3>
             <button class="edit-dialog-close" type="button">×</button>
@@ -160,6 +160,13 @@ export class BookmarkEditor {
       }
     };
     document.addEventListener('keydown', handleKeydown);
+
+    // 開いた直後にタイトル入力欄へフォーカス (a11y)
+    const titleInput = document.getElementById(
+      'edit-title'
+    ) as HTMLInputElement | null;
+    titleInput?.focus();
+    titleInput?.select();
   }
 
   /**
