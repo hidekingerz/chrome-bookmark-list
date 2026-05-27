@@ -18,6 +18,10 @@ const mockChrome = {
   tabs: {
     create: vi.fn(),
     query: vi.fn(),
+    group: vi.fn(),
+  },
+  tabGroups: {
+    update: vi.fn(),
   },
   storage: {
     local: {
