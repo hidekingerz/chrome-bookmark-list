@@ -242,10 +242,14 @@ header h1 {
 /* =========================================================================
    ブックマーク
    ========================================================================= */
+/*
+ * フォルダのカードは縦の高さがバラバラになるため、grid ではなく
+ * CSS multi-column (masonry 風) で詰める。column-width によりビューポート幅に
+ * 応じて自動的に列数が決まる。
+ */
 .bookmark-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-  gap: 25px;
+  column-width: 450px;
+  column-gap: 25px;
 }
 
 .bookmark-folder {
@@ -257,6 +261,14 @@ header h1 {
   transition: transform var(--transition), box-shadow var(--transition),
     border-color var(--transition);
   position: relative;
+  /* multi-column では各カードがカラムをまたがないように break-inside を指定 */
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  page-break-inside: avoid;
+  /* カラム間に縦のリズムを出すための余白 */
+  margin-bottom: 25px;
+  /* display: block にして column 内で素直に積まれるようにする (デフォルトのまま) */
+  display: block;
 }
 
 .bookmark-folder:hover {
@@ -1424,7 +1436,9 @@ body.dragging-folder {
   }
 
   .bookmark-container {
-    grid-template-columns: 1fr;
+    /* 狭幅では強制的に 1 カラム */
+    column-count: 1;
+    column-width: auto;
   }
 
   .history-list {
