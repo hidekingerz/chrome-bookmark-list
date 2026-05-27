@@ -322,10 +322,21 @@ export class BookmarkDragAndDrop {
     const targetUrl = targetItem.getAttribute('data-bookmark-url');
     if (!targetUrl) return;
 
-    // 自分自身へのドロップは無効
-    if (targetUrl === this.draggedBookmark.url) {
+    // 前回の dragover で付けたインジケータ/invalid を毎回クリアして付け直す
+    targetItem.classList.remove(
+      'drop-zone-before',
+      'drop-zone-after',
+      'drop-target-invalid'
+    );
+
+    const markInvalid = () => {
       targetItem.classList.add('drop-target-invalid');
       if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+    };
+
+    // 自分自身へのドロップは無効
+    if (targetUrl === this.draggedBookmark.url) {
+      markInvalid();
       return;
     }
 
@@ -343,13 +354,11 @@ export class BookmarkDragAndDrop {
       const srcIdx = siblings.indexOf(srcItem);
       const tgtIdx = siblings.indexOf(targetItem);
       if (zone === 'before' && srcIdx === tgtIdx - 1) {
-        targetItem.classList.add('drop-target-invalid');
-        if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+        markInvalid();
         return;
       }
       if (zone === 'after' && srcIdx === tgtIdx + 1) {
-        targetItem.classList.add('drop-target-invalid');
-        if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+        markInvalid();
         return;
       }
     }
@@ -357,14 +366,9 @@ export class BookmarkDragAndDrop {
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
 
-    targetItem.classList.remove('drop-target-invalid');
-    if (zone === 'before') {
-      targetItem.classList.add('drop-zone-before');
-      targetItem.classList.remove('drop-zone-after');
-    } else {
-      targetItem.classList.add('drop-zone-after');
-      targetItem.classList.remove('drop-zone-before');
-    }
+    targetItem.classList.add(
+      zone === 'before' ? 'drop-zone-before' : 'drop-zone-after'
+    );
   }
 
   /**
@@ -868,8 +872,13 @@ export class BookmarkDragAndDrop {
         ? this.isInvalidFolderDropTarget(sourceElement, targetFolderElement)
         : this.isInvalidFolderReorder(sourceElement, targetFolderElement, zone);
 
-    // 既存の reorder インジケータと invalid クラスをクリア
-    folderHeader.classList.remove('drop-zone-before', 'drop-zone-after');
+    // 前回の dragover で付けたインジケータ・invalid クラスを毎回クリアしてから付け直す
+    folderHeader.classList.remove(
+      'drop-zone-before',
+      'drop-zone-after',
+      'drop-target-highlight',
+      'drop-target-invalid'
+    );
 
     if (invalid) {
       folderHeader.classList.add('drop-target-invalid');
@@ -887,7 +896,6 @@ export class BookmarkDragAndDrop {
     if (zone === 'into') {
       folderHeader.classList.add('drop-target-highlight');
     } else {
-      folderHeader.classList.remove('drop-target-highlight');
       folderHeader.classList.add(
         zone === 'before' ? 'drop-zone-before' : 'drop-zone-after'
       );
