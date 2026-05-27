@@ -1,7 +1,17 @@
 import { escapeHtml } from '../../scripts/utils.js';
 
 /** Chrome のタブグループ色 (固定リストから自動割り当て) */
-const GROUP_COLORS: chrome.tabGroups.ColorEnum[] = [
+type TabGroupColor =
+  | 'blue'
+  | 'red'
+  | 'yellow'
+  | 'green'
+  | 'pink'
+  | 'purple'
+  | 'cyan'
+  | 'orange';
+
+const GROUP_COLORS: TabGroupColor[] = [
   'blue',
   'red',
   'yellow',
@@ -84,7 +94,7 @@ export class TabGroupOpener {
   /**
    * フォルダ名から決定的に色を選ぶ。同じ名前なら常に同じ色になる。
    */
-  private pickColor(folderName: string): chrome.tabGroups.ColorEnum {
+  private pickColor(folderName: string): TabGroupColor {
     let hash = 0;
     for (let i = 0; i < folderName.length; i++) {
       hash = (hash * 31 + folderName.charCodeAt(i)) >>> 0;
