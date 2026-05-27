@@ -602,6 +602,38 @@ header h1 {
   bottom: -4px;
 }
 
+/* ブックマーク間並び替えのドロップ位置インジケータ (#80) */
+.bookmark-item.drop-zone-before,
+.bookmark-item.drop-zone-after {
+  position: relative;
+}
+
+.bookmark-item.drop-zone-before::before,
+.bookmark-item.drop-zone-after::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--accent);
+  z-index: 2;
+}
+
+.bookmark-item.drop-zone-before::before {
+  top: -2px;
+}
+
+.bookmark-item.drop-zone-after::after {
+  bottom: -2px;
+}
+
+.bookmark-item.drop-target-invalid {
+  background-color: rgba(220, 38, 38, 0.08);
+  border-radius: var(--radius-sm);
+}
+
 /* ドラッグ中の元フォルダを薄く表示 */
 body.dragging-bookmark .bookmark-folder.drag-source-folder {
   opacity: 0.7;
