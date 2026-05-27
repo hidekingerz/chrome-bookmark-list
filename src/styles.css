@@ -248,6 +248,20 @@ header h1 {
   gap: 25px;
 }
 
+/* サブフォルダ 2 個以上・ブックマーク 10 件以上のトップレベルフォルダは
+   外側 grid で 2 列分を占有する。ビューポートが 1 カラム幅しかない場合は
+   span 2 でも 1 列に自動 clamp される。 */
+.bookmark-folder.wide {
+  grid-column: span 2;
+}
+
+/* 狭幅 (シングルカラム時) は span 2 を解除して 1 列に */
+@media (max-width: 950px) {
+  .bookmark-folder.wide {
+    grid-column: span 1;
+  }
+}
+
 .bookmark-folder {
   background: var(--surface);
   border: 1px solid var(--border);

@@ -23,8 +23,18 @@ export class BookmarkFolderRenderer {
     // レベル1以上のサブフォルダなしフォルダは、親フォルダが折りたたまれていても表示を維持
     const shouldHide = level > 0 && hasSubfolders && !folder.expanded;
 
+    // トップレベルかつ「サブフォルダ 2 件以上」または「ブックマーク 10 件以上」のフォルダは
+    // 内部 2 カラム表示にするのに合わせ、外側 grid でも 2 グリッド分の幅を取らせる
+    const wide =
+      level === 0 &&
+      (folder.subfolders.length >= 2 ||
+        folder.bookmarks.length >=
+          BookmarkFolderRenderer.WIDE_BOOKMARK_THRESHOLD)
+        ? ' wide'
+        : '';
+
     return `
-      <div class="bookmark-folder ${shouldHide ? 'hidden' : ''}"
+      <div class="bookmark-folder ${shouldHide ? 'hidden' : ''}${wide}"
            data-level="${level}"
            data-folder-id="${folder.id}"
            role="${level === 0 ? 'tree' : 'group'}">
@@ -33,6 +43,9 @@ export class BookmarkFolderRenderer {
       </div>
     `;
   }
+
+  /** これ以上のブックマーク数を持つフォルダは外側 grid を 2 列分使う */
+  private static readonly WIDE_BOOKMARK_THRESHOLD = 10;
 
   /**
    * フォルダヘッダーを生成する
