@@ -15,6 +15,8 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
   let dnd: BookmarkDragAndDrop;
 
   function buildDom(): void {
+    // A(idx 0), B(idx 1), C(idx 2): 3 兄弟にして隣接 no-op を避けつつ
+    // 並び替え判定が動くようにする
     document.body.innerHTML = `
       <div class="bookmark-container">
         <div class="bookmark-folder" data-folder-id="A">
@@ -25,6 +27,11 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
         <div class="bookmark-folder" data-folder-id="B">
           <div class="folder-header" draggable="true">
             <h2 class="folder-title">B</h2>
+          </div>
+        </div>
+        <div class="bookmark-folder" data-folder-id="C">
+          <div class="folder-header" draggable="true">
+            <h2 class="folder-title">C</h2>
           </div>
         </div>
       </div>
@@ -130,6 +137,11 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
           { id: 'B', parentId: '1', index: 1, title: 'B' },
         ]);
       }
+      if (id === 'C') {
+        return Promise.resolve([
+          { id: 'C', parentId: '1', index: 2, title: 'C' },
+        ]);
+      }
       return Promise.resolve([]);
     });
     mockChrome.bookmarks.move = vi.fn().mockResolvedValue(undefined);
@@ -146,14 +158,15 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
     vi.clearAllMocks();
   });
 
-  it('ヘッダー上部 (clientY=5) で dragover すると drop-zone-before が付く', () => {
+  it('非隣接ターゲットの上部 (clientY=5) で dragover すると drop-zone-before が付く', () => {
+    // A(0) を C(2) の上端にドロップ: A と C は隣接していないので valid
     const sourceHeader = document.querySelector(
       '[data-folder-id="A"] .folder-header'
     ) as HTMLElement;
     document.dispatchEvent(createDragEvent('dragstart', sourceHeader));
 
     const targetHeader = document.querySelector(
-      '[data-folder-id="B"] .folder-header'
+      '[data-folder-id="C"] .folder-header'
     ) as HTMLElement;
     document.dispatchEvent(createDragEvent('dragover', targetHeader, 5));
 
@@ -164,7 +177,23 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
     );
   });
 
-  it('ヘッダー下部 (clientY=45) で dragover すると drop-zone-after が付く', () => {
+  it('非隣接ターゲットの下部 (clientY=45) で dragover すると drop-zone-after が付く', () => {
+    // C(2) を A(0) の下端にドロップ: 隣接していないので valid
+    const sourceHeader = document.querySelector(
+      '[data-folder-id="C"] .folder-header'
+    ) as HTMLElement;
+    document.dispatchEvent(createDragEvent('dragstart', sourceHeader));
+
+    const targetHeader = document.querySelector(
+      '[data-folder-id="A"] .folder-header'
+    ) as HTMLElement;
+    document.dispatchEvent(createDragEvent('dragover', targetHeader, 45));
+
+    expect(targetHeader.classList.contains('drop-zone-after')).toBe(true);
+    expect(targetHeader.classList.contains('drop-zone-before')).toBe(false);
+  });
+
+  it('隣接 no-op (A→B の上端) は drop-target-invalid になる', () => {
     const sourceHeader = document.querySelector(
       '[data-folder-id="A"] .folder-header'
     ) as HTMLElement;
@@ -173,9 +202,9 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
     const targetHeader = document.querySelector(
       '[data-folder-id="B"] .folder-header'
     ) as HTMLElement;
-    document.dispatchEvent(createDragEvent('dragover', targetHeader, 45));
+    document.dispatchEvent(createDragEvent('dragover', targetHeader, 5));
 
-    expect(targetHeader.classList.contains('drop-zone-after')).toBe(true);
+    expect(targetHeader.classList.contains('drop-target-invalid')).toBe(true);
     expect(targetHeader.classList.contains('drop-zone-before')).toBe(false);
   });
 
@@ -195,17 +224,16 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
     expect(targetHeader.classList.contains('drop-zone-after')).toBe(false);
   });
 
-  it('同じ親内で before ドロップは source 削除後の index で move される', async () => {
-    // A(idx 0), B(idx 1) で A を B の前にドロップ
-    // 同じ親内で src(0) < tgt(1) なので shiftedTargetIndex = 0
-    // "before" の new index = 0 (= 元の位置、no-op)
+  it('A(0) を C(2) の前にドロップ → shiftedTargetIndex(1) で move される', async () => {
+    // sameParent + src(0) < tgt(2) → shiftedTargetIndex = 2 - 1 = 1
+    // "before" → newIndex = 1
     const sourceHeader = document.querySelector(
       '[data-folder-id="A"] .folder-header'
     ) as HTMLElement;
     document.dispatchEvent(createDragEvent('dragstart', sourceHeader));
 
     const targetHeader = document.querySelector(
-      '[data-folder-id="B"] .folder-header'
+      '[data-folder-id="C"] .folder-header'
     ) as HTMLElement;
     document.dispatchEvent(createDragEvent('dragover', targetHeader, 5));
     document.dispatchEvent(createDragEvent('drop', targetHeader, 5));
@@ -214,28 +242,27 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
 
     expect(chrome.bookmarks.move).toHaveBeenCalledWith('A', {
       parentId: '1',
-      index: 0,
+      index: 1,
     });
   });
 
-  it('同じ親内で after ドロップは shiftedTargetIndex + 1 で move される', async () => {
-    // A(idx 0), B(idx 1) で A を B の後にドロップ
-    // 同じ親内で src(0) < tgt(1) なので shiftedTargetIndex = 0
-    // "after" の new index = 1
+  it('C(2) を A(0) の後にドロップ → newIndex = 1 で move される', async () => {
+    // sameParent + src(2) > tgt(0) → shiftedTargetIndex = 0
+    // "after" → newIndex = 1
     const sourceHeader = document.querySelector(
-      '[data-folder-id="A"] .folder-header'
+      '[data-folder-id="C"] .folder-header'
     ) as HTMLElement;
     document.dispatchEvent(createDragEvent('dragstart', sourceHeader));
 
     const targetHeader = document.querySelector(
-      '[data-folder-id="B"] .folder-header'
+      '[data-folder-id="A"] .folder-header'
     ) as HTMLElement;
     document.dispatchEvent(createDragEvent('dragover', targetHeader, 45));
     document.dispatchEvent(createDragEvent('drop', targetHeader, 45));
 
     await new Promise((r) => setTimeout(r, 20));
 
-    expect(chrome.bookmarks.move).toHaveBeenCalledWith('A', {
+    expect(chrome.bookmarks.move).toHaveBeenCalledWith('C', {
       parentId: '1',
       index: 1,
     });

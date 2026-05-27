@@ -515,13 +515,36 @@ export class BookmarkDragAndDrop {
    * "before" / "after" の並び替えが無効か判定する。
    * - 自分自身: 同じ要素を起点・目標にできない
    * - 自分の子孫: ループを防ぐ
+   * - 並び替え後に同じ位置になる no-op (例: 既に「target の直前」にあるのに
+   *   target の "before" にドロップ): 混乱を避けて invalid にする
    */
   private isInvalidFolderReorder(
     sourceElement: HTMLElement,
-    targetFolderElement: HTMLElement
+    targetFolderElement: HTMLElement,
+    zone: 'before' | 'after'
   ): boolean {
     if (targetFolderElement === sourceElement) return true;
     if (sourceElement.contains(targetFolderElement)) return true;
+
+    // 同じ親内で no-op になるケースを invalid 扱いにする
+    const sameParentContainer =
+      sourceElement.parentElement === targetFolderElement.parentElement;
+    if (sameParentContainer) {
+      // DOM 上の表示順を使った隣接判定
+      const siblings = Array.from(
+        targetFolderElement.parentElement?.children ?? []
+      ).filter((el) =>
+        (el as HTMLElement).classList.contains('bookmark-folder')
+      );
+      const srcIdx = siblings.indexOf(sourceElement);
+      const tgtIdx = siblings.indexOf(targetFolderElement);
+      if (srcIdx === -1 || tgtIdx === -1) return false;
+
+      // 既に対応位置に居る場合は no-op (例: src=0, tgt=1, "before" → src は既に tgt の前)
+      if (zone === 'before' && srcIdx === tgtIdx - 1) return true;
+      if (zone === 'after' && srcIdx === tgtIdx + 1) return true;
+    }
+
     return false;
   }
 
@@ -545,11 +568,11 @@ export class BookmarkDragAndDrop {
     const sourceElement = this.draggedFolder.sourceElement;
     const zone = this.detectFolderDropZone(event.clientY, folderHeader);
 
-    // ゾーンごとに無効判定: into は親フォルダも禁止、before/after は自分自身/子孫のみ禁止
+    // ゾーンごとに無効判定: into は親フォルダも禁止、before/after は自分自身/子孫/隣接 no-op を禁止
     const invalid =
       zone === 'into'
         ? this.isInvalidFolderDropTarget(sourceElement, targetFolderElement)
-        : this.isInvalidFolderReorder(sourceElement, targetFolderElement);
+        : this.isInvalidFolderReorder(sourceElement, targetFolderElement, zone);
 
     // 既存の reorder インジケータと invalid クラスをクリア
     folderHeader.classList.remove('drop-zone-before', 'drop-zone-after');
@@ -603,7 +626,8 @@ export class BookmarkDragAndDrop {
           )
         : this.isInvalidFolderReorder(
             dragged.sourceElement,
-            targetFolderElement
+            targetFolderElement,
+            zone
           );
     if (invalid) return;
 
