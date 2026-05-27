@@ -38,6 +38,25 @@ export class TabGroupOpener {
       if (!confirmed) return;
     }
 
+    // chrome.tabs.group / chrome.tabGroups は manifest permissions に tabGroups が
+    // 含まれ、かつユーザーが新しい権限を承認した拡張機能でのみ使える。
+    // 古い Chrome や権限未承認の場合は素のタブ作成にフォールバックする。
+    const tabGroupApiAvailable =
+      typeof chrome.tabs?.group === 'function' &&
+      typeof chrome.tabGroups?.update === 'function';
+
+    if (!tabGroupApiAvailable) {
+      console.warn(
+        '⚠️ chrome.tabGroups API が利用できません。' +
+          'タブグループ化をスキップして個別タブとして開きます。' +
+          ' permissions 変更後は拡張機能を再読み込みするか再インストールしてください。'
+      );
+      for (const url of urls) {
+        await chrome.tabs.create({ url, active: false });
+      }
+      return;
+    }
+
     try {
       const tabs = await Promise.all(
         urls.map((url) => chrome.tabs.create({ url, active: false }))
@@ -56,7 +75,9 @@ export class TabGroupOpener {
       });
     } catch (error) {
       console.error('❌ タブグループの作成に失敗しました:', error);
-      alert('タブグループの作成に失敗しました。');
+      alert(
+        'タブグループの作成に失敗しました。\n拡張機能を再インストールして「タブグループ」権限を承認してください。'
+      );
     }
   }
 
