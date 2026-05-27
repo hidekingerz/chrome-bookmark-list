@@ -81,6 +81,72 @@ export class BookmarkDragAndDrop {
 
     // ドラッグ中の見た目を変更
     bookmarkLink.classList.add('dragging');
+
+    // カスタムドラッグプレビューを設定
+    this.setCustomDragImage(event, bookmarkLink, title);
+
+    // ドラッグ中であることを示すクラスを body に付与 (ドロップ可/不可の視覚化用)
+    document.body.classList.add('dragging-bookmark');
+    folderElement.classList.add('drag-source-folder');
+  }
+
+  /**
+   * ドラッグ画像をカスタマイズする。
+   * favicon + タイトル + (複数選択中なら) 件数バッジを表示する。
+   */
+  private setCustomDragImage(
+    event: DragEvent,
+    bookmarkLink: HTMLElement,
+    title: string
+  ): void {
+    if (!event.dataTransfer) return;
+
+    // 選択件数 (multi-select との連携): DOM ベースで判定
+    const selectedCount = document.querySelectorAll(
+      '.bookmark-item.selected'
+    ).length;
+
+    const preview = document.createElement('div');
+    preview.className = 'bookmark-drag-preview';
+
+    // favicon を取得 (存在しない場合は絵文字フォールバック)
+    const faviconImg = bookmarkLink.querySelector(
+      '.bookmark-favicon'
+    ) as HTMLImageElement | null;
+    const faviconSrc = faviconImg?.src;
+    const faviconHtml =
+      faviconSrc && !faviconImg?.classList.contains('hidden')
+        ? `<img src="${faviconSrc}" alt="" class="bookmark-drag-preview-icon" />`
+        : `<span class="bookmark-drag-preview-icon-placeholder">🔗</span>`;
+
+    const badgeHtml =
+      selectedCount > 1
+        ? `<span class="bookmark-drag-preview-badge">${selectedCount}</span>`
+        : '';
+
+    preview.innerHTML = `
+      ${faviconHtml}
+      <span class="bookmark-drag-preview-title"></span>
+      ${badgeHtml}
+    `;
+    // タイトルは textContent で安全に設定
+    const titleEl = preview.querySelector('.bookmark-drag-preview-title');
+    if (titleEl) {
+      titleEl.textContent = title;
+    }
+
+    // 画面外に配置してから setDragImage に渡す (描画されないとブラウザが画像化できない)
+    preview.style.position = 'absolute';
+    preview.style.top = '-1000px';
+    preview.style.left = '-1000px';
+    document.body.appendChild(preview);
+
+    event.dataTransfer.setDragImage(preview, 16, 16);
+
+    // 次フレームで掃除する
+    requestAnimationFrame(() => {
+      preview.remove();
+    });
   }
 
   /**
@@ -109,6 +175,19 @@ export class BookmarkDragAndDrop {
 
     this.draggedBookmark = null;
     this.autoscroller.stop();
+
+    // ドラッグ状態の視覚的マーカーを除去
+    document.body.classList.remove('dragging-bookmark');
+    for (const el of Array.from(
+      document.querySelectorAll('.drag-source-folder')
+    )) {
+      el.classList.remove('drag-source-folder');
+    }
+    for (const el of Array.from(
+      document.querySelectorAll('.drop-target-invalid')
+    )) {
+      el.classList.remove('drop-target-invalid');
+    }
   }
 
   /**
@@ -130,8 +209,12 @@ export class BookmarkDragAndDrop {
     ) as HTMLElement;
     const targetFolderId = folderElement?.dataset.folderId;
 
-    // 同じフォルダへのドロップは無効
+    // 同じフォルダへのドロップは無効: 不可視覚を表示するため invalid クラスを付与
     if (targetFolderId === this.draggedBookmark.originalFolderId) {
+      folderHeader.classList.add('drop-target-invalid');
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'none';
+      }
       return;
     }
 
@@ -163,6 +246,7 @@ export class BookmarkDragAndDrop {
 
     if (folderHeader) {
       folderHeader.classList.remove('drop-target-highlight');
+      folderHeader.classList.remove('drop-target-invalid');
     }
   }
 
