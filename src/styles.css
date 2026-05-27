@@ -364,6 +364,27 @@ header h1 {
   border-left-width: 2px !important;
 }
 
+/* サブフォルダが 2 個以上のときは 2 カラム表示で縦長を抑える */
+.subfolders-container.multi-column.expanded {
+  column-count: 2;
+  column-gap: 14px;
+}
+
+.subfolders-container.multi-column .bookmark-folder {
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  page-break-inside: avoid;
+  /* display: inline-block で multi-column 内の break-inside がより確実に効く */
+  width: 100%;
+}
+
+/* 狭幅では multi-column を諦めて 1 カラムに */
+@media (max-width: 700px) {
+  .subfolders-container.multi-column.expanded {
+    column-count: 1;
+  }
+}
+
 .subfolders-container.collapsed .bookmark-folder:not(.preserve-visible) {
   display: none !important;
 }

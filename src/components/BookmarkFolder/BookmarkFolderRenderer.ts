@@ -120,8 +120,12 @@ export class BookmarkFolderRenderer {
       .map((subfolder) => this.renderFolder(subfolder, level + 1))
       .join('');
 
+    // サブフォルダが 2 個以上の場合は 2 カラム表示にして縦長を抑える
+    const multiColumnClass =
+      folder.subfolders.length >= 2 ? ' multi-column' : '';
+
     return `
-      <div class="subfolders-container ${folder.expanded ? 'expanded' : 'collapsed'}" 
+      <div class="subfolders-container ${folder.expanded ? 'expanded' : 'collapsed'}${multiColumnClass}"
            style="display: ${folder.expanded ? 'block' : 'none'};">
         ${subfoldersHtml}
       </div>
