@@ -65,12 +65,21 @@ export class BookmarkItemRenderer {
       .map((bookmark) => this.renderBookmarkItem(bookmark))
       .join('');
 
+    // 10件以上は内部 2 カラム表示でカード縦長を抑える
+    const multiColumnClass =
+      bookmarks.length >= BookmarkItemRenderer.MULTI_COLUMN_THRESHOLD
+        ? ' multi-column'
+        : '';
+
     return `
-      <ul class="bookmark-list ${expanded ? 'expanded' : 'collapsed'}"
+      <ul class="bookmark-list ${expanded ? 'expanded' : 'collapsed'}${multiColumnClass}"
           role="group"
           style="display: ${expanded ? 'block' : 'none'}">
         ${bookmarkItems}
       </ul>
     `;
   }
+
+  /** これ以上のブックマーク数を持つフォルダは内部 2 カラム表示にする */
+  private static readonly MULTI_COLUMN_THRESHOLD = 10;
 }

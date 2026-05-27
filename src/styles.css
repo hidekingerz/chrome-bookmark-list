@@ -391,6 +391,27 @@ header h1 {
   list-style: none;
 }
 
+/* ブックマーク多数 (10件以上) のフォルダはリスト内を 2 カラムにして縦長を抑える */
+.bookmark-list.multi-column {
+  column-count: 2;
+  column-gap: 12px;
+}
+
+.bookmark-list.multi-column .bookmark-item {
+  /* multi-column 内でアイテムがカラム境界をまたがないようにする */
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  page-break-inside: avoid;
+  width: auto;
+}
+
+/* 狭幅では 2 カラムを諦めて 1 カラムに戻す (内部スペースが足りないため) */
+@media (max-width: 700px) {
+  .bookmark-list.multi-column {
+    column-count: 1;
+  }
+}
+
 .bookmark-item {
   margin-bottom: 4px;
   display: flex;
