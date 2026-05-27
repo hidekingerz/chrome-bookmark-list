@@ -575,6 +575,32 @@ header h1 {
   cursor: not-allowed;
 }
 
+/* フォルダ並び替えのドロップ位置インジケータ (#77) */
+.folder-header.drop-zone-before,
+.folder-header.drop-zone-after {
+  position: relative;
+}
+
+.folder-header.drop-zone-before::before,
+.folder-header.drop-zone-after::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--accent-soft-strong);
+}
+
+.folder-header.drop-zone-before::before {
+  top: -2px;
+}
+
+.folder-header.drop-zone-after::after {
+  bottom: -2px;
+}
+
 /* ドラッグ中の元フォルダを薄く表示 */
 body.dragging-bookmark .bookmark-folder.drag-source-folder {
   opacity: 0.7;
