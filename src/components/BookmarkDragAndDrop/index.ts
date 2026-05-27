@@ -9,6 +9,11 @@ export class BookmarkDragAndDrop {
     url: string;
     title: string;
     originalFolderId: string;
+    /**
+     * 複数選択ドラッグの場合、ドラッグ対象のすべての URL リスト (本人含む)。
+     * 単一ドラッグなら [url] と同じになる。
+     */
+    additionalUrls: string[];
   } | null = null;
 
   private draggedFolder: {
@@ -78,10 +83,28 @@ export class BookmarkDragAndDrop {
 
     if (!url || !title || !folderId) return;
 
+    // ドラッグ対象が複数選択に含まれている場合、選択中の全ブックマークを対象にする
+    const sourceItem = bookmarkLink.closest(
+      '.bookmark-item'
+    ) as HTMLElement | null;
+    let additionalUrls: string[] = [url];
+    if (sourceItem?.classList.contains('selected')) {
+      const selectedItems = Array.from(
+        document.querySelectorAll('.bookmark-item.selected')
+      );
+      const urls = selectedItems
+        .map((el) => el.getAttribute('data-bookmark-url'))
+        .filter((u): u is string => typeof u === 'string');
+      if (urls.length > 1) {
+        additionalUrls = urls;
+      }
+    }
+
     this.draggedBookmark = {
       url,
       title,
       originalFolderId: folderId,
+      additionalUrls,
     };
 
     // ドラッグデータを設定
@@ -539,14 +562,78 @@ export class BookmarkDragAndDrop {
   }
 
   /**
-   * Chrome Bookmarks APIを使用してブックマークを移動する
+   * Chrome Bookmarks APIを使用してブックマークを移動する。
+   * draggedBookmark.additionalUrls に複数 URL が入っている場合は一括移動する。
    */
   private async moveBookmark(
     bookmarkUrl: string,
     targetFolderId: string
   ): Promise<void> {
+    const urls = this.draggedBookmark?.additionalUrls ?? [bookmarkUrl];
+
+    // 単一ドラッグ: 従来の挙動 (Undo: 単一)
+    if (urls.length <= 1) {
+      return this.moveSingleBookmark(bookmarkUrl, targetFolderId);
+    }
+
+    // 複数選択ドラッグ: すべて移動 (Undo: 一括)
+    return this.moveMultipleBookmarks(urls, targetFolderId);
+  }
+
+  private async moveMultipleBookmarks(
+    urls: string[],
+    targetFolderId: string
+  ): Promise<void> {
+    const moveInfos: {
+      id: string;
+      previousParentId: string | undefined;
+      previousIndex: number | undefined;
+      title: string;
+    }[] = [];
+
     try {
-      // 移動するブックマークを検索
+      for (const url of urls) {
+        const found = await chrome.bookmarks.search({ url });
+        if (found.length === 0) continue;
+        const target = found[0];
+        moveInfos.push({
+          id: target.id,
+          previousParentId: target.parentId,
+          previousIndex: target.index,
+          title: target.title,
+        });
+        await chrome.bookmarks.move(target.id, { parentId: targetFolderId });
+      }
+
+      if (moveInfos.length > 0) {
+        UndoManager.getInstance().register({
+          message: `${moveInfos.length} 件のブックマークを移動しました`,
+          undo: async () => {
+            for (const info of moveInfos) {
+              if (info.previousParentId === undefined) continue;
+              await chrome.bookmarks.move(info.id, {
+                parentId: info.previousParentId,
+                index: info.previousIndex,
+              });
+            }
+            const e = new CustomEvent('bookmarks-changed', {
+              detail: { action: 'undo-bulk-move' },
+            });
+            document.dispatchEvent(e);
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Chrome Bookmarks API エラー (bulk move):', error);
+      throw error;
+    }
+  }
+
+  private async moveSingleBookmark(
+    bookmarkUrl: string,
+    targetFolderId: string
+  ): Promise<void> {
+    try {
       const bookmarks = await chrome.bookmarks.search({ url: bookmarkUrl });
 
       if (bookmarks.length === 0) {
@@ -558,7 +645,6 @@ export class BookmarkDragAndDrop {
       const originalIndex = bookmark.index;
       const bookmarkTitle = bookmark.title;
 
-      // ブックマークを移動
       await chrome.bookmarks.move(bookmark.id, {
         parentId: targetFolderId,
       });
