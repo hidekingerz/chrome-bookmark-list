@@ -687,7 +687,15 @@ export class BookmarkDragAndDrop {
 
       const targetIndex = target.index ?? 0;
       const newParentId = target.parentId;
-      const newIndex = zone === 'before' ? targetIndex : targetIndex + 1;
+      // Chrome の chrome.bookmarks.move は source 削除後の sibling 配列に対する
+      // index を解釈する。同じ親内で source.index < target.index の場合、
+      // source を取り除くと target の index が 1 つ前にずれるので補正する。
+      const sameParent = source.parentId === newParentId;
+      const sourceIndex = source.index ?? 0;
+      const shiftedTargetIndex =
+        sameParent && sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+      const newIndex =
+        zone === 'before' ? shiftedTargetIndex : shiftedTargetIndex + 1;
 
       await chrome.bookmarks.move(folderId, {
         parentId: newParentId,

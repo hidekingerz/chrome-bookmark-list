@@ -195,7 +195,10 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
     expect(targetHeader.classList.contains('drop-zone-after')).toBe(false);
   });
 
-  it('before ドロップで chrome.bookmarks.move が target.index を引数に呼ばれる', async () => {
+  it('同じ親内で before ドロップは source 削除後の index で move される', async () => {
+    // A(idx 0), B(idx 1) で A を B の前にドロップ
+    // 同じ親内で src(0) < tgt(1) なので shiftedTargetIndex = 0
+    // "before" の new index = 0 (= 元の位置、no-op)
     const sourceHeader = document.querySelector(
       '[data-folder-id="A"] .folder-header'
     ) as HTMLElement;
@@ -209,14 +212,16 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
 
     await new Promise((r) => setTimeout(r, 20));
 
-    // B の index は 1。before なので新規 index = 1
     expect(chrome.bookmarks.move).toHaveBeenCalledWith('A', {
       parentId: '1',
-      index: 1,
+      index: 0,
     });
   });
 
-  it('after ドロップで chrome.bookmarks.move が target.index + 1 を引数に呼ばれる', async () => {
+  it('同じ親内で after ドロップは shiftedTargetIndex + 1 で move される', async () => {
+    // A(idx 0), B(idx 1) で A を B の後にドロップ
+    // 同じ親内で src(0) < tgt(1) なので shiftedTargetIndex = 0
+    // "after" の new index = 1
     const sourceHeader = document.querySelector(
       '[data-folder-id="A"] .folder-header'
     ) as HTMLElement;
@@ -230,10 +235,9 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
 
     await new Promise((r) => setTimeout(r, 20));
 
-    // B の index は 1。after なので新規 index = 2
     expect(chrome.bookmarks.move).toHaveBeenCalledWith('A', {
       parentId: '1',
-      index: 2,
+      index: 1,
     });
   });
 
