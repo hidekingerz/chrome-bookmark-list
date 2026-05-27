@@ -207,9 +207,15 @@ export class BookmarkDragAndDrop {
       el.classList.remove('drop-target-invalid');
     }
     for (const el of Array.from(
-      document.querySelectorAll('.drop-zone-before, .drop-zone-after')
+      document.querySelectorAll(
+        '.drop-zone-before, .drop-zone-after, .bookmark-item.drop-target-invalid'
+      )
     )) {
-      el.classList.remove('drop-zone-before', 'drop-zone-after');
+      el.classList.remove(
+        'drop-zone-before',
+        'drop-zone-after',
+        'drop-target-invalid'
+      );
     }
     for (const el of Array.from(
       document.querySelectorAll('.folder-header.dragging')
@@ -235,7 +241,16 @@ export class BookmarkDragAndDrop {
       return;
     }
 
-    if (!folderHeader || !this.draggedBookmark) return;
+    if (!this.draggedBookmark) return;
+
+    // ブックマーク間 reorder のチェック (#80)
+    const bookmarkItem = target.closest('.bookmark-item') as HTMLElement | null;
+    if (bookmarkItem) {
+      this.handleBookmarkReorderOver(event, bookmarkItem);
+      return;
+    }
+
+    if (!folderHeader) return;
 
     const folderElement = folderHeader.closest(
       '.bookmark-folder'
@@ -271,18 +286,99 @@ export class BookmarkDragAndDrop {
   }
 
   /**
+   * ブックマーク間並び替えの dragover 処理 (#80)
+   *
+   * 上半分 → before, 下半分 → after で表示する。
+   * 自身へのドロップ、隣接 no-op はinvalid にする。
+   */
+  private handleBookmarkReorderOver(
+    event: DragEvent,
+    targetItem: HTMLElement
+  ): void {
+    if (!this.draggedBookmark) return;
+    const targetUrl = targetItem.getAttribute('data-bookmark-url');
+    if (!targetUrl) return;
+
+    // 自分自身へのドロップは無効
+    if (targetUrl === this.draggedBookmark.url) {
+      targetItem.classList.add('drop-target-invalid');
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+      return;
+    }
+
+    const rect = targetItem.getBoundingClientRect();
+    const zone =
+      event.clientY - rect.top < rect.height / 2 ? 'before' : 'after';
+
+    // 同じ親内 (= 同じ bookmark-list) で隣接 no-op を検出
+    const siblings = Array.from(
+      targetItem.parentElement?.querySelectorAll(':scope > .bookmark-item') ??
+        []
+    ) as HTMLElement[];
+    const srcItem = this.findBookmarkItemByUrl(this.draggedBookmark.url);
+    if (srcItem && siblings.includes(srcItem)) {
+      const srcIdx = siblings.indexOf(srcItem);
+      const tgtIdx = siblings.indexOf(targetItem);
+      if (zone === 'before' && srcIdx === tgtIdx - 1) {
+        targetItem.classList.add('drop-target-invalid');
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+        return;
+      }
+      if (zone === 'after' && srcIdx === tgtIdx + 1) {
+        targetItem.classList.add('drop-target-invalid');
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+        return;
+      }
+    }
+
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+
+    targetItem.classList.remove('drop-target-invalid');
+    if (zone === 'before') {
+      targetItem.classList.add('drop-zone-before');
+      targetItem.classList.remove('drop-zone-after');
+    } else {
+      targetItem.classList.add('drop-zone-after');
+      targetItem.classList.remove('drop-zone-before');
+    }
+  }
+
+  /**
+   * URL を data-bookmark-url とする bookmark-item 要素を探す
+   */
+  private findBookmarkItemByUrl(url: string): HTMLElement | null {
+    const items = document.querySelectorAll(
+      `.bookmark-item[data-bookmark-url]`
+    );
+    for (const el of Array.from(items)) {
+      if (el.getAttribute('data-bookmark-url') === url) {
+        return el as HTMLElement;
+      }
+    }
+    return null;
+  }
+
+  /**
    * ドラッグリーブ時の処理
    */
   private handleDragLeave(event: DragEvent): void {
     const target = event.target as HTMLElement;
     const folderHeader = target.closest('.folder-header') as HTMLElement;
-
     if (folderHeader) {
       folderHeader.classList.remove(
         'drop-target-highlight',
         'drop-target-invalid',
         'drop-zone-before',
         'drop-zone-after'
+      );
+    }
+    const bookmarkItem = target.closest('.bookmark-item') as HTMLElement | null;
+    if (bookmarkItem) {
+      bookmarkItem.classList.remove(
+        'drop-zone-before',
+        'drop-zone-after',
+        'drop-target-invalid'
       );
     }
   }
@@ -302,7 +398,18 @@ export class BookmarkDragAndDrop {
       return;
     }
 
-    if (!folderHeader || !this.draggedBookmark) return;
+    if (!this.draggedBookmark) return;
+
+    // ブックマーク間 reorder (#80)
+    const targetBookmarkItem = target.closest(
+      '.bookmark-item'
+    ) as HTMLElement | null;
+    if (targetBookmarkItem) {
+      this.handleBookmarkReorderDrop(event, targetBookmarkItem);
+      return;
+    }
+
+    if (!folderHeader) return;
 
     const folderElement = folderHeader.closest(
       '.bookmark-folder'
@@ -328,6 +435,107 @@ export class BookmarkDragAndDrop {
 
     // ハイライトを削除
     folderHeader.classList.remove('drop-target-highlight');
+  }
+
+  /**
+   * ブックマーク間 reorder の drop 処理 (#80)
+   */
+  private handleBookmarkReorderDrop(
+    event: DragEvent,
+    targetItem: HTMLElement
+  ): void {
+    if (!this.draggedBookmark) return;
+    const targetUrl = targetItem.getAttribute('data-bookmark-url');
+    if (!targetUrl || targetUrl === this.draggedBookmark.url) return;
+
+    const rect = targetItem.getBoundingClientRect();
+    const zone =
+      event.clientY - rect.top < rect.height / 2 ? 'before' : 'after';
+
+    targetItem.classList.remove(
+      'drop-zone-before',
+      'drop-zone-after',
+      'drop-target-invalid'
+    );
+
+    this.reorderBookmark(this.draggedBookmark.url, targetUrl, zone)
+      .then(() => {
+        this.refreshBookmarkList();
+      })
+      .catch((error) => {
+        console.error('ブックマーク並び替えエラー:', error);
+        alert('ブックマークの並び替えに失敗しました。');
+      });
+  }
+
+  /**
+   * 同じフォルダ (もしくは別フォルダ) 内でブックマークを並び替える。
+   * Undo に対応。Chrome の chrome.bookmarks.move の補正挙動 (#77 と同様) を考慮。
+   */
+  private async reorderBookmark(
+    sourceUrl: string,
+    targetUrl: string,
+    zone: 'before' | 'after'
+  ): Promise<void> {
+    try {
+      const [sources, targets] = await Promise.all([
+        chrome.bookmarks.search({ url: sourceUrl }),
+        chrome.bookmarks.search({ url: targetUrl }),
+      ]);
+      if (sources.length === 0)
+        throw new Error('ソースブックマークが見つかりません');
+      if (targets.length === 0)
+        throw new Error('ターゲットブックマークが見つかりません');
+
+      const source = sources[0];
+      const target = targets[0];
+      if (target.parentId === undefined) {
+        throw new Error('ターゲットの親が取得できません');
+      }
+      const originalParentId = source.parentId;
+      const originalIndex = source.index;
+      const sourceTitle = source.title;
+
+      const targetIndex = target.index ?? 0;
+      const newIndex = zone === 'before' ? targetIndex : targetIndex + 1;
+
+      await chrome.bookmarks.move(source.id, {
+        parentId: target.parentId,
+        index: newIndex,
+      });
+
+      if (originalParentId !== undefined) {
+        UndoManager.getInstance().register({
+          message: `「${sourceTitle}」を並び替えました`,
+          undo: async () => {
+            let undoIndex = originalIndex ?? 0;
+            try {
+              const [now] = await chrome.bookmarks.get(source.id);
+              if (
+                now?.parentId === originalParentId &&
+                now.index !== undefined &&
+                now.index < undoIndex
+              ) {
+                undoIndex = undoIndex + 1;
+              }
+            } catch {
+              // フォールバック
+            }
+            await chrome.bookmarks.move(source.id, {
+              parentId: originalParentId,
+              index: undoIndex,
+            });
+            const e = new CustomEvent('bookmarks-changed', {
+              detail: { action: 'undo-bookmark-reorder' },
+            });
+            document.dispatchEvent(e);
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Chrome Bookmarks API エラー (reorder):', error);
+      throw error;
+    }
   }
 
   /**
