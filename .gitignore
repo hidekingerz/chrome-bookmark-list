@@ -22,6 +22,10 @@ Thumbs.db
 *.swp
 *.swo
 
+# Claude Code (個人用ローカル設定とworktreeは共有しない)
+.claude/settings.local.json
+.claude/worktrees/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
