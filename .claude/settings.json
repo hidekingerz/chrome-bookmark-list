@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd=\"$(jq -r '.tool_input.command // empty')\"; case \"$cmd\" in *\"git push\"*\":main\"*|*\"git push\"*\":refs/heads/main\"*|*\"git push\"*\" main\"|*\"git push\"*\" main \"*) echo \"BLOCKED: pushing to 'main' is not allowed. Open a PR instead.\" >&2; exit 2 ;; esac; case \"$cmd\" in *\"git commit\"*|*\"git push\"*|*\"git merge\"*|*\"git rebase\"*|*\"git cherry-pick\"*|*\"git revert\"*|*\"git am\"*|*\"git -c \"*\" commit\"*|*\"git -c \"*\" push\"*|*\"git -C \"*\" commit\"*|*\"git -C \"*\" push\"*) branch=\"$(git -C \"$CLAUDE_PROJECT_DIR\" symbolic-ref --short HEAD 2>/dev/null)\"; if [ -z \"$branch\" ]; then echo \"BLOCKED: cannot determine current branch; refusing commit/push (fail-closed). Server-side branch protection on 'main' is the authoritative guard.\" >&2; exit 2; fi; if [ \"$branch\" = \"main\" ]; then echo \"BLOCKED: 'main' is a protected branch. Create a feature branch (git switch -c feat/...) and open a PR instead.\" >&2; exit 2; fi ;; esac; exit 0"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-protected-branch.sh\""
           }
         ]
       }
