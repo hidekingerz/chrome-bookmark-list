@@ -22,7 +22,15 @@
     }
   },
   "files": {
-    "includes": ["**/src/**/*.ts", "**/test/**/*.ts", "**/*.ts", "**/*.js"]
+    "includes": [
+      "**/src/**/*.ts",
+      "**/test/**/*.ts",
+      "**/*.ts",
+      "**/*.js",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/coverage"
+    ]
   },
   "overrides": [
     {
