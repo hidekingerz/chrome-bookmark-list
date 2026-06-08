@@ -51,6 +51,15 @@ Object.defineProperty(globalThis, 'localStorage', {
   writable: true,
 });
 
+// alert のモック
+// happy-dom 環境には alert が存在せず、vitest@4 の vi.spyOn は
+// 関数以外を spy できないため、spy 可能な関数として定義しておく
+Object.defineProperty(globalThis, 'alert', {
+  value: () => {},
+  writable: true,
+  configurable: true,
+});
+
 // DOM のモック
 Object.defineProperty(globalThis, 'Image', {
   value: class MockImage {
