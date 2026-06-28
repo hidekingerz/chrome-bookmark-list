@@ -198,15 +198,33 @@
   して op を捕捉し手動実行。全体 Stmts 93.24→**94.99%** / Branch 79.16→**80.83%**。VERIFY 緑。
   残 615-668 等は単一/一括 move の undo 内 dispatchEvent や reorder undo の一部分岐。
 
+## Done（達成済み）追記3
+
+- [keyboard-shortcuts] `test/keyboard-shortcuts.test.ts` に 11 ケース追加し
+  `src/components/KeyboardShortcuts/index.ts` を 85.93% Stmts / 70% Branch →
+  **90.62% Stmts / 81.81% Branch / 100% Funcs / 99.13% Lines** に。既存テストは主要パス
+  (矢印/Enter/Delete/F2/Cmd+F/?/入力欄抑制)のみ通っていたため未到達分岐を補完: Shift+/ でヘルプ表示
+  (handleKeydown 87 行の `||` 第2項)、Cmd+Shift+F は検索発火せず(71 行 `!e.shiftKey` false)、
+  `.tab-panel.active` 無しで #searchInput へフォールバック(getActiveSearchInput 252 行)、
+  contentEditable 要素フォーカスで抑制(isEditableElement 261-262: `Object.defineProperty`で
+  isContentEditable=true 注入)、フォルダヘッダ/ボタン無しブックマーク項目での Delete・F2 は
+  defaultPrevented=false(handleDelete 209/213 false → 219、handleEdit 227/229 false → 235)、
+  data-url 無しブックマークの Enter で tabs.create 呼ばず(handleEnter 188 false → 192)、ブックマーク
+  でもフォルダでもない要素の Enter で何もしない(202)。assert は event.defaultPrevented と
+  chrome.tabs.create 呼び出し有無・activeElement・ダイアログ DOM 有無で実検証。11 ケース全 pass。
+  **これで Statements が 94.99→95.23% でしきい値 95% を突破**。Branch は 80.83→**81.92%**(目標 85% まで
+  あと約 3.1%)。VERIFY 緑。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（bookmark-reorder-dnd 後）は
-  Statements 94.99% / Branches 80.83%。Statements はあと 0.01%、Branches はあと約 4.2%。
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（keyboard-shortcuts 後）は
+  **Statements 95.23%（しきい値クリア済み）/ Branches 81.92%（あと約 3.1%）**。残るは Branch のみ。
   次に攻める低 branch ファイル:
-  `src/components/HistoryPanel`(90.9/64.28, 残 157-159)・`KeyboardShortcuts`(85.93/70, 残 219/235/252/262)・
-  `ShortcutHelp`(97.72/66.66, 残 56-108/124)・`TabController`(94.87/69.23, 残 26-60)・
-  `Toast`(91.52/77.77, 残 69/90/96/103) の順が目安。Branch 85% が遠いので分岐の多い低 branch
-  ファイルを優先。残る BookmarkDragAndDrop の未到達(615-668)も小粒だが拾える。
+  `src/components/HistoryPanel`(90.9/64.28, 残 157-159 = img.onerror ハンドラ本体未到達)・
+  `ShortcutHelp`(97.72/66.66, closeBtn?.optional 等の null 分岐)・`TabController`(94.87/69.23)・
+  `Toast`(91.52/77.77, 残 69/90/96/103)・`FolderRenamer`(86.76/76.19)・`FolderDeleter`(92.3/66.66) の順。
+  HistoryPanel は img.onerror を手動発火(favicon success→`favicon.onerror?.()`)すれば 157-159 を拾える
+  (既存テストは onload と getFavicon reject のみ)。Branch 85% が遠いので分岐の多い低 branch を優先。
 - [bookmark-selection/残] `BookmarkSelection.ts` 残り未到達(`...33,358,495,559`)は container=null 時の
   防御ガード(refreshOrderedUrls 332-333 / findItemByUrl)、reapply の el null 分岐(358)、ダイアログ
   close ハンドラの一部で、src を変えずには到達困難。水増しせず放置。
