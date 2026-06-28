@@ -165,11 +165,23 @@
   close(false) でダイアログ消滅＋タブ未作成を検証。4 ケース全 pass。全体 Stmts 92.44→**92.8%** /
   Branch 78.66→**78.82%**。VERIFY 緑。残 77-134 は tabIds 空ガード等の防御 branch。
 
+- [bookmark-deleter] `test/bookmark-delete.test.ts` に 6 ケース追加し
+  `src/components/BookmarkActions/BookmarkDeleter.ts` を 84.5% Stmts / 62.5% Branch →
+  **100% Stmts / 87.5% Branch / 100% Funcs / 100% Lines** に。既存テスト(newtab-core 経由)は
+  cancel/confirm/各エラーパスの主要経路のみ通っていたため、未到達のダイアログ閉じ経路を補完:
+  削除確認ダイアログの ×(close)ボタン→closeDialog(false)(140 行)、ESC キー→closeDialog(false)(151-154)、
+  開いた状態で再度開くと既存ダイアログ remove で差し替え(82 行)、エラーダイアログの OK ボタン→
+  closeDialog(214-215)、ESC→closeDialog(224-227)、エラーダイアログ表示中に再エラーで既存 remove
+  差し替え(167 行)。同 describe 内に追加し既存 beforeEach(JSDOM document/CustomEvent 差し替え)を流用、
+  ESC は `new dom.window.KeyboardEvent('keydown',{key:'Escape'})` を document に dispatch、差し替え系は
+  `querySelectorAll('#delete-dialog').length===1` で 1 つだけを検証。6 ケース全 pass。全体
+  Stmts 92.8→**93.24%** / Branch 78.82→**79.16%**。VERIFY 緑。残 151,224 は ESC 判定 if の Escape 以外
+  キーの false 側 branch（本質的でないため放置可）。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（tab-group-opener 後）は
-  Statements 92.8% / Branches 78.82%。次に攻める低カバレッジ・ファイル:
-  `src/components/BookmarkActions/BookmarkDeleter.ts`(84.5/62.5) →
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（bookmark-deleter 後）は
+  Statements 93.24% / Branches 79.16%。次に攻める低カバレッジ・ファイル:
   `src/components/BookmarkDragAndDrop/index.ts`(84.14/73.64, 残: bookmark reorder/move 系) →
   `src/components/HistoryPanel`(90.9/64.28, 残 157-159)・`KeyboardShortcuts`(85.93/70, 残 219/235/252/262)・
   `ShortcutHelp`(97.72/66.66, 残 56-108/124)・`TabController`(94.87/69.23, 残 26-60) の順が目安。
