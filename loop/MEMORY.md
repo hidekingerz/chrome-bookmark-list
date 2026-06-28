@@ -178,14 +178,35 @@
   Stmts 92.8→**93.24%** / Branch 78.82→**79.16%**。VERIFY 緑。残 151,224 は ESC 判定 if の Escape 以外
   キーの false 側 branch（本質的でないため放置可）。
 
+## Done（達成済み）追記2
+
+- [bookmark-reorder-dnd] `test/bookmark-reorder-dnd.test.ts` を新規追加し
+  `src/components/BookmarkDragAndDrop/index.ts` を 84.14% Stmts / 73.64% Branch →
+  **94.4% Stmts / 82% Branch / 97.82% Funcs / 97.71% Lines** に。既存テスト
+  (bookmark-multi-drag / drag-preview / folder-drag-and-drop) はフォルダ DnD と複数選択移動の
+  主要パスのみ通っていたため、ブックマーク(非フォルダ)reorder(#80)と単一/一括移動の未到達を補完:
+  handleDragStart のガード(リンク外要素・title 欠落・dataTransfer 無し→setCustomDragImage 早期 return)、
+  handleBookmarkReorderOver(上半分 before/下半分 after・自分自身 invalid・隣接 no-op before/after
+  invalid・data-bookmark-url 欠落 return)、handleDragLeave の bookmark-item 分岐、
+  handleBookmarkReorderDrop+reorderBookmark(A→C after の move・同 URL drop で no-op・Undo の現在位置
+  前方なら+1 補正・get 失敗時フォールバック・source 不在で alert・target 親欠落で alert・source
+  parentId 無しで Undo 登録せず)、handleDrop のガード(ヘッダ/アイテム外 drop・元と同フォルダ drop)、
+  moveSingleBookmark(不在で alert・parentId 無しで Undo 登録せず)、moveMultipleBookmarks(一部 URL 空
+  ヒット skip・Undo の previousParentId 無し skip・move 失敗で alert)、makeBookmarksDraggable、
+  destroy(dropIndicator 除去)。26 ケース全 pass。zone 判定は対象 item の getBoundingClientRect を
+  top0/height100 にスタブし clientY 10/90 で制御。Undo は UndoManager.getInstance().register を spyOn
+  して op を捕捉し手動実行。全体 Stmts 93.24→**94.99%** / Branch 79.16→**80.83%**。VERIFY 緑。
+  残 615-668 等は単一/一括 move の undo 内 dispatchEvent や reorder undo の一部分岐。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（bookmark-deleter 後）は
-  Statements 93.24% / Branches 79.16%。次に攻める低カバレッジ・ファイル:
-  `src/components/BookmarkDragAndDrop/index.ts`(84.14/73.64, 残: bookmark reorder/move 系) →
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（bookmark-reorder-dnd 後）は
+  Statements 94.99% / Branches 80.83%。Statements はあと 0.01%、Branches はあと約 4.2%。
+  次に攻める低 branch ファイル:
   `src/components/HistoryPanel`(90.9/64.28, 残 157-159)・`KeyboardShortcuts`(85.93/70, 残 219/235/252/262)・
-  `ShortcutHelp`(97.72/66.66, 残 56-108/124)・`TabController`(94.87/69.23, 残 26-60) の順が目安。
-  Branch 85% が遠いので分岐の多い大型・低 branch ファイルを優先。
+  `ShortcutHelp`(97.72/66.66, 残 56-108/124)・`TabController`(94.87/69.23, 残 26-60)・
+  `Toast`(91.52/77.77, 残 69/90/96/103) の順が目安。Branch 85% が遠いので分岐の多い低 branch
+  ファイルを優先。残る BookmarkDragAndDrop の未到達(615-668)も小粒だが拾える。
 - [bookmark-selection/残] `BookmarkSelection.ts` 残り未到達(`...33,358,495,559`)は container=null 時の
   防御ガード(refreshOrderedUrls 332-333 / findItemByUrl)、reapply の el null 分岐(358)、ダイアログ
   close ハンドラの一部で、src を変えずには到達困難。水増しせず放置。
