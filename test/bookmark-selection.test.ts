@@ -1,6 +1,7 @@
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BookmarkSelection } from '../src/components/BookmarkSelection/BookmarkSelection';
+import { UndoManager } from '../src/components/UndoManager/index';
 
 /**
  * 複数選択ロジックのテスト。
@@ -310,5 +311,416 @@ describe('BookmarkSelection', () => {
       }
     );
     expect(selection.count).toBe(0);
+  });
+
+  // -------------------------------------------------------------------
+  // 範囲選択 (selectRange) の分岐
+  // -------------------------------------------------------------------
+
+  it('container 未設定のとき selectRange は toggle にフォールバックする', () => {
+    const noContainer = new BookmarkSelection();
+    noContainer.selectRange(urlAt(0), 'A', itemAt(0));
+    expect(noContainer.count).toBe(1);
+    expect(noContainer.getSelectedUrls()).toEqual([urlAt(0)]);
+  });
+
+  it('アンカー未確立の Shift+クリックは単一選択になる', () => {
+    // lastClickedUrl が null の状態で直接 selectRange を呼ぶ
+    selection.selectRange(urlAt(1), 'B', itemAt(1));
+    expect(selection.count).toBe(1);
+    expect(selection.getSelectedUrls()).toEqual([urlAt(1)]);
+    expect(itemAt(1).classList.contains('selected')).toBe(true);
+  });
+
+  it('アンカーが現在の表示順に存在しない場合は単一選択にフォールバックする', () => {
+    // 存在しない URL をアンカーに見せかける
+    (selection as unknown as { lastClickedUrl: string }).lastClickedUrl =
+      'https://gone.example.com';
+    selection.selectRange(urlAt(2), 'C', itemAt(2));
+    expect(selection.count).toBe(1);
+    expect(selection.getSelectedUrls()).toEqual([urlAt(2)]);
+  });
+
+  it('アンカーより前のアイテムへ Shift+クリックすると逆順でも範囲選択する', () => {
+    // index 2 をアンカーに
+    selection.handleClick(
+      urlAt(2),
+      'C',
+      itemAt(2),
+      clickEvent({ shiftKey: true })
+    );
+    // index 0 へ Shift+クリック (anchorIdx > targetIdx の分岐)
+    selection.handleClick(
+      urlAt(0),
+      'A',
+      itemAt(0),
+      clickEvent({ shiftKey: true })
+    );
+    expect(selection.count).toBe(3);
+    expect(itemAt(0).classList.contains('selected')).toBe(true);
+    expect(itemAt(1).classList.contains('selected')).toBe(true);
+    expect(itemAt(2).classList.contains('selected')).toBe(true);
+  });
+
+  // -------------------------------------------------------------------
+  // clear / blur / clearInternal の分岐
+  // -------------------------------------------------------------------
+
+  it('clear() はフォーカス中のブックマーク要素から focus を外す', () => {
+    const link = itemAt(0).querySelector('.bookmark-link') as HTMLElement;
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    link.focus();
+    expect(document.activeElement).toBe(link);
+
+    selection.clear();
+    expect(document.activeElement).not.toBe(link);
+  });
+
+  it('clearInternal は map 管理外の .selected 要素も除去する', () => {
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    // map に無いが DOM 上は selected な要素を作る
+    itemAt(1).classList.add('selected');
+
+    selection.clear();
+    expect(itemAt(0).classList.contains('selected')).toBe(false);
+    expect(itemAt(1).classList.contains('selected')).toBe(false);
+  });
+
+  // -------------------------------------------------------------------
+  // refresh による DOM 再適用 (reapplySelectionToDom)
+  // -------------------------------------------------------------------
+
+  it('refresh は新しい DOM 要素へ選択ハイライトを再適用する', () => {
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    // 同じ構造の新コンテナへ差し替え
+    container.remove();
+    const next = buildContainer();
+    selection.refresh(next);
+
+    const newItem = next.querySelectorAll('.bookmark-item')[0] as HTMLElement;
+    expect(newItem.classList.contains('selected')).toBe(true);
+    expect(selection.count).toBe(1);
+  });
+
+  it('refresh 後に選択 URL が存在しない場合はハイライトを付けない', () => {
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    // 選択中 URL を含まない空コンテナへ差し替え
+    container.remove();
+    const empty = document.createElement('div');
+    empty.innerHTML = '<ul class="bookmark-list"></ul>';
+    document.body.appendChild(empty);
+    selection.refresh(empty);
+
+    // map には残るがハイライト対象要素は無い
+    expect(selection.count).toBe(1);
+    expect(empty.querySelector('.selected')).toBeNull();
+  });
+
+  // -------------------------------------------------------------------
+  // ESC キーハンドラの分岐
+  // -------------------------------------------------------------------
+
+  it('入力欄にフォーカスがあるとき ESC では選択解除しない', () => {
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    document.dispatchEvent(
+      new dom.window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+      }) as unknown as Event
+    );
+    expect(selection.count).toBe(1);
+  });
+
+  it('モーダル表示中は ESC をモーダルに委ねて選択解除しない', () => {
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    const overlay = document.createElement('div');
+    overlay.className = 'edit-dialog-overlay';
+    document.body.appendChild(overlay);
+
+    document.dispatchEvent(
+      new dom.window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+      }) as unknown as Event
+    );
+    expect(selection.count).toBe(1);
+  });
+
+  // -------------------------------------------------------------------
+  // ツールバーのボタン
+  // -------------------------------------------------------------------
+
+  it('ツールバーの移動/削除ボタンが対応する一括操作を呼ぶ', () => {
+    const moveSpy = vi
+      .spyOn(selection, 'bulkMove')
+      .mockResolvedValue(undefined);
+    const deleteSpy = vi
+      .spyOn(selection, 'bulkDelete')
+      .mockResolvedValue(undefined);
+
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    const toolbar = document.querySelector('.selection-toolbar') as HTMLElement;
+    (toolbar.querySelector('.selection-toolbar-move') as HTMLElement).click();
+    (toolbar.querySelector('.selection-toolbar-delete') as HTMLElement).click();
+
+    expect(moveSpy).toHaveBeenCalledTimes(1);
+    expect(deleteSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('ツールバーの選択解除ボタンで選択がクリアされる', () => {
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    const toolbar = document.querySelector('.selection-toolbar') as HTMLElement;
+    (toolbar.querySelector('.selection-toolbar-clear') as HTMLElement).click();
+
+    expect(selection.count).toBe(0);
+    expect(document.querySelector('.selection-toolbar')).toBeNull();
+  });
+
+  // -------------------------------------------------------------------
+  // bulkDelete: undo / 空ヒット / 例外
+  // -------------------------------------------------------------------
+
+  it('一括削除の Undo で削除したブックマークを復元する', async () => {
+    const mockChrome = globalThis.chrome as any;
+    mockChrome.bookmarks.search.mockImplementation(({ url }: { url: string }) =>
+      Promise.resolve([
+        { id: `id-${url}`, parentId: '1', index: 3, title: `T-${url}`, url },
+      ])
+    );
+    mockChrome.bookmarks.remove.mockResolvedValue(undefined);
+    mockChrome.bookmarks.create.mockResolvedValue(undefined);
+
+    let captured: { undo: () => Promise<void> } | undefined;
+    vi.spyOn(UndoManager.getInstance(), 'register').mockImplementation(
+      (op: any) => {
+        captured = op;
+      }
+    );
+
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    selection.toggle(urlAt(1), 'B', itemAt(1));
+
+    const p = selection.bulkDelete();
+    await new Promise((r) => setTimeout(r, 10));
+    (document.querySelector('.delete-dialog-confirm') as HTMLElement).click();
+    await p;
+
+    expect(captured).toBeDefined();
+    await captured?.undo();
+    expect(mockChrome.bookmarks.create).toHaveBeenCalledTimes(2);
+    expect(mockChrome.bookmarks.create).toHaveBeenCalledWith({
+      parentId: '1',
+      index: 3,
+      title: 'T-https://a.example.com',
+      url: 'https://a.example.com',
+    });
+  });
+
+  it('一括削除で見つからないアイテムはスキップする', async () => {
+    const mockChrome = globalThis.chrome as any;
+    mockChrome.bookmarks.search.mockResolvedValue([]);
+    mockChrome.bookmarks.remove.mockResolvedValue(undefined);
+
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    const p = selection.bulkDelete();
+    await new Promise((r) => setTimeout(r, 10));
+    (document.querySelector('.delete-dialog-confirm') as HTMLElement).click();
+    await p;
+
+    expect(mockChrome.bookmarks.remove).not.toHaveBeenCalled();
+    expect(selection.count).toBe(0);
+  });
+
+  it('一括削除で Chrome API が失敗すると console.error で握る', async () => {
+    const mockChrome = globalThis.chrome as any;
+    mockChrome.bookmarks.search.mockImplementation(({ url }: { url: string }) =>
+      Promise.resolve([{ id: `id-${url}`, parentId: '1', index: 0, url }])
+    );
+    mockChrome.bookmarks.remove.mockRejectedValue(new Error('boom'));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    const p = selection.bulkDelete();
+    await new Promise((r) => setTimeout(r, 10));
+    (document.querySelector('.delete-dialog-confirm') as HTMLElement).click();
+    await p;
+
+    expect(errSpy).toHaveBeenCalledWith(
+      '❌ 一括削除に失敗しました:',
+      expect.any(Error)
+    );
+    errSpy.mockRestore();
+  });
+
+  it('未選択での bulkDelete は何もしない', async () => {
+    const mockChrome = globalThis.chrome as any;
+    await selection.bulkDelete();
+    expect(mockChrome.bookmarks.search).not.toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------
+  // bulkMove: undo / キャンセル / 空ヒット / 例外 / ルートラベル
+  // -------------------------------------------------------------------
+
+  it('一括移動の Undo で元の親フォルダへ戻す (親不明はスキップ)', async () => {
+    const mockChrome = globalThis.chrome as any;
+    mockChrome.bookmarks.search.mockImplementation(
+      ({ url }: { url: string }) => {
+        // a は親あり、b は親 undefined (Undo でスキップされる)
+        if (url === urlAt(0)) {
+          return Promise.resolve([
+            { id: 'id-a', parentId: '1', index: 2, url },
+          ]);
+        }
+        return Promise.resolve([
+          { id: 'id-b', parentId: undefined, index: undefined, url },
+        ]);
+      }
+    );
+    mockChrome.bookmarks.move.mockResolvedValue(undefined);
+
+    let captured: { undo: () => Promise<void> } | undefined;
+    vi.spyOn(UndoManager.getInstance(), 'register').mockImplementation(
+      (op: any) => {
+        captured = op;
+      }
+    );
+
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    selection.toggle(urlAt(1), 'B', itemAt(1));
+
+    const p = selection.bulkMove();
+    await new Promise((r) => setTimeout(r, 10));
+    (document.querySelector('.bulk-move-confirm') as HTMLElement).click();
+    await p;
+
+    expect(mockChrome.bookmarks.move).toHaveBeenCalledTimes(2);
+    mockChrome.bookmarks.move.mockClear();
+
+    await captured?.undo();
+    // 親ありの a のみ戻す
+    expect(mockChrome.bookmarks.move).toHaveBeenCalledTimes(1);
+    expect(mockChrome.bookmarks.move).toHaveBeenCalledWith('id-a', {
+      parentId: '1',
+      index: 2,
+    });
+  });
+
+  it('一括移動ダイアログをキャンセルすると move を呼ばない', async () => {
+    const mockChrome = globalThis.chrome as any;
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+
+    const p = selection.bulkMove();
+    await new Promise((r) => setTimeout(r, 10));
+    (
+      document.querySelector(
+        '#bulk-move-dialog .edit-dialog-cancel'
+      ) as HTMLElement
+    ).click();
+    await p;
+
+    expect(mockChrome.bookmarks.move).not.toHaveBeenCalled();
+    expect(selection.count).toBe(1);
+  });
+
+  it('一括移動で見つからないアイテムはスキップする', async () => {
+    const mockChrome = globalThis.chrome as any;
+    mockChrome.bookmarks.search.mockResolvedValue([]);
+    mockChrome.bookmarks.move.mockResolvedValue(undefined);
+
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    const p = selection.bulkMove();
+    await new Promise((r) => setTimeout(r, 10));
+    const select = document.getElementById(
+      'bulk-move-parent'
+    ) as HTMLSelectElement;
+    select.value = '2';
+    (document.querySelector('.bulk-move-confirm') as HTMLElement).click();
+    await p;
+
+    expect(mockChrome.bookmarks.move).not.toHaveBeenCalled();
+    expect(selection.count).toBe(0);
+  });
+
+  it('一括移動で Chrome API が失敗すると console.error で握る', async () => {
+    const mockChrome = globalThis.chrome as any;
+    mockChrome.bookmarks.search.mockImplementation(({ url }: { url: string }) =>
+      Promise.resolve([{ id: `id-${url}`, parentId: '1', index: 0, url }])
+    );
+    mockChrome.bookmarks.move.mockRejectedValue(new Error('boom'));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    const p = selection.bulkMove();
+    await new Promise((r) => setTimeout(r, 10));
+    (document.querySelector('.bulk-move-confirm') as HTMLElement).click();
+    await p;
+
+    expect(errSpy).toHaveBeenCalledWith(
+      '❌ 一括移動に失敗しました:',
+      expect.any(Error)
+    );
+    errSpy.mockRestore();
+  });
+
+  it('未選択での bulkMove は何もしない', async () => {
+    const mockChrome = globalThis.chrome as any;
+    await selection.bulkMove();
+    expect(mockChrome.bookmarks.getTree).not.toHaveBeenCalled();
+  });
+
+  it('タイトル無しフォルダは「(ルート: id)」ラベルで移動先候補に出す', async () => {
+    const mockChrome = globalThis.chrome as any;
+    mockChrome.bookmarks.getTree = vi.fn().mockResolvedValue([
+      {
+        id: '0',
+        title: '',
+        children: [{ id: '1', title: '', children: [] }],
+      },
+    ]);
+
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    const p = selection.bulkMove();
+    await new Promise((r) => setTimeout(r, 10));
+    const dialog = document.getElementById('bulk-move-dialog');
+    expect(dialog?.textContent).toContain('(ルート: 1)');
+
+    // Escape でキャンセル
+    document.dispatchEvent(
+      new dom.window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+      }) as unknown as Event
+    );
+    await p;
+    expect(mockChrome.bookmarks.move).not.toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------
+  // ダイアログの Escape ハンドラ
+  // -------------------------------------------------------------------
+
+  it('一括削除確認ダイアログは Escape で閉じてキャンセル扱いになる', async () => {
+    const mockChrome = globalThis.chrome as any;
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+
+    const p = selection.bulkDelete();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(document.getElementById('bulk-confirm-dialog')).not.toBeNull();
+
+    document.dispatchEvent(
+      new dom.window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+      }) as unknown as Event
+    );
+    await p;
+
+    expect(document.getElementById('bulk-confirm-dialog')).toBeNull();
+    expect(mockChrome.bookmarks.remove).not.toHaveBeenCalled();
   });
 });

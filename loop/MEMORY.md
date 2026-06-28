@@ -136,15 +136,34 @@
   手動呼び出し（JSDOM は src 代入で load を発火しない）。全体 Stmts 89.38→**91.01%** /
   Branch 75.89→**77.23%**。VERIFY 緑。
 
+## Done（達成済み）追記
+
+- [bookmark-selection] `test/bookmark-selection.test.ts` に 21 ケース追加し
+  `src/components/BookmarkSelection/BookmarkSelection.ts` を 80.81% Stmts / 64.58% Branch →
+  **95.51% Stmts / 82.29% Branch / 95.55% Funcs / 96.95% Lines** に。既存テストはクリック/トグル/
+  範囲選択の主要パスと bulkDelete/Move の成功・キャンセルのみ通っていたため未到達を補完:
+  selectRange の (1)container 未設定→toggle フォールバック (2)アンカー未確立→単一選択
+  (3)アンカーが表示順に不在→単一選択 (4)anchorIdx>targetIdx の逆順範囲選択、clear() の
+  blurFocusedBookmarkItem(focus 中リンクを blur)、clearInternal の map 管理外 `.selected` 除去、
+  refresh の reapplySelectionToDom(新 DOM へ再適用 / 選択 URL 不在で付与せず)、ESC ハンドラの
+  input フォーカス分岐・モーダル(.edit-dialog-overlay)分岐、ツールバー移動/削除/解除ボタン、
+  bulkDelete の Undo(create で復元)・空ヒット skip・例外 catch・未選択 no-op、bulkMove の
+  Undo(親あり戻す/親 undefined skip)・ダイアログキャンセル・空ヒット skip・例外 catch・未選択
+  no-op・タイトル無しフォルダの「(ルート: id)」ラベル、確認ダイアログの Escape クローズ。
+  34 ケース全 pass。UndoManager.getInstance().register を spyOn して登録 op を捕捉し undo を
+  手動実行。全体 Stmts 91.01→**92.44%** / Branch 77.23→**78.66%**。VERIFY 緑。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（calendar-history 後）は
-  Statements 91.01% / Branches 77.23%。次に攻める低カバレッジ・ファイル:
-  `src/components/BookmarkSelection`(80.81/64.58) →
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（bookmark-selection 後）は
+  Statements 92.44% / Branches 78.66%。次に攻める低カバレッジ・ファイル:
   `src/components/BookmarkActions/TabGroupOpener.ts`(79.62/71.42)・`BookmarkDeleter.ts`(84.5/62.5) →
   `src/components/BookmarkDragAndDrop/index.ts`(84.14/73.64, 残: bookmark reorder/move 系) →
-  `src/components/KeyboardShortcuts`(85.93/70)・`ShortcutHelp`(97.72/66.66)・`TabController`(94.87/69.23) の
-  順が目安。Branch 85% が遠いので分岐の多い大型・低 branch ファイルを優先（伸びしろ大）。
+  `src/components/HistoryPanel`(90.9/64.28)・`KeyboardShortcuts`(85.93/70)・`ShortcutHelp`(97.72/66.66)・
+  `TabController`(94.87/69.23) の順が目安。Branch 85% が遠いので分岐の多い大型・低 branch ファイルを優先。
+- [bookmark-selection/残] `BookmarkSelection.ts` 残り未到達(`...33,358,495,559`)は container=null 時の
+  防御ガード(refreshOrderedUrls 332-333 / findItemByUrl)、reapply の el null 分岐(358)、ダイアログ
+  close ハンドラの一部で、src を変えずには到達困難。水増しせず放置。
 - [calendar-history/dead-branch] `CalendarHistoryPanel.ts` の防御的早期 return は src を変えずには到達不可:
   `renderCalendar` 195 行(monthYear/days 要素は init で必ず生成)、`renderEmptyTimeline` 296 行・
   `renderTimeline` 305 行・`loadTimelineFavicons` 477 行・`loadDomainFavicons` 520 行・
