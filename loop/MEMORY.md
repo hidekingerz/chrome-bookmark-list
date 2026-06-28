@@ -153,14 +153,27 @@
   34 ケース全 pass。UndoManager.getInstance().register を spyOn して登録 op を捕捉し undo を
   手動実行。全体 Stmts 91.01→**92.44%** / Branch 77.23→**78.66%**。VERIFY 緑。
 
+- [tab-group-opener] `test/tab-group-opener.test.ts` に 4 ケース追加し
+  `src/components/BookmarkActions/TabGroupOpener.ts` を 79.62% Stmts / 71.42% Branch →
+  **96.29% Stmts / 85.71% Branch / 100% Lines** に。既存テストは成功パス/空/決定的色/確認ダイアログの
+  キャンセル・開くのみ通っていたため未到達を補完: (1)tabGroups API 非対応(59-67 行) — `chrome.tabs.group`
+  と `chrome.tabGroups.update` を undefined にして `tabGroupApiAvailable=false` を成立させ、console.warn
+  出力＋グループ化スキップ＋個別タブ作成へフォールバックすることを検証。(2)グループ作成失敗(87-88 行) —
+  `chrome.tabs.group` を mockRejectedValue にして catch の console.error + alert を検証(alert は
+  globalThis に defineProperty で vi.fn 注入)。(3)確認ダイアログの Escape キー(134-136 行) — 21 件で
+  ダイアログ表示後 `new dom.window.KeyboardEvent('keydown',{key:'Escape'})` を document に dispatch →
+  close(false) でダイアログ消滅＋タブ未作成を検証。4 ケース全 pass。全体 Stmts 92.44→**92.8%** /
+  Branch 78.66→**78.82%**。VERIFY 緑。残 77-134 は tabIds 空ガード等の防御 branch。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（bookmark-selection 後）は
-  Statements 92.44% / Branches 78.66%。次に攻める低カバレッジ・ファイル:
-  `src/components/BookmarkActions/TabGroupOpener.ts`(79.62/71.42)・`BookmarkDeleter.ts`(84.5/62.5) →
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（tab-group-opener 後）は
+  Statements 92.8% / Branches 78.82%。次に攻める低カバレッジ・ファイル:
+  `src/components/BookmarkActions/BookmarkDeleter.ts`(84.5/62.5) →
   `src/components/BookmarkDragAndDrop/index.ts`(84.14/73.64, 残: bookmark reorder/move 系) →
-  `src/components/HistoryPanel`(90.9/64.28)・`KeyboardShortcuts`(85.93/70)・`ShortcutHelp`(97.72/66.66)・
-  `TabController`(94.87/69.23) の順が目安。Branch 85% が遠いので分岐の多い大型・低 branch ファイルを優先。
+  `src/components/HistoryPanel`(90.9/64.28, 残 157-159)・`KeyboardShortcuts`(85.93/70, 残 219/235/252/262)・
+  `ShortcutHelp`(97.72/66.66, 残 56-108/124)・`TabController`(94.87/69.23, 残 26-60) の順が目安。
+  Branch 85% が遠いので分岐の多い大型・低 branch ファイルを優先。
 - [bookmark-selection/残] `BookmarkSelection.ts` 残り未到達(`...33,358,495,559`)は container=null 時の
   防御ガード(refreshOrderedUrls 332-333 / findItemByUrl)、reapply の el null 分岐(358)、ダイアログ
   close ハンドラの一部で、src を変えずには到達困難。水増しせず放置。

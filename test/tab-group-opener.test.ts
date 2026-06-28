@@ -123,4 +123,83 @@ describe('TabGroupOpener', () => {
     expect(chrome.tabs.create).toHaveBeenCalledTimes(22);
     expect(chrome.tabs.group).toHaveBeenCalled();
   });
+
+  it('tabGroups API が利用できない場合は個別タブとして開きフォールバックする', async () => {
+    const mockChrome = globalThis.chrome as unknown as {
+      tabs: { group?: unknown };
+      tabGroups: { update?: unknown };
+    };
+    // group / update を未定義にして API 非対応をシミュレート
+    mockChrome.tabs.group = undefined;
+    mockChrome.tabGroups.update = undefined;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const opener = new TabGroupOpener();
+    await opener.openAsGroup(
+      ['https://a.example.com', 'https://b.example.com'],
+      'Work'
+    );
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('chrome.tabGroups API が利用できません')
+    );
+    // グループ化はスキップし、個別タブ作成のみ行われる
+    expect(chrome.tabs.create).toHaveBeenCalledTimes(2);
+    expect(chrome.tabs.create).toHaveBeenCalledWith({
+      url: 'https://a.example.com',
+      active: false,
+    });
+
+    warnSpy.mockRestore();
+  });
+
+  it('グループ作成に失敗した場合は console.error と alert を出す', async () => {
+    const mockChrome = globalThis.chrome as unknown as {
+      tabs: { group: ReturnType<typeof vi.fn> };
+    };
+    mockChrome.tabs.group = vi
+      .fn()
+      .mockRejectedValue(new Error('group failed'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const alertSpy = vi.fn();
+    Object.defineProperty(globalThis, 'alert', {
+      value: alertSpy,
+      writable: true,
+      configurable: true,
+    });
+
+    const opener = new TabGroupOpener();
+    await opener.openAsGroup(['https://a.example.com'], 'Work');
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('タブグループの作成に失敗しました'),
+      expect.any(Error)
+    );
+    expect(alertSpy).toHaveBeenCalledWith(
+      expect.stringContaining('タブグループの作成に失敗しました')
+    );
+
+    errorSpy.mockRestore();
+  });
+
+  it('確認ダイアログで Escape キーを押すとキャンセル扱いになる', async () => {
+    const opener = new TabGroupOpener();
+    const urls = Array.from(
+      { length: 21 },
+      (_, i) => `https://x${i}.example.com`
+    );
+    const promise = opener.openAsGroup(urls, 'Big');
+
+    await new Promise((r) => setTimeout(r, 10));
+    expect(document.getElementById('tab-group-confirm-dialog')).not.toBeNull();
+
+    document.dispatchEvent(
+      new dom.window.KeyboardEvent('keydown', { key: 'Escape' })
+    );
+    await promise;
+
+    // キャンセルされ、ダイアログは閉じられタブは作成されない
+    expect(document.getElementById('tab-group-confirm-dialog')).toBeNull();
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+  });
 });
