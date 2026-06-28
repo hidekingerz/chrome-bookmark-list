@@ -91,14 +91,28 @@
   `vi.spyOn(UndoManager.getInstance(),'register')` で登録コールバックを捕捉。全体 Stmts 85.53→86.2% /
   Branch 71.04→72.13%。VERIFY 緑。
 
+- [folder-dnd] `test/folder-drag-and-drop.test.ts` を新規追加し `BookmarkDragAndDrop/index.ts` の
+  フォルダ DnD ブロック(#54, 712-1081 行)を補完。検証: `handleFolderDragStart`(正常→draggedFolder
+  セット+dragging/dragging-folder/drag-source-folder クラス+setData、data-folder-id 無し→723 早期
+  return)、`handleFolderDragOver` の 3 ゾーン(detectFolderDropZone: before/into/after を rect 高さ
+  100 固定+clientY で制御)→ 各クラス付与、`isInvalidFolderDropTarget`(自分自身への into)と
+  `isInvalidFolderReorder`(隣接 before no-op)→ drop-target-invalid+dropEffect none、`handleFolderDrop`
+  (into→moveFolder→Undo Toast→Undo で元親 root/index 0 へ復元、after→reorderFolder newIndex=idx+1、
+  before→reorderFolder→Undo、invalid→move 呼ばず)、`moveFolder`/`reorderFolder` の例外
+  (get 空配列→対象不在 throw、target に parentId 無し→throw)→ handleFolderDrop の catch で
+  console.error+alert。13 ケース全 pass。DragAndDrop ディレクトリ 82.97/72.9→**84.91/74.5**。全体
+  Stmts 86.2→86.56% / Branch 72.13→72.46%。VERIFY 緑。落とし穴: JSDOM の getBoundingClientRect は
+  全 0 を返すため zone 判定に rect スタブ必須。alert は globalThis に vi.fn() を defineProperty。
+  chrome.bookmarks.get は id→{parentId,index} を返す mockImplementation で制御。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（bookmark-editor 後）は
-  Statements 86.2% / Branches 72.13%。次に攻める低カバレッジ・ファイル:
-  `src/components/BookmarkDragAndDrop/index.ts`(82.05/71.96, 大型で分岐多) →
-  `src/components/BookmarkFolder/FolderEvents.ts`(76.54/62.34) →
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（folder-dnd 後）は
+  Statements 86.56% / Branches 72.46%。次に攻める低カバレッジ・ファイル:
+  `src/components/BookmarkFolder/FolderEvents.ts`(76.54/62.34, 大型) →
   `src/components/BookmarkSelection`(80.4/63.54) → `src/components/SidebarHistoryPanel`(80.32/57.57)
-  の順が目安。Branch 85% が遠いので分岐の多い大型ファイルを優先（伸びしろ大）。
+  → `src/components/BookmarkDragAndDrop/index.ts`(残: bookmark reorder/move 系の未到達行) の順が目安。
+  Branch 85% が遠いので分岐の多い大型ファイルを優先（伸びしろ大）。
 - [context-menu/dead-branch] `ContextMenu.ts` の早期 return 147,162,168,180,204 行と
   212 行の `active ? : -1` 三項の false 側は src を変えずには到達不可。理由: グローバル
   ハンドラ（mousedown/keydown/contextmenu/scroll）は `close()` 時に同期で removeEventListener
