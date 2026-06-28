@@ -51,13 +51,29 @@
   querySelectorAll・addEventListener が機能しないため。html-utils.test.ts と同パターン）。
   全体 Stmts 84.1→84.49% / Branch 69.2→69.37%。VERIFY 緑。
 
+- [context-menu] `test/context-menu.test.ts` に 8 ケース追加し `src/components/ContextMenu/index.ts`
+  を 77.57% Stmts / 52% Branch → **95.32% Stmts / 82% Branch / 100% Funcs**（lines 100%）に。
+  追加検証: moveFocus（ArrowDown/Up でフォーカス循環・全 disabled は 0 件 return）、scroll で
+  close、メニュー外 contextmenu で close、disabled 項目への click イベント直接 dispatch
+  （`.click()` は disabled で no-op になるため dispatchEvent 必須）→ onSelect 呼ばず閉じない、
+  onSelect の reject を catch して console.error（`setTimeout(0)` でマイクロタスク待ち）、
+  画面端超え座標で positionMenu の位置補正（rAF は即時実行スタブ・rect=0 で `x>vw` 成立）、
+  icon 付き項目のアイコン描画。全体 Stmts 84.49→85.25% / Branch 69.37→70.62%。VERIFY 緑。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（newtab-core 後）は
-  Statements 84.49% / Branches 69.37%。次に攻める低カバレッジ・ファイル:
-  `src/components/ContextMenu`(branch 52%, 未到達 ...82,186,204-214) →
-  `src/components/UndoManager`(77%, 未到達 80-83,106,109) →
-  `src/components/BookmarkActions/BookmarkEditor.ts`(79.77%) の順が目安。
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（context-menu 後）は
+  Statements 85.25% / Branches 70.62%。次に攻める低カバレッジ・ファイル:
+  `src/components/UndoManager`(76.74% Stmts/65.51% Branch, 未到達 80-83,106,109) →
+  `src/components/BookmarkActions/BookmarkEditor.ts`(79.77%) → `src/scripts` の残り
+  （history.ts/utils.ts）→ `src/components/HistoryPanel` の順が目安。Branch 85% が遠いので
+  分岐の多いファイルを優先。
+- [context-menu/dead-branch] `ContextMenu.ts` の早期 return 147,162,168,180,204 行と
+  212 行の `active ? : -1` 三項の false 側は src を変えずには到達不可。理由: グローバル
+  ハンドラ（mousedown/keydown/contextmenu/scroll）は `close()` 時に同期で removeEventListener
+  されるため、ハンドラ実行中は `this.currentMenu` が常に非 null（`if(!this.currentMenu)return`
+  は死枝）。147 は data-index を必ず付与するので indexAttr===null も死枝。212 は JSDOM の
+  `document.activeElement` が常に body（非 null）で `:-1` 側に入らない。水増しせず放置。
 - [bookmark-service/dead-branch] `BookmarkService.ts` の 95 行（private `convertNodeToFolder` の
   `if (!node.children) return null;`）は未到達のまま。convertNodeToFolder は呼び出し側
   (processBookmarkTree 48/77 行) が必ず `child.children` ありを確認してから呼ぶため、src の挙動を
