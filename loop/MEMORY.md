@@ -122,15 +122,34 @@
   36 ケース全 pass。副作用のあるダイアログ系は prototype を spyOn。全体 Stmts 86.56→**89.38%** /
   Branch 72.46→**75.89%**。VERIFY 緑。落とし穴は下記 Notes の「タッチ長押しタイマー」を参照。
 
+- [calendar-history] `test/calendar-history-panel.test.ts` に 9 ケース追加し
+  `src/components/CalendarHistoryPanel/CalendarHistoryPanel.ts` を 80.32% Stmts / 57.57% Branch →
+  **97.13% Stmts / 73.73% Branch / 100% Funcs / 100% Lines** に。既存テストはマウス操作の主要パスのみ
+  通っていたため未到達を補完: 日付未選択での検索入力→renderEmptyTimeline(98,293-298)、タイトル外の
+  タイムラインクリックで tabs.create 呼ばず(109)、lastVisitTime 欠落アイテムを無視(154)、
+  chrome.history.search 失敗で console.error しカレンダーは描画(181)、検索無一致で
+  「検索結果が見つかりませんでした」(327-330)、時間ナビリンクのクリックで preventDefault+scrollTop 計算
+  (559-581: offsetTop を defineProperty で 100 注入し scrollTop=90 を検証)、loadTimelineFavicons /
+  loadDomainFavicons の onload(hidden 解除+placeholder display:none)・onerror(🌐 表示)・getFavicon reject
+  時の catch(console.warn+placeholder)。9 ケース全 pass。落とし穴: favicon は renderTimeline が
+  await せず発火するため `await new Promise(r=>setTimeout(r,0))` で flush してから img.onload()/onerror() を
+  手動呼び出し（JSDOM は src 代入で load を発火しない）。全体 Stmts 89.38→**91.01%** /
+  Branch 75.89→**77.23%**。VERIFY 緑。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（folder-events 後）は
-  Statements 89.38% / Branches 75.89%。次に攻める低カバレッジ・ファイル:
-  `src/components/SidebarHistoryPanel`(80.32/57.57, branch 最低) →
-  `src/components/BookmarkSelection`(80.4/63.54) →
-  `src/components/BookmarkFolder/FolderEvents.ts`(残: BookmarkDeleter 84.5/62.5・TabGroupOpener 79.62/71.42
-   等の Actions 系) → `src/components/BookmarkDragAndDrop/index.ts`(残: bookmark reorder/move 系) の順が目安。
-  Branch 85% が遠いので分岐の多い大型・低 branch ファイルを優先（伸びしろ大）。
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（calendar-history 後）は
+  Statements 91.01% / Branches 77.23%。次に攻める低カバレッジ・ファイル:
+  `src/components/BookmarkSelection`(80.81/64.58) →
+  `src/components/BookmarkActions/TabGroupOpener.ts`(79.62/71.42)・`BookmarkDeleter.ts`(84.5/62.5) →
+  `src/components/BookmarkDragAndDrop/index.ts`(84.14/73.64, 残: bookmark reorder/move 系) →
+  `src/components/KeyboardShortcuts`(85.93/70)・`ShortcutHelp`(97.72/66.66)・`TabController`(94.87/69.23) の
+  順が目安。Branch 85% が遠いので分岐の多い大型・低 branch ファイルを優先（伸びしろ大）。
+- [calendar-history/dead-branch] `CalendarHistoryPanel.ts` の防御的早期 return は src を変えずには到達不可:
+  `renderCalendar` 195 行(monthYear/days 要素は init で必ず生成)、`renderEmptyTimeline` 296 行・
+  `renderTimeline` 305 行・`loadTimelineFavicons` 477 行・`loadDomainFavicons` 520 行・
+  `setupHourNavigation` 559 行(いずれも querySelector(All) 結果の null/空ガード、対象要素は常に存在)。
+  水増しせず放置（残 branch 73.73% の主因）。
 - [folder-events/dead-branch] `BookmarkFolderEvents.ts` の `findFolder`(902-911 行の deepSearch
   フォールバック, 904/906 行)は未到達のまま。`findFolderById`(= BookmarkService.findFolderById)が既に
   subfolders を再帰探索するため、それが null を返したら deepSearch も必ず null。src を変えずには到達不可

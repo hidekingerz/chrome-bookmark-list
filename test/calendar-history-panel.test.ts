@@ -664,4 +664,205 @@ describe('CalendarHistoryPanel', () => {
       expect(timelineElement.scrollTop).toBe(0);
     });
   });
+
+  describe('未到達パスの補完', () => {
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    // 今日の日付に1件の履歴を積んでタイムラインを開く共通ヘルパー
+    const openTodayTimeline = async (
+      items?: chrome.history.HistoryItem[]
+    ): Promise<HTMLElement | null> => {
+      const testDate = new Date();
+      testDate.setHours(10, 0, 0, 0);
+      vi.mocked(chrome.history.search).mockResolvedValue(
+        items ?? [
+          {
+            id: '1',
+            url: 'https://example.com',
+            title: 'Example Site',
+            lastVisitTime: testDate.getTime(),
+            visitCount: 5,
+            typedCount: 2,
+          },
+        ]
+      );
+      panel = new CalendarHistoryPanel(container);
+      await panel.activate();
+      const today = container.querySelector('.calendar-day.today');
+      if (today) (today as HTMLElement).click();
+      return today as HTMLElement | null;
+    };
+
+    it('日付未選択で検索入力するとプレースホルダーが再描画される', async () => {
+      panel = new CalendarHistoryPanel(container);
+      await panel.activate();
+
+      const searchInput = container.querySelector(
+        '.calendar-history-search-input'
+      ) as HTMLInputElement;
+      searchInput.value = 'なにか';
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+      const placeholder = container.querySelector('.timeline-placeholder');
+      expect(placeholder?.textContent).toBe('日付を選択してください');
+    });
+
+    it('タイトル以外のタイムライン領域クリックではタブが開かない', async () => {
+      panel = new CalendarHistoryPanel(container);
+      await panel.activate();
+
+      const timeline = container.querySelector(
+        '.history-timeline'
+      ) as HTMLElement;
+      timeline.dispatchEvent(
+        new dom.window.MouseEvent('click', { bubbles: true })
+      );
+
+      expect(chrome.tabs.create).not.toHaveBeenCalled();
+    });
+
+    it('lastVisitTime の無い履歴アイテムは無視される', async () => {
+      vi.mocked(chrome.history.search).mockResolvedValue([
+        {
+          id: '1',
+          url: 'https://example.com',
+          title: 'No time',
+        } as chrome.history.HistoryItem,
+      ]);
+      panel = new CalendarHistoryPanel(container);
+      await panel.activate();
+
+      expect(
+        container.querySelectorAll('.calendar-day.has-history').length
+      ).toBe(0);
+    });
+
+    it('履歴取得に失敗するとエラーがログされカレンダーは描画される', async () => {
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(chrome.history.search).mockRejectedValue(new Error('boom'));
+
+      panel = new CalendarHistoryPanel(container);
+      await panel.activate();
+
+      expect(errSpy).toHaveBeenCalledWith(
+        '履歴の読み込みに失敗しました:',
+        expect.any(Error)
+      );
+      expect(
+        container.querySelector('.calendar-month-year')?.textContent
+      ).toMatch(/年/);
+      errSpy.mockRestore();
+    });
+
+    it('検索語が一致しないと検索結果なしメッセージを表示する', async () => {
+      await openTodayTimeline();
+
+      const searchInput = container.querySelector(
+        '.calendar-history-search-input'
+      ) as HTMLInputElement;
+      searchInput.value = 'まったく一致しない語';
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+      const placeholder = container.querySelector('.timeline-placeholder');
+      expect(placeholder?.textContent).toBe('検索結果が見つかりませんでした');
+    });
+
+    it('時間ナビゲーションリンクのクリックでタイムラインがスクロールする', async () => {
+      const today = await openTodayTimeline();
+      if (!today) return;
+
+      const targetGroup = container.querySelector(
+        '.timeline-hour-group'
+      ) as HTMLElement;
+      // JSDOM では offsetTop が常に 0 のため、計算結果を検証できるよう注入する
+      Object.defineProperty(targetGroup, 'offsetTop', {
+        value: 100,
+        configurable: true,
+      });
+
+      const link = container.querySelector('.hour-nav-link') as HTMLElement;
+      const ev = new dom.window.MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      const preventSpy = vi.spyOn(ev, 'preventDefault');
+      link.dispatchEvent(ev);
+
+      expect(preventSpy).toHaveBeenCalled();
+
+      const timeline = container.querySelector(
+        '.history-timeline'
+      ) as HTMLElement;
+      // targetOffset(100) - timelineOffset(0) - navHeight(0) - 10 = 90
+      expect(timeline.scrollTop).toBe(90);
+    });
+
+    it('タイムライン favicon の onload / onerror が表示を切り替える', async () => {
+      await openTodayTimeline();
+      await flush();
+
+      const img = container.querySelector(
+        '.timeline-favicon'
+      ) as HTMLImageElement & { onload: () => void; onerror: () => void };
+      const placeholder = container.querySelector(
+        '.timeline-item-icon .favicon-placeholder'
+      ) as HTMLElement;
+
+      expect(img.getAttribute('src')).toContain('data:image');
+
+      img.onload();
+      expect(img.classList.contains('hidden')).toBe(false);
+      expect(placeholder.style.display).toBe('none');
+
+      img.onerror();
+      expect(placeholder.textContent).toBe('🌐');
+      expect(placeholder.style.display).toBe('block');
+    });
+
+    it('ドメイン favicon の onload / onerror が表示を切り替える', async () => {
+      await openTodayTimeline();
+      await flush();
+
+      const img = container.querySelector(
+        '.domain-favicon'
+      ) as HTMLImageElement & { onload: () => void; onerror: () => void };
+      const placeholder = container.querySelector(
+        '.timeline-domain-stats .favicon-placeholder'
+      ) as HTMLElement;
+
+      expect(img.getAttribute('src')).toContain('data:image');
+
+      img.onload();
+      expect(img.classList.contains('hidden')).toBe(false);
+      expect(placeholder.style.display).toBe('none');
+
+      img.onerror();
+      expect(placeholder.textContent).toBe('🌐');
+      expect(placeholder.style.display).toBe('inline-block');
+    });
+
+    it('favicon 取得失敗時に placeholder が表示される', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      mockGetFavicon.mockRejectedValue(new Error('favicon error'));
+
+      await openTodayTimeline();
+      await flush();
+
+      expect(warnSpy).toHaveBeenCalled();
+
+      const timelinePlaceholder = container.querySelector(
+        '.timeline-item-icon .favicon-placeholder'
+      ) as HTMLElement;
+      expect(timelinePlaceholder.textContent).toBe('🌐');
+      expect(timelinePlaceholder.style.display).toBe('block');
+
+      const domainPlaceholder = container.querySelector(
+        '.timeline-domain-stats .favicon-placeholder'
+      ) as HTMLElement;
+      expect(domainPlaceholder.textContent).toBe('🌐');
+      expect(domainPlaceholder.style.display).toBe('inline-block');
+
+      warnSpy.mockRestore();
+    });
+  });
 });
