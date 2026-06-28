@@ -76,12 +76,26 @@
   ことを検証。jsdom はネイティブ isContentEditable=false なので `Object.defineProperty`で true を
   明示。全体 Stmts 85.25→85.53% / Branch 70.62→71.04%。VERIFY 緑。
 
+- [bookmark-editor] `test/bookmark-editor.test.ts` を新規追加し
+  `src/components/BookmarkActions/BookmarkEditor.ts` を 79.77% Stmts / 59.61% Branch →
+  **98.87% Stmts / 84.61% Branch / 100% Lines / 94.11% Funcs** に。既存 `bookmark-edit.test.ts` は
+  newtab-core 経由でダイアログ表示までしか通っていなかったため、`BookmarkEditor` クラスを直接 import
+  して未到達パスを補完: 成功保存（タイトル+URL 変更 & フォルダ移動）→ update/move 実行
+  (266-276 行)・Undo 登録 → 捕捉した undo コールバックを実行して元値へ復元(229-244 行)、変更無し保存
+  (update/move/register 呼ばず)、入力要素欠落で早期 return(186 行: edit-url を remove)、既存ダイアログ
+  置換(78 行: 2 回開く)、ESC キーで close(158-160 行)、search 例外で alert+console.error(42-43 行)を実
+  assert で検証。7 ケース全 pass。落とし穴: dispatchBookmarksChanged の `new CustomEvent` と ESC の
+  `new KeyboardEvent` は src がグローバル参照するため、JSDOM document にリスナーを張ると
+  **別レルムの happy-dom Event では発火しない**。`globalThis.CustomEvent`/`KeyboardEvent` を
+  `dom.window.*` に差し替えて解消。UndoManager はシングルトンなので
+  `vi.spyOn(UndoManager.getInstance(),'register')` で登録コールバックを捕捉。全体 Stmts 85.53→86.2% /
+  Branch 71.04→72.13%。VERIFY 緑。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（undo-manager 後）は
-  Statements 85.53% / Branches 71.04%。次に攻める低カバレッジ・ファイル:
-  `src/components/BookmarkActions/BookmarkEditor.ts`(79.77% Stmts/59.61% Branch, 未到達
-  229-244,266-276) → `src/components/BookmarkDragAndDrop/index.ts`(82.05/71.96, 大型で分岐多) →
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（bookmark-editor 後）は
+  Statements 86.2% / Branches 72.13%。次に攻める低カバレッジ・ファイル:
+  `src/components/BookmarkDragAndDrop/index.ts`(82.05/71.96, 大型で分岐多) →
   `src/components/BookmarkFolder/FolderEvents.ts`(76.54/62.34) →
   `src/components/BookmarkSelection`(80.4/63.54) → `src/components/SidebarHistoryPanel`(80.32/57.57)
   の順が目安。Branch 85% が遠いので分岐の多い大型ファイルを優先（伸びしろ大）。
