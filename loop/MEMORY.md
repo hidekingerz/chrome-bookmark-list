@@ -60,14 +60,31 @@
   画面端超え座標で positionMenu の位置補正（rAF は即時実行スタブ・rect=0 で `x>vw` 成立）、
   icon 付き項目のアイコン描画。全体 Stmts 84.49→85.25% / Branch 69.37→70.62%。VERIFY 緑。
 
+- [undo-manager] `test/undo-manager.test.ts` に 4 ケース追加し
+  `src/components/UndoManager/index.ts` を 76.74% Stmts / 65.51% Branch →
+  **93.02% Stmts / 82.75% Branch / 100% Lines / 100% Funcs** に。追加検証: (1)`triggerUndo()`の
+  フォールバック経路 — register 後に `Toast.dismissCurrent()` だけ呼ぶと `currentUndo` は
+  UndoManager に残り、`Toast.triggerCurrentAction()`が false を返すため src 80-83 行
+  (currentUndo を直接実行 → return true)が走る（実行後 hasUndo()=false も検証）。
+  (2)`isEditableElement`の INPUT 分岐(106)と contentEditable 分岐(109)。落とし穴: UndoManager は
+  シングルトンで `initialize()` はハンドラを一度しか束縛しないため、最初に initialize した
+  テストの document にのみ束縛される（既存「入力欄」テストは古い document に束縛されたハンドラの
+  ため空振りでパスしていた）。新規 describe の beforeEach で
+  `(UndoManager as unknown as {instance}).instance = null` してシングルトンをリセットし、現在の
+  document にハンドラを束縛してから検証。対照テスト(tabindex 付き通常要素で Cmd+Z→undo 実行)を
+  置き、ハンドラが現 document で生きていることを担保した上で INPUT/contentEditable で抑止される
+  ことを検証。jsdom はネイティブ isContentEditable=false なので `Object.defineProperty`で true を
+  明示。全体 Stmts 85.25→85.53% / Branch 70.62→71.04%。VERIFY 緑。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（context-menu 後）は
-  Statements 85.25% / Branches 70.62%。次に攻める低カバレッジ・ファイル:
-  `src/components/UndoManager`(76.74% Stmts/65.51% Branch, 未到達 80-83,106,109) →
-  `src/components/BookmarkActions/BookmarkEditor.ts`(79.77%) → `src/scripts` の残り
-  （history.ts/utils.ts）→ `src/components/HistoryPanel` の順が目安。Branch 85% が遠いので
-  分岐の多いファイルを優先。
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（undo-manager 後）は
+  Statements 85.53% / Branches 71.04%。次に攻める低カバレッジ・ファイル:
+  `src/components/BookmarkActions/BookmarkEditor.ts`(79.77% Stmts/59.61% Branch, 未到達
+  229-244,266-276) → `src/components/BookmarkDragAndDrop/index.ts`(82.05/71.96, 大型で分岐多) →
+  `src/components/BookmarkFolder/FolderEvents.ts`(76.54/62.34) →
+  `src/components/BookmarkSelection`(80.4/63.54) → `src/components/SidebarHistoryPanel`(80.32/57.57)
+  の順が目安。Branch 85% が遠いので分岐の多い大型ファイルを優先（伸びしろ大）。
 - [context-menu/dead-branch] `ContextMenu.ts` の早期 return 147,162,168,180,204 行と
   212 行の `active ? : -1` 三項の false 側は src を変えずには到達不可。理由: グローバル
   ハンドラ（mousedown/keydown/contextmenu/scroll）は `close()` 時に同期で removeEventListener

@@ -119,4 +119,97 @@ describe('UndoManager', () => {
 
     expect(undoFn).not.toHaveBeenCalled();
   });
+
+  it('triggerUndo() は Toast 解除後も currentUndo を直接実行する', async () => {
+    const undoFn = vi.fn();
+    const um = UndoManager.getInstance();
+    um.register({ message: 'メッセージ', undo: undoFn });
+
+    // Toast だけを解除する。UndoManager.currentUndo は保持されたまま。
+    // この状態で triggerUndo を呼ぶと Toast.triggerCurrentAction() が false を返し、
+    // UndoManager 側のフォールバック経路 (currentUndo を直接実行) が走る。
+    Toast.dismissCurrent();
+    expect(um.hasUndo()).toBe(true);
+
+    const handled = await um.triggerUndo();
+
+    expect(handled).toBe(true);
+    expect(undoFn).toHaveBeenCalledTimes(1);
+    // 実行後は currentUndo がクリアされ、再実行されない。
+    expect(um.hasUndo()).toBe(false);
+  });
+
+  // UndoManager はシングルトンで initialize() は一度しかハンドラを束縛しないため、
+  // ハンドラを「現在のテストの document」に確実に束縛するにはインスタンスをリセットする。
+  // これにより editable 判定 (INPUT / contentEditable) を実際に通過させて検証できる。
+  describe('Cmd+Z の editable 判定 (現在の document に束縛)', () => {
+    beforeEach(() => {
+      (UndoManager as unknown as { instance: UndoManager | null }).instance =
+        null;
+      UndoManager.getInstance().initialize();
+    });
+
+    function dispatchCmdZ(): Promise<void> {
+      document.dispatchEvent(
+        new dom.window.KeyboardEvent('keydown', { key: 'z', metaKey: true })
+      );
+      return new Promise((r) => setTimeout(r, 10));
+    }
+
+    it('editable でない要素にフォーカス時は undo が実行される (対照)', async () => {
+      const undoFn = vi.fn();
+      const um = UndoManager.getInstance();
+      um.register({ message: 'メッセージ', undo: undoFn });
+
+      const div = document.createElement('div');
+      div.setAttribute('tabindex', '0');
+      document.body.appendChild(div);
+      div.focus();
+      expect(document.activeElement).toBe(div);
+
+      await dispatchCmdZ();
+
+      // 通常要素なので editable 判定を抜けて undo が走る = ハンドラが現 document に生きている証拠。
+      expect(undoFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('INPUT にフォーカス時は editable 判定で undo を抑止する', async () => {
+      const undoFn = vi.fn();
+      const um = UndoManager.getInstance();
+      um.register({ message: 'メッセージ', undo: undoFn });
+
+      const input = document.createElement('input');
+      document.body.appendChild(input);
+      input.focus();
+      expect(document.activeElement).toBe(input);
+
+      await dispatchCmdZ();
+
+      expect(undoFn).not.toHaveBeenCalled();
+      // editable なので undo は破棄されず保持される。
+      expect(um.hasUndo()).toBe(true);
+    });
+
+    it('contentEditable 要素にフォーカス時は editable 判定で undo を抑止する', async () => {
+      const undoFn = vi.fn();
+      const um = UndoManager.getInstance();
+      um.register({ message: 'メッセージ', undo: undoFn });
+
+      const div = document.createElement('div');
+      div.setAttribute('tabindex', '0');
+      // jsdom はネイティブの isContentEditable を実装しないため値を明示する。
+      Object.defineProperty(div, 'isContentEditable', {
+        value: true,
+        configurable: true,
+      });
+      document.body.appendChild(div);
+      div.focus();
+      expect(document.activeElement).toBe(div);
+
+      await dispatchCmdZ();
+
+      expect(undoFn).not.toHaveBeenCalled();
+      expect(um.hasUndo()).toBe(true);
+    });
+  });
 });
