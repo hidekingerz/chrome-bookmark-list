@@ -42,11 +42,19 @@
   Rejected で制御、console は spyOn でモック。全体 Stmts 82.71→84.1% / Branch 68.28→69.2%。VERIFY 緑。
   落とし穴は下記 Open の dead-branch（95 行）を参照。
 
+- [newtab-core] `test/newtab-core.test.ts` を新規追加し `src/scripts/newtab-core.ts` を
+  41.17% → **100%**（scripts ディレクトリ全体 97.43% Stmts / 95.45% Branch）に。未到達だった
+  `displayBookmarksTestable`(空フォルダ→no-results メッセージ / 非空→フォルダ・リンク描画 +
+  クリックハンドラー経由で chrome.tabs.create 発火) と deprecated 関数
+  `updateFolderUI` / `updateBookmarkListUI`(各 console.warn 出力) を実 assert で検証。5 ケース全
+  pass。happy-dom の `new Window()` 実 DOM に差し替え（setup.ts の最小スタブでは innerHTML 代入・
+  querySelectorAll・addEventListener が機能しないため。html-utils.test.ts と同パターン）。
+  全体 Stmts 84.1→84.49% / Branch 69.2→69.37%。VERIFY 緑。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（bookmark-service 後）は
-  Statements 84.1% / Branches 69.2%。次に攻める低カバレッジ・ファイル:
-  `src/scripts/newtab-core.ts`(41%, 未到達 38-48,91-112) →
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（newtab-core 後）は
+  Statements 84.49% / Branches 69.37%。次に攻める低カバレッジ・ファイル:
   `src/components/ContextMenu`(branch 52%, 未到達 ...82,186,204-214) →
   `src/components/UndoManager`(77%, 未到達 80-83,106,109) →
   `src/components/BookmarkActions/BookmarkEditor.ts`(79.77%) の順が目安。
