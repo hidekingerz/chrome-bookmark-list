@@ -23,13 +23,20 @@
   `vi.stubGlobal`、console は `vi.spyOn` でモック。全体 Stmts 80.12→80.96% / Branch
   65.27→66.77%。VERIFY 緑。71-74 行は到達不可（下記 Open 参照）。
 
+- [favicon-service] `test/favicon-service.test.ts` を新規追加し `src/services/FaviconService.ts`
+  を 47% から大幅向上。`initCache`(storage欠如/有効キャッシュ読込/期限切れ再保存/get例外)、
+  `getFavicon`(標準パス成功・不正URL→localhostフォールバック・キャッシュヒット・内部例外→
+  デフォルト)、フォールバック戦略(標準失敗→HTML解析成功・相対href絶対化2種・権限無→Google・
+  全戦略タイムアウト→デフォルト)、`clearCache`(storage有/無)、`saveCacheToStorage` storage欠如を
+  実 assert で検証。16 ケース全 pass。全体 Stmts 80.96→82.71% / Branch 66.77→68.28%。VERIFY 緑。
+  落とし穴は下記 Notes の「Image モック差し替え」を参照。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（error-handler 後）は
-  Statements 80.96% / Branches 66.77%。次に攻める低カバレッジ・ファイル:
-  `src/services/FaviconService.ts`(47%) → `src/services/BookmarkService.ts`(58%) →
-  `src/scripts/newtab-core.ts`(41%) → `src/components/ContextMenu`(branch 52%) →
-  `src/components/UndoManager`(77%) の順が目安。
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（favicon-service 後）は
+  Statements 82.71% / Branches 68.28%。次に攻める低カバレッジ・ファイル:
+  `src/services/BookmarkService.ts`(58%) → `src/scripts/newtab-core.ts`(41%) →
+  `src/components/ContextMenu`(branch 52%) → `src/components/UndoManager`(77%) の順が目安。
 - [error-handler/dead-branch] `ErrorHandler.ts` の 71-74 行（private `showNotification` の
   'warning'/'info' 分岐）は未到達のまま。`handleBookmarkOperation`/`handleGenericError` が
   常に 'error' を渡すため、src の挙動を変えずには到達できない（dead branch）。水増しせず放置。
@@ -45,6 +52,14 @@
   `beforeEach` で `globalThis.document = realWindow.document` に差し替え、`afterEach` で復元する
   （vitest はファイル単位で隔離されるため他ファイルに影響しない）。setup.ts は触らない（既存モック
   を壊さない）。実 DOM の innerHTML は `& < >` のみエスケープしクォートはしない点に注意。
+- ★Image モック差し替え: `test/setup.ts` の `Image` モックは常に `onload` を発火するため、
+  FaviconService の戦略分岐（標準パス失敗→HTML→Google）や `validateFaviconUrl` のタイムアウトを
+  検証できない。テスト内で `vi.stubGlobal('Image', StubImage)` し、`src` セッタで src 値に応じて
+  `onload`/`onerror` を切替えるスタブ（module 変数 `imageLoadPredicate` で制御）に差し替える。
+  タイムアウト分岐は `imageNeverResolves=true` + `vi.useFakeTimers()` +
+  `vi.advanceTimersByTimeAsync(2500)`（標準パス+Google の 2 回分 1000ms）で到達。
+  `chrome.permissions` は setup 未定義なので必要なテストで一時付与し afterEach で除去。
+  `fetch` は `vi.stubGlobal` でモック。`vi.unstubAllGlobals()` で復元。
 - テストは `test/` 配下にフラットに `機能名.test.ts` で置く（src と同階層ではない）。
 - Chrome API は `test/setup.ts` でモック済み。新 API を使う箇所は setup を拡張（既存を壊さない）。
 - 毎周の VERIFY = `npm run lint && npm run format && npm run test`。整形漏れは `npm run format:write`。
