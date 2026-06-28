@@ -105,14 +105,37 @@
   全 0 を返すため zone 判定に rect スタブ必須。alert は globalThis に vi.fn() を defineProperty。
   chrome.bookmarks.get は id→{parentId,index} を返す mockImplementation で制御。
 
+- [folder-events] `test/folder-events-coverage.test.ts` を新規追加し
+  `src/components/BookmarkFolder/BookmarkFolderEvents.ts`(実ファイル名は `BookmarkFolderEvents.ts`。
+  VISION のベースライン表記 `FolderEvents.ts` は別名) を 76.54% Stmts / 62.34% Branch →
+  **98.14% Stmts / 83.95% Branch / 100% Funcs / 100% Lines** に。既存テスト
+  (bookmark-context-menu / bookmark-click-behaviors / a11y-touch) はマウス操作の主要パスのみ通っていた
+  ため、未到達を補完: `getSelection()`、クリックでの編集/削除ボタン (handleEditClick/handleDeleteClick)、
+  中クリック mousedown の抑制 3 分岐 (button≠1 / リンク外 / リンク上 preventDefault)、auxclick の URL 欠落、
+  キーボード (ContextMenu キー / Shift+F10) でのメニュー表示と非メニューキー・対象外要素の return、
+  タッチ長押し (単一指→bookmark/folder メニュー・複数指キャンセル・対象外・touchmove 閾値超えキャンセル・
+  touchend キャンセル)、ブックマークメニュー全 onSelect (開く=tabs.update / バックグラウンド=create active:false /
+  URLコピー=clipboard / 編集 / 削除) と URL 欠落で非表示、clipboard フォールバック (execCommand) と
+  writeText 失敗で console.error、フォルダメニュー全 onSelect (折りたたむ/展開 toggle・グループ=openAsGroup・
+  新規サブフォルダ=openCreateDialog・リネーム=openRenameDialog・削除=openDeleteDialog) と
+  .bookmark-folder 外/未登録 folderId の return、ブックマーククリックの URL 欠落・選択消費・folderId 欠落。
+  36 ケース全 pass。副作用のあるダイアログ系は prototype を spyOn。全体 Stmts 86.56→**89.38%** /
+  Branch 72.46→**75.89%**。VERIFY 緑。落とし穴は下記 Notes の「タッチ長押しタイマー」を参照。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（folder-dnd 後）は
-  Statements 86.56% / Branches 72.46%。次に攻める低カバレッジ・ファイル:
-  `src/components/BookmarkFolder/FolderEvents.ts`(76.54/62.34, 大型) →
-  `src/components/BookmarkSelection`(80.4/63.54) → `src/components/SidebarHistoryPanel`(80.32/57.57)
-  → `src/components/BookmarkDragAndDrop/index.ts`(残: bookmark reorder/move 系の未到達行) の順が目安。
-  Branch 85% が遠いので分岐の多い大型ファイルを優先（伸びしろ大）。
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（folder-events 後）は
+  Statements 89.38% / Branches 75.89%。次に攻める低カバレッジ・ファイル:
+  `src/components/SidebarHistoryPanel`(80.32/57.57, branch 最低) →
+  `src/components/BookmarkSelection`(80.4/63.54) →
+  `src/components/BookmarkFolder/FolderEvents.ts`(残: BookmarkDeleter 84.5/62.5・TabGroupOpener 79.62/71.42
+   等の Actions 系) → `src/components/BookmarkDragAndDrop/index.ts`(残: bookmark reorder/move 系) の順が目安。
+  Branch 85% が遠いので分岐の多い大型・低 branch ファイルを優先（伸びしろ大）。
+- [folder-events/dead-branch] `BookmarkFolderEvents.ts` の `findFolder`(902-911 行の deepSearch
+  フォールバック, 904/906 行)は未到達のまま。`findFolderById`(= BookmarkService.findFolderById)が既に
+  subfolders を再帰探索するため、それが null を返したら deepSearch も必ず null。src を変えずには到達不可
+  （dead branch）。また `updateExpandIcon` の `if(!expandIcon)return`(768 行)は、サブフォルダ/ブックマーク
+  ありフォルダのヘッダは renderer が必ず `.expand-icon` を出すため到達困難。いずれも水増しせず放置。
 - [context-menu/dead-branch] `ContextMenu.ts` の早期 return 147,162,168,180,204 行と
   212 行の `active ? : -1` 三項の false 側は src を変えずには到達不可。理由: グローバル
   ハンドラ（mousedown/keydown/contextmenu/scroll）は `close()` 時に同期で removeEventListener
@@ -146,6 +169,14 @@
   `vi.advanceTimersByTimeAsync(2500)`（標準パス+Google の 2 回分 1000ms）で到達。
   `chrome.permissions` は setup 未定義なので必要なテストで一時付与し afterEach で除去。
   `fetch` は `vi.stubGlobal` でモック。`vi.unstubAllGlobals()` で復元。
+- ★タッチ長押しタイマー: `BookmarkFolderEvents` の長押しは `window.setTimeout` を使う。テストで
+  `globalThis.window = dom.window` の場合、vi のフェイクタイマーは dom.window 側に届かない。
+  `dom.window.setTimeout`/`clearTimeout` を vi.fn() に差し替え、コールバックを module 変数に退避して
+  手動発火 (`pending?.()`) すると、発火/キャンセル両経路を確実に制御できる。TouchEvent は JSDOM に
+  あるが `touches` を渡しにくいので `new dom.window.Event('touchstart')` に
+  `Object.defineProperty(ev,'touches',{value:[{target,clientX,clientY}]})` で付与する。
+  副作用のあるダイアログ系 (FolderCreator/Renamer/Deleter.openXDialog, TabGroupOpener.openAsGroup,
+  BookmarkActions.handleEdit/Delete) は `vi.spyOn(Klass.prototype,'method').mockResolvedValue()` で抑止。
 - テストは `test/` 配下にフラットに `機能名.test.ts` で置く（src と同階層ではない）。
 - Chrome API は `test/setup.ts` でモック済み。新 API を使う箇所は setup を拡張（既存を壊さない）。
 - 毎周の VERIFY = `npm run lint && npm run format && npm run test`。整形漏れは `npm run format:write`。
