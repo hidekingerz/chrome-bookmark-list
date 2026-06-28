@@ -31,12 +31,29 @@
   実 assert で検証。16 ケース全 pass。全体 Stmts 80.96→82.71% / Branch 66.77→68.28%。VERIFY 緑。
   落とし穴は下記 Notes の「Image モック差し替え」を参照。
 
+- [bookmark-service] `test/bookmark-service.test.ts` を新規追加し `src/services/BookmarkService.ts`
+  を 58.13% → **98.83% Stmts / 88.67% Branch / 100% Funcs** に。`getBookmarkTree`(成功変換・取得失敗→
+  専用エラー)、`processBookmarkTree`(ブックマークバー直下のルート→専用フォルダ先頭追加＋サブフォルダ展開・
+  ルート無しは専用フォルダ作らない・Mobile bookmarks 無視＋他フォルダ直接追加・children 無しルート無視・
+  title 無し→Untitled)、`findFolderById`(再帰ヒット・不在 null)、`getTotalBookmarks`(再帰合計)、
+  `filterBookmarks`(空語そのまま・タイトル一致＋expanded 化・サブフォルダ URL 一致で親含む・不一致除外)、
+  `moveBookmark`/`updateBookmark`/`deleteBookmark`(各: 成功・対象不在→throw かつ副作用呼ばず・API 失敗→
+  再スロー) を実 assert で検証。23 ケース全 pass。chrome.bookmarks.* は setup の vi.fn() を mockResolved/
+  Rejected で制御、console は spyOn でモック。全体 Stmts 82.71→84.1% / Branch 68.28→69.2%。VERIFY 緑。
+  落とし穴は下記 Open の dead-branch（95 行）を参照。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（favicon-service 後）は
-  Statements 82.71% / Branches 68.28%。次に攻める低カバレッジ・ファイル:
-  `src/services/BookmarkService.ts`(58%) → `src/scripts/newtab-core.ts`(41%) →
-  `src/components/ContextMenu`(branch 52%) → `src/components/UndoManager`(77%) の順が目安。
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（bookmark-service 後）は
+  Statements 84.1% / Branches 69.2%。次に攻める低カバレッジ・ファイル:
+  `src/scripts/newtab-core.ts`(41%, 未到達 38-48,91-112) →
+  `src/components/ContextMenu`(branch 52%, 未到達 ...82,186,204-214) →
+  `src/components/UndoManager`(77%, 未到達 80-83,106,109) →
+  `src/components/BookmarkActions/BookmarkEditor.ts`(79.77%) の順が目安。
+- [bookmark-service/dead-branch] `BookmarkService.ts` の 95 行（private `convertNodeToFolder` の
+  `if (!node.children) return null;`）は未到達のまま。convertNodeToFolder は呼び出し側
+  (processBookmarkTree 48/77 行) が必ず `child.children` ありを確認してから呼ぶため、src の挙動を
+  変えずには到達できない（dead branch）。水増しせず放置。
 - [error-handler/dead-branch] `ErrorHandler.ts` の 71-74 行（private `showNotification` の
   'warning'/'info' 分岐）は未到達のまま。`handleBookmarkOperation`/`handleGenericError` が
   常に 'error' を渡すため、src の挙動を変えずには到達できない（dead branch）。水増しせず放置。
