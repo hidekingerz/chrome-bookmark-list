@@ -15,13 +15,24 @@
   isValidUrl）を実 assert で検証。全体は Stmts 78.77→80.12% / Branch 64.26→65.27%。VERIFY 緑。
   落とし穴は下記 Notes の「setup.ts が global document をスタブ上書き」を参照。
 
+- [error-handler] `test/error-handler.test.ts` を新規追加し `src/services/ErrorHandler.ts` を
+  0% → **87.5% Stmts / 85.71% Branch / 100% Funcs** に。`handleBookmarkOperation`(汎用/
+  見つかりません/permissions/権限/network/fetch の全メッセージ分岐) / `handleFaviconError`
+  (warn のみ・通知しない) / `handleGenericError`(context あり/なし) / `debug` `startTimer`
+  `endTimer`(NODE_ENV=development とそれ以外の両分岐) を実 assert で検証。alert は
+  `vi.stubGlobal`、console は `vi.spyOn` でモック。全体 Stmts 80.12→80.96% / Branch
+  65.27→66.77%。VERIFY 緑。71-74 行は到達不可（下記 Open 参照）。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（html-utils 後）は
-  Statements 80.12% / Branches 65.27%。次に攻める低カバレッジ・ファイル:
-  `src/services/ErrorHandler.ts`(0%) → `src/services/FaviconService.ts`(47%) →
-  `src/services/BookmarkService.ts`(58%) → `src/scripts/newtab-core.ts`(41%) →
-  `src/components/ContextMenu`(branch 52%) → `src/components/UndoManager`(77%) の順が目安。
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（error-handler 後）は
+  Statements 80.96% / Branches 66.77%。次に攻める低カバレッジ・ファイル:
+  `src/services/FaviconService.ts`(47%) → `src/services/BookmarkService.ts`(58%) →
+  `src/scripts/newtab-core.ts`(41%) → `src/components/ContextMenu`(branch 52%) →
+  `src/components/UndoManager`(77%) の順が目安。
+- [error-handler/dead-branch] `ErrorHandler.ts` の 71-74 行（private `showNotification` の
+  'warning'/'info' 分岐）は未到達のまま。`handleBookmarkOperation`/`handleGenericError` が
+  常に 'error' を渡すため、src の挙動を変えずには到達できない（dead branch）。水増しせず放置。
 - [next] 1周 = 1テストファイル追加（or 1モジュールのカバレッジ向上）。`npm run test:coverage` の
   "Uncovered Line #s" を見て未到達行を狙い撃つ。
 
