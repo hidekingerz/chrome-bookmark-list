@@ -197,4 +197,56 @@ describe('FolderCreator', () => {
 
     expect(document.getElementById('folder-create-dialog')).toBeNull();
   });
+
+  it('getTree が失敗するとダイアログを表示せず console.error する', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (
+      globalThis.chrome.bookmarks.getTree as ReturnType<typeof vi.fn>
+    ).mockRejectedValue(new Error('tree failure'));
+
+    const creator = new FolderCreator();
+    await creator.openCreateDialog('1');
+
+    expect(document.getElementById('folder-create-dialog')).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith(
+      '❌ フォルダ作成ダイアログの表示に失敗:',
+      expect.any(Error)
+    );
+
+    errorSpy.mockRestore();
+  });
+
+  it('create が失敗すると console.error し Undo を登録しない', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (
+      globalThis.chrome.bookmarks.create as ReturnType<typeof vi.fn>
+    ).mockRejectedValue(new Error('create failure'));
+    const registerSpy = vi.spyOn(UndoManager.getInstance(), 'register');
+
+    const creator = new FolderCreator();
+    await creator.openCreateDialog('1');
+
+    const nameInput = document.getElementById(
+      'folder-create-name'
+    ) as HTMLInputElement;
+    nameInput.value = '失敗フォルダ';
+
+    const confirmBtn = document.querySelector(
+      '.folder-create-confirm'
+    ) as HTMLButtonElement;
+    confirmBtn.click();
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(chrome.bookmarks.create).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      '❌ フォルダの作成に失敗しました:',
+      expect.any(Error)
+    );
+    expect(registerSpy).not.toHaveBeenCalled();
+    // ダイアログは閉じられないまま残る
+    expect(document.getElementById('folder-create-dialog')).not.toBeNull();
+
+    registerSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
 });

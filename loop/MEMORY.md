@@ -307,18 +307,33 @@
   (既存背景クリックテストと同パターン)。2 ケース全 pass。全体 Branches 83.26→**83.34%**(995→996, +1 branch。
   内側クリック分岐のみ新規計上、Esc-false は denominator 上既計上だったか net +1)。VERIFY 緑。
 
+## Done（達成済み）追記10
+
+- [folder-creator] `test/folder-create.test.ts` に 2 ケース追加し
+  `src/components/BookmarkActions/FolderCreator.ts` を 92.42% Stmts / 96.82% Lines →
+  **95.45% Stmts / 100% Lines / 87.5% Funcs** に。未到達だった catch 文 2 行を補完: (1)`openCreateDialog`
+  の `getTree` reject → catch で console.error「フォルダ作成ダイアログの表示に失敗:」+ダイアログ非表示
+  (16-21 行)、(2)`handleConfirm` の `create` reject → catch で console.error「フォルダの作成に失敗しました:」
+  +UndoManager.register 未呼+ダイアログ残存(167-169 行)。console.error は spyOn、beforeEach の
+  getTree/create を各テストで mockRejectedValue 上書き(folder-rename/deleter と同パターン)。
+  UndoManager.getInstance().register を spyOn して未呼を検証。10 ケース全 pass。VERIFY 緑。
+  ★学び: **catch ブロックは「文」であり「分岐」ではない**ため、catch 行をカバーしても Statements/Lines は
+  上がるが **Branches は増えない**（全体 Stmts 95.9→95.98% / Lines も微増だが Branch は 996/1195 で不動）。
+  Branch 85% を目指す残作業では、catch 行ではなく **if/三項/`||`/`&&` の未到達側**を持つファイルを狙うこと。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（shortcut-help/branch 後）は
-  **Statements 95.9%（しきい値クリア済み）/ Branches 83.34%（あと約 1.66%, 約 20 branch）**。残るは
-  Branch のみ。次に攻める低 branch ファイル:
-  `ShortcutHelp`(97.72/75, 残: closeBtn?.optional の null 側は dead で放置可。これ以上の到達分岐なし)・
-  `Toast`(91.52/77.77, 残 69/90/96/103 = getCurrentInstance/hasAction は関数カバレッジ寄与・
-  activateAction の `if(!action)` true 側は private で到達困難 dead 寄り・onActivate reject の catch 103 は
-  到達可。branch 寄与は小さめ)・`FolderCreator`(92.42/77.27, 残 20=ダイアログ表示 catch・
-  168=create reject catch。folder-rename/deleter と同パターンで到達可)・
-  `CalendarHistoryPanel`(97.13/73.73, ただし dead-branch 多数注意)の順。
-  Branch 85% が遠いので分岐の多い低 branch を優先。
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（folder-creator 後）は
+  **Statements 95.98%（しきい値クリア済み）/ Branches 83.34%（あと約 1.66%, 約 20 branch）**。残るは
+  Branch のみ。★重要: catch 行は branch を増やさない（folder-creator の学び参照）。**真の if/三項分岐**を
+  持つファイルを優先せよ。候補(branch 寄与が見込める分岐を持つもの):
+  `BookmarkDragAndDrop/index.ts`(94.4/82, 残 ...1-668,689,1009 = move undo 内の dispatchEvent や
+  reorder undo の一部分岐。最大の母数を持つので branch 寄与が大きい見込み)・
+  `BookmarkSelection.ts`(95.51/82.29, ただし container=null 防御は dead 寄り)・
+  `ContextMenu/index.ts`(95.32/84, ただし早期 return は dead 多数)・
+  `Toast`(91.52/77.77, 残 69/90/96/103 = onActivate reject catch 103 は到達可だが branch 寄与小)・
+  `ShortcutHelp`(97.72/75, これ以上の到達分岐なし=dead)。
+  Branch 85% が遠いので**分岐母数の大きい** `BookmarkDragAndDrop/index.ts` から攻めるのが効率的。
 - [bookmark-selection/残] `BookmarkSelection.ts` 残り未到達(`...33,358,495,559`)は container=null 時の
   防御ガード(refreshOrderedUrls 332-333 / findItemByUrl)、reapply の el null 分岐(358)、ダイアログ
   close ハンドラの一部で、src を変えずには到達困難。水増しせず放置。
