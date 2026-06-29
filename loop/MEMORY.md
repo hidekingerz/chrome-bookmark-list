@@ -247,21 +247,43 @@
   全体 Stmts 95.31→**95.58%** / Branch 82.25→**82.51%**(983→986, +3 branch)。VERIFY 緑。残 116,160 は
   `if(!input)return`/`if(!el)return` の防御ガード false 側(input/errorEl 常存)で dead、放置可。
 
+## Done（達成済み）追記6
+
+- [folder-deleter] `test/folder-delete.test.ts` に 6 ケース追加し
+  `src/components/BookmarkActions/FolderDeleter.ts` を 92.3% Stmts / 66.66% Branch →
+  **98.46% Stmts / 87.5% Branch / 100% Funcs / 100% Lines** に。既存テストは正常系
+  (確認ダイアログ表示/件数警告/キャンセル/削除確定+bookmarks-changed/Undo 復元/ESC)のみ
+  通っていたため未到達分岐を補完: (1)getSubTree→[] で分割代入の subtree=undefined →
+  console.error「削除対象のフォルダが見つかりません」+ダイアログ非表示+removeTree 未呼び出し
+  (16-18 行)、(2)getSubTree reject の catch で console.error「フォルダの削除に失敗しました」
+  (46-47 行)、(3)parentId 無しフォルダの削除確定 → removeTree は呼ぶが `if(parentId)`(37 行)false で
+  Undo register 未呼び出し+Toast 非表示(UndoManager.getInstance().register を spyOn して未呼を検証)、
+  (4)×ボタン(.edit-dialog-close)click で close(false)→removeTree 未呼び出し(171 行 closeBtn 分岐)、
+  (5)children:[] 空フォルダで countContents=0/0 → createDialogHTML の `bookmarkCount>0||folderCount>0`
+  false で contentWarning='' (.delete-warning 非表示, 129 行 false)、(6)ブックマークのみ
+  (folderCount=0)で `folderCount>0 ?`(131 行)false → 「件のブックマーク」表示するが「サブフォルダ」
+  非表示。6 ケース全 pass。console.error は spyOn、beforeEach の getSubTree を各テストで
+  mockResolved/Rejected 上書き(folder-rename と同パターン)。全体 Stmts 95.58→**95.74%** /
+  Branch 82.51→**82.92%**(986→991, +5 branch)。VERIFY 緑。残 61,65 は countContents の
+  `if(!n.children)`/`else if(child.children)` の防御分岐、176 は ESC 以外キー false 側で dead 寄り、放置可。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（folder-renamer 後）は
-  **Statements 95.58%（しきい値クリア済み）/ Branches 82.51%（あと約 2.49%, 約 30 branch）**。残るは
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（folder-deleter 後）は
+  **Statements 95.74%（しきい値クリア済み）/ Branches 82.92%（あと約 2.08%, 約 26 branch）**。残るは
   Branch のみ。次に攻める低 branch ファイル:
-  `src/components/HistoryPanel`(90.9/64.28, 残 157-159 = img.onerror ハンドラ本体未到達)・
-  `FolderDeleter`(92.3/66.66, 残 17-18,47 = getSubTree→[] 不在 17-18・catch 47。folder-rename と
-  同パターンで getSubTree を mockResolved([])/mockRejected すれば到達可)・
+  `src/components/HistoryPanel`(90.9/64.28, 残 157-159 = img.onerror ハンドラ本体未到達。これが
+  全ファイル中で最も低い branch%。既存テストは onload と getFavicon reject のみ通すため
+  img.onerror?.() を手動発火すれば 157-160 を拾える。getFavicon success 後に
+  `favicon.onerror?.()` を呼び placeholder の textContent='🌐'/display='block' を検証)・
   `ShortcutHelp`(97.72/66.66, 残: Esc 以外キーの 124 行 false 側・背景クリックの内側要素=
   e.target≠dialogElement の false 側の 2 分岐は src 非変更で到達可。closeBtn?.optional の null 側は dead)・
-  `Toast`(91.52/77.77, 残 69/90/96/103 = getCurrentInstance/hasAction 未呼び出し・activateAction の
-  `if(!action)` true 側・onActivate reject の catch 103。各メソッド直接呼び出しで到達可)・
-  `FolderRenamer` は完了・`CalendarHistoryPanel`(97.13/73.73, ただし dead-branch 多数注意)の順。
-  HistoryPanel は img.onerror を手動発火(favicon success→`favicon.onerror?.()`)すれば 157-159 を拾える
-  (既存テストは onload と getFavicon reject のみ)。Branch 85% が遠いので分岐の多い低 branch を優先。
+  `Toast`(91.52/77.77, 残 69/90/96/103 = getCurrentInstance/hasAction は関数カバレッジ寄与・
+  activateAction の `if(!action)` true 側は private で到達困難 dead 寄り・onActivate reject の catch 103 は
+  到達可。branch 寄与は小さめ)・`FolderCreator`(92.42/77.27, 残 20=ダイアログ表示 catch・
+  168=create reject catch。folder-rename/deleter と同パターンで到達可)・
+  `CalendarHistoryPanel`(97.13/73.73, ただし dead-branch 多数注意)の順。
+  Branch 85% が遠いので分岐の多い低 branch を優先。
 - [bookmark-selection/残] `BookmarkSelection.ts` 残り未到達(`...33,358,495,559`)は container=null 時の
   防御ガード(refreshOrderedUrls 332-333 / findItemByUrl)、reapply の el null 分岐(358)、ダイアログ
   close ハンドラの一部で、src を変えずには到達困難。水増しせず放置。

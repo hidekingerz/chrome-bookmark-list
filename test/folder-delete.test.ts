@@ -167,4 +167,138 @@ describe('FolderDeleter', () => {
 
     expect(document.getElementById('folder-delete-dialog')).toBeNull();
   });
+
+  it('削除対象が見つからない場合は console.error しダイアログを出さない', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const mockChrome = globalThis.chrome as unknown as {
+      bookmarks: { getSubTree: ReturnType<typeof vi.fn> };
+    };
+    // getSubTree が空配列を返す → 分割代入で subtree が undefined になる
+    mockChrome.bookmarks.getSubTree = vi.fn().mockResolvedValue([]);
+
+    const deleter = new FolderDeleter();
+    await deleter.openDeleteDialog('missing');
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '❌ 削除対象のフォルダが見つかりません:',
+      'missing'
+    );
+    expect(document.getElementById('folder-delete-dialog')).toBeNull();
+    expect(chrome.bookmarks.removeTree).not.toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it('getSubTree が失敗すると catch で console.error する', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const mockChrome = globalThis.chrome as unknown as {
+      bookmarks: { getSubTree: ReturnType<typeof vi.fn> };
+    };
+    mockChrome.bookmarks.getSubTree = vi
+      .fn()
+      .mockRejectedValue(new Error('API error'));
+
+    const deleter = new FolderDeleter();
+    await deleter.openDeleteDialog('target');
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '❌ フォルダの削除に失敗しました:',
+      expect.any(Error)
+    );
+    expect(document.getElementById('folder-delete-dialog')).toBeNull();
+
+    consoleSpy.mockRestore();
+  });
+
+  it('parentId が無いフォルダの削除では Undo が登録されない', async () => {
+    const mockChrome = globalThis.chrome as unknown as {
+      bookmarks: { getSubTree: ReturnType<typeof vi.fn> };
+    };
+    // ルート直下など parentId を持たないフォルダ
+    mockChrome.bookmarks.getSubTree = vi.fn().mockResolvedValue([
+      {
+        id: 'noparent',
+        title: 'ルート直下フォルダ',
+        children: [{ id: 'b1', title: 'B1', url: 'https://b1.example.com' }],
+      },
+    ]);
+    const registerSpy = vi.spyOn(UndoManager.getInstance(), 'register');
+
+    const deleter = new FolderDeleter();
+    const promise = deleter.openDeleteDialog('noparent');
+    await new Promise((r) => setTimeout(r, 10));
+    (
+      document.querySelector('.folder-delete-confirm') as HTMLButtonElement
+    ).click();
+    await promise;
+
+    expect(chrome.bookmarks.removeTree).toHaveBeenCalledWith('noparent');
+    // parentId が無いため Undo は登録されず Toast も出ない
+    expect(registerSpy).not.toHaveBeenCalled();
+    expect(document.querySelector('.app-toast')).toBeNull();
+
+    registerSpy.mockRestore();
+  });
+
+  it('×（閉じる）ボタンでキャンセル扱いになり removeTree が呼ばれない', async () => {
+    const deleter = new FolderDeleter();
+    const promise = deleter.openDeleteDialog('target');
+    await new Promise((r) => setTimeout(r, 10));
+
+    const closeBtn = document.querySelector(
+      '.edit-dialog-close'
+    ) as HTMLButtonElement;
+    closeBtn.click();
+    await promise;
+
+    expect(chrome.bookmarks.removeTree).not.toHaveBeenCalled();
+    expect(document.getElementById('folder-delete-dialog')).toBeNull();
+  });
+
+  it('中身が空のフォルダでは警告メッセージが表示されない', async () => {
+    const mockChrome = globalThis.chrome as unknown as {
+      bookmarks: { getSubTree: ReturnType<typeof vi.fn> };
+    };
+    mockChrome.bookmarks.getSubTree = vi.fn().mockResolvedValue([
+      {
+        id: 'empty',
+        parentId: 'parent',
+        index: 0,
+        title: '空フォルダ',
+        children: [],
+      },
+    ]);
+
+    const deleter = new FolderDeleter();
+    void deleter.openDeleteDialog('empty');
+    await new Promise((r) => setTimeout(r, 10));
+
+    const dialog = document.getElementById('folder-delete-dialog');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.querySelector('.delete-warning')).toBeNull();
+    expect(dialog?.textContent).not.toContain('件のブックマーク');
+  });
+
+  it('ブックマークのみでサブフォルダ無しの場合はサブフォルダ件数を表示しない', async () => {
+    const mockChrome = globalThis.chrome as unknown as {
+      bookmarks: { getSubTree: ReturnType<typeof vi.fn> };
+    };
+    mockChrome.bookmarks.getSubTree = vi.fn().mockResolvedValue([
+      {
+        id: 'onlybm',
+        parentId: 'parent',
+        index: 0,
+        title: 'ブックマークのみ',
+        children: [{ id: 'b1', title: 'B1', url: 'https://b1.example.com' }],
+      },
+    ]);
+
+    const deleter = new FolderDeleter();
+    void deleter.openDeleteDialog('onlybm');
+    await new Promise((r) => setTimeout(r, 10));
+
+    const dialog = document.getElementById('folder-delete-dialog');
+    expect(dialog?.textContent).toContain('1件のブックマーク');
+    expect(dialog?.textContent).not.toContain('サブフォルダ');
+  });
 });
