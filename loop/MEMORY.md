@@ -321,19 +321,39 @@
   上がるが **Branches は増えない**（全体 Stmts 95.9→95.98% / Lines も微増だが Branch は 996/1195 で不動）。
   Branch 85% を目指す残作業では、catch 行ではなく **if/三項/`||`/`&&` の未到達側**を持つファイルを狙うこと。
 
+## Done（達成済み）追記11
+
+- [dnd-branch] `test/bookmark-reorder-dnd.test.ts` に 35 ケース追加し
+  `src/components/BookmarkDragAndDrop/index.ts`(94.4/82 で最大の分岐母数)の未到達 branch を一気に補完。
+  到達可能な if/三項/`||`/`??` の未到達側を狙い撃ち: handleDragOver/handleDrop の「何もドラッグして
+  いない」ガード(255/267/428)・ドラッグ中ヘッダー外 dragover(276)、folder-header 上 dragover の
+  dataTransfer 欠落分岐(286/293)、reorder dragover の dataTransfer 欠落(334/367)、folder-header からの
+  dragleave(395/404)、reorderBookmark のターゲット不在 throw(514)・target.index 欠落(526)・undo の
+  originalIndex 欠落(538)、moveMultipleBookmarks の全件不在で register せず(612)、フォルダ DnD は
+  folder-title 欠落の空文字(721)・dataTransfer 欠落の dragstart(731/749)・子孫への reorder invalid(825)・
+  別親 reorder valid(830)・隣接 after no-op(843)・dragover/drop の各ガード(856/861/864/913/918/920)・
+  invalid/valid dragover の dataTransfer 欠落(885/892)・moveFolder の parentId 欠落で register せず(975)・
+  reorderFolder の source 不在 throw(1008)・target.index 欠落(1014)・source 親欠落で register せず(1028)・
+  undo の originalIndex 欠落(1035)・未初期化インスタンスの destroy(1073)。ネストフォルダ DOM
+  (p1>child1,p2,p3)を別途構築し、folder-header に `draggable="true"`、getBoundingClientRect は stubRect で
+  top0/height100 固定して clientY 10/50/90 で before/into/after を制御。chrome.bookmarks.get は id→node の
+  mockImplementation(setFolderGet)で制御し、parentId/index の有無で undo 分岐を出し分け。
+  35 ケース全 pass。**全体 Stmts 95.98→96.54% / Branch 83.34→86.19%(996→1030, +34 branch)。これで
+  DoD の Statements 95% / Branches 85% を両方達成。** VERIFY 緑、test:coverage exit 0、build:extension 成功。
+  ★学び: branch を稼ぐには「分岐母数の大きいファイルの到達可能な if/三項/`??` 未到達側」を一括で攻めるのが
+  最効率(catch 行は無効、folder-creator の学び参照)。dataTransfer 欠落・index 欠落・parentId 欠落は
+  共通して undo/effect 分岐の反対側を安全に踏める。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（folder-creator 後）は
-  **Statements 95.98%（しきい値クリア済み）/ Branches 83.34%（あと約 1.66%, 約 20 branch）**。残るは
-  Branch のみ。★重要: catch 行は branch を増やさない（folder-creator の学び参照）。**真の if/三項分岐**を
-  持つファイルを優先せよ。候補(branch 寄与が見込める分岐を持つもの):
-  `BookmarkDragAndDrop/index.ts`(94.4/82, 残 ...1-668,689,1009 = move undo 内の dispatchEvent や
-  reorder undo の一部分岐。最大の母数を持つので branch 寄与が大きい見込み)・
-  `BookmarkSelection.ts`(95.51/82.29, ただし container=null 防御は dead 寄り)・
-  `ContextMenu/index.ts`(95.32/84, ただし早期 return は dead 多数)・
-  `Toast`(91.52/77.77, 残 69/90/96/103 = onActivate reject catch 103 は到達可だが branch 寄与小)・
-  `ShortcutHelp`(97.72/75, これ以上の到達分岐なし=dead)。
-  Branch 85% が遠いので**分岐母数の大きい** `BookmarkDragAndDrop/index.ts` から攻めるのが効率的。
+- [DONE] **DoD 全項目達成: Statements 96.54%(≥95) / Branches 86.19%(≥85)。完了ゲート全緑**
+  (VERIFY=lint/format/test 緑・test:coverage exit 0・build:extension 成功)。本ループのゴールは満了。
+  これ以上の周回は不要(さらに上げたい場合のみ下記の残 dead branch を検討するが、いずれも src 非変更では
+  到達不可なので水増し禁止)。
+- [dnd/残 dead-branch] `BookmarkDragAndDrop/index.ts` の残 branch(203/301 = dropIndicator null は
+  initialize 済みなら常に非 null・321/474 = handleBookmarkReorder* の draggedBookmark 再チェックは呼出側で
+  保証済み・350/833 = parentElement null・576 = draggedBookmark?.additionalUrls の左辺は常に array・
+  758 = innerHTML 固定の titleEl 常存・839 = siblings に source 不在)は src を変えずには到達不可。放置可。
 - [bookmark-selection/残] `BookmarkSelection.ts` 残り未到達(`...33,358,495,559`)は container=null 時の
   防御ガード(refreshOrderedUrls 332-333 / findItemByUrl)、reapply の el null 分岐(358)、ダイアログ
   close ハンドラの一部で、src を変えずには到達困難。水増しせず放置。
