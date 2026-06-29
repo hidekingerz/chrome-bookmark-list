@@ -215,14 +215,33 @@
   **これで Statements が 94.99→95.23% でしきい値 95% を突破**。Branch は 80.83→**81.92%**(目標 85% まで
   あと約 3.1%)。VERIFY 緑。
 
+## Done（達成済み）追記4
+
+- [tab-controller] `test/tab-controller.test.ts` に 4 ケース追加し
+  `src/components/TabController/TabController.ts` を 94.87% Stmts / 69.23% Branch →
+  **100%（skipFull でテーブルから非表示）** に。既存テストは初期 active 認識・クリック切替・
+  activate ハンドラ呼び出しの主要パスのみ通っていたため未到達分岐を補完: (1)存在しないタブIDを
+  `activate()` → `if(!this.buttons.has(tab))return`(60 行)の早期 return で activeTab/パネル状態
+  維持。(2)`data-tab` 属性無しボタンは `init` の `if(!tab)continue`(26 行)で無視され click しても
+  切替わらない(buttons 未登録)。(3)対応パネルが無いタブは `init` の `if(panel)`(31 行)false 側で
+  panels 未登録だが activate でボタンのみ active 化。(4)active クラスを持つボタンが無い DOM では
+  初期化時 `getActiveTab()` が null(41-46 ループで break せず)。各 it は専用 JSDOM を作り
+  `new TabController(localDoc)`(constructor は root 引数を取るためグローバル document 差し替え不要・
+  activate/init は root のみ参照)で構築し `localDom.window.close()` で後始末。assert は activeTab・
+  classList.active・aria-selected で実検証。4 ケース全 pass。全体 Stmts 95.23→**95.31%** /
+  Branch 81.92→**82.25%**(979→983, +4 branch)。VERIFY 緑。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（keyboard-shortcuts 後）は
-  **Statements 95.23%（しきい値クリア済み）/ Branches 81.92%（あと約 3.1%）**。残るは Branch のみ。
-  次に攻める低 branch ファイル:
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（tab-controller 後）は
+  **Statements 95.31%（しきい値クリア済み）/ Branches 82.25%（あと約 2.75%, 約 33 branch）**。残るは
+  Branch のみ。次に攻める低 branch ファイル:
   `src/components/HistoryPanel`(90.9/64.28, 残 157-159 = img.onerror ハンドラ本体未到達)・
-  `ShortcutHelp`(97.72/66.66, closeBtn?.optional 等の null 分岐)・`TabController`(94.87/69.23)・
-  `Toast`(91.52/77.77, 残 69/90/96/103)・`FolderRenamer`(86.76/76.19)・`FolderDeleter`(92.3/66.66) の順。
+  `FolderDeleter`(92.3/66.66, 残 17-18,47)・`ShortcutHelp`(97.72/66.66, 残: Esc 以外キーの 124 行
+  false 側・背景クリックの内側要素=e.target≠dialogElement の false 側の 2 分岐は src 非変更で到達可。
+  closeBtn?.optional の null 側は dead)・`TabController` は完了・
+  `Toast`(91.52/77.77, 残 69/90/96/103)・`FolderRenamer`(86.76/76.19)・
+  `CalendarHistoryPanel`(97.13/73.73, ただし dead-branch 多数注意)の順。
   HistoryPanel は img.onerror を手動発火(favicon success→`favicon.onerror?.()`)すれば 157-159 を拾える
   (既存テストは onload と getFavicon reject のみ)。Branch 85% が遠いので分岐の多い低 branch を優先。
 - [bookmark-selection/残] `BookmarkSelection.ts` 残り未到達(`...33,358,495,559`)は container=null 時の
