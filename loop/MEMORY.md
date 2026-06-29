@@ -231,17 +231,35 @@
   classList.active・aria-selected で実検証。4 ケース全 pass。全体 Stmts 95.23→**95.31%** /
   Branch 81.92→**82.25%**(979→983, +4 branch)。VERIFY 緑。
 
+## Done（達成済み）追記5
+
+- [folder-renamer] `test/folder-rename.test.ts` に 8 ケース追加し
+  `src/components/BookmarkActions/FolderRenamer.ts` を 86.76% Stmts / 76.19% Branch →
+  **97.05% Stmts / 90.47% Branch / 100% Funcs / 100% Lines** に。既存テストは正常系
+  (表示/保存/空文字/同名/変更なし/Undo/Enter/ESC)のみ通っていたため未到達分岐を補完:
+  (1)対象不在(get→[])で console.error+ダイアログ非表示(16-19 行)、(2)get reject の catch で
+  console.error(25-27 行)、(3)parentId 無しフォルダ → getChildren 呼ばず siblings=[] の三項 false 側
+  (21 行)+保存成功、(4)update reject の catch で showError「フォルダ名の変更に失敗しました」
+  +ダイアログ閉じない(153-156 行)、(5)×ボタン click で closeDialog(84 行)、(6)キャンセルボタン
+  click で closeDialog(85 行)、(7)入力欄で Enter 以外キー → handleConfirm 呼ばず(91 行 false)、
+  (8)document で Escape 以外キー → ダイアログ閉じない(98 行 false)。8 ケース全 pass。console.error は
+  spyOn、beforeEach の mockChrome.bookmarks.get/update を各テストで mockResolved/Rejected 上書き。
+  全体 Stmts 95.31→**95.58%** / Branch 82.25→**82.51%**(983→986, +3 branch)。VERIFY 緑。残 116,160 は
+  `if(!input)return`/`if(!el)return` の防御ガード false 側(input/errorEl 常存)で dead、放置可。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（tab-controller 後）は
-  **Statements 95.31%（しきい値クリア済み）/ Branches 82.25%（あと約 2.75%, 約 33 branch）**。残るは
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（folder-renamer 後）は
+  **Statements 95.58%（しきい値クリア済み）/ Branches 82.51%（あと約 2.49%, 約 30 branch）**。残るは
   Branch のみ。次に攻める低 branch ファイル:
   `src/components/HistoryPanel`(90.9/64.28, 残 157-159 = img.onerror ハンドラ本体未到達)・
-  `FolderDeleter`(92.3/66.66, 残 17-18,47)・`ShortcutHelp`(97.72/66.66, 残: Esc 以外キーの 124 行
-  false 側・背景クリックの内側要素=e.target≠dialogElement の false 側の 2 分岐は src 非変更で到達可。
-  closeBtn?.optional の null 側は dead)・`TabController` は完了・
-  `Toast`(91.52/77.77, 残 69/90/96/103)・`FolderRenamer`(86.76/76.19)・
-  `CalendarHistoryPanel`(97.13/73.73, ただし dead-branch 多数注意)の順。
+  `FolderDeleter`(92.3/66.66, 残 17-18,47 = getSubTree→[] 不在 17-18・catch 47。folder-rename と
+  同パターンで getSubTree を mockResolved([])/mockRejected すれば到達可)・
+  `ShortcutHelp`(97.72/66.66, 残: Esc 以外キーの 124 行 false 側・背景クリックの内側要素=
+  e.target≠dialogElement の false 側の 2 分岐は src 非変更で到達可。closeBtn?.optional の null 側は dead)・
+  `Toast`(91.52/77.77, 残 69/90/96/103 = getCurrentInstance/hasAction 未呼び出し・activateAction の
+  `if(!action)` true 側・onActivate reject の catch 103。各メソッド直接呼び出しで到達可)・
+  `FolderRenamer` は完了・`CalendarHistoryPanel`(97.13/73.73, ただし dead-branch 多数注意)の順。
   HistoryPanel は img.onerror を手動発火(favicon success→`favicon.onerror?.()`)すれば 157-159 を拾える
   (既存テストは onload と getFavicon reject のみ)。Branch 85% が遠いので分岐の多い低 branch を優先。
 - [bookmark-selection/残] `BookmarkSelection.ts` 残り未到達(`...33,358,495,559`)は container=null 時の

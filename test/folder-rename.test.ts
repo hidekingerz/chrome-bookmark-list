@@ -211,4 +211,156 @@ describe('FolderRenamer', () => {
 
     expect(document.getElementById('folder-rename-dialog')).toBeNull();
   });
+
+  describe('未到達分岐の補完', () => {
+    it('対象フォルダが見つからない場合 console.error しダイアログを表示しない', async () => {
+      const mockChrome = globalThis.chrome as unknown as {
+        bookmarks: { get: ReturnType<typeof vi.fn> };
+      };
+      mockChrome.bookmarks.get.mockResolvedValue([]);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const renamer = new FolderRenamer();
+      await renamer.openRenameDialog('missing');
+
+      expect(document.getElementById('folder-rename-dialog')).toBeNull();
+      expect(errorSpy).toHaveBeenCalledWith(
+        '❌ リネーム対象のフォルダが見つかりません:',
+        'missing'
+      );
+      errorSpy.mockRestore();
+    });
+
+    it('chrome.bookmarks.get が失敗した場合 catch で console.error する', async () => {
+      const mockChrome = globalThis.chrome as unknown as {
+        bookmarks: { get: ReturnType<typeof vi.fn> };
+      };
+      mockChrome.bookmarks.get.mockRejectedValue(new Error('API Error'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const renamer = new FolderRenamer();
+      await renamer.openRenameDialog('f1');
+
+      expect(document.getElementById('folder-rename-dialog')).toBeNull();
+      expect(errorSpy).toHaveBeenCalledWith(
+        '❌ リネームダイアログの表示に失敗:',
+        expect.any(Error)
+      );
+      errorSpy.mockRestore();
+    });
+
+    it('parentId を持たないフォルダでは getChildren を呼ばず兄弟チェックなしで保存できる', async () => {
+      const mockChrome = globalThis.chrome as unknown as {
+        bookmarks: {
+          get: ReturnType<typeof vi.fn>;
+          getChildren: ReturnType<typeof vi.fn>;
+          update: ReturnType<typeof vi.fn>;
+        };
+      };
+      // parentId 無し → siblings は [] になり getChildren は呼ばれない
+      mockChrome.bookmarks.get.mockResolvedValue([
+        { id: 'root', title: 'ルート直下' },
+      ]);
+
+      const renamer = new FolderRenamer();
+      await renamer.openRenameDialog('root');
+
+      expect(mockChrome.bookmarks.getChildren).not.toHaveBeenCalled();
+
+      const input = document.getElementById(
+        'folder-rename-name'
+      ) as HTMLInputElement;
+      input.value = '新ルート名';
+      (
+        document.querySelector('.folder-rename-confirm') as HTMLButtonElement
+      ).click();
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(mockChrome.bookmarks.update).toHaveBeenCalledWith('root', {
+        title: '新ルート名',
+      });
+    });
+
+    it('chrome.bookmarks.update が失敗した場合エラー表示しダイアログは閉じない', async () => {
+      const mockChrome = globalThis.chrome as unknown as {
+        bookmarks: { update: ReturnType<typeof vi.fn> };
+      };
+      mockChrome.bookmarks.update.mockRejectedValue(new Error('update failed'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const renamer = new FolderRenamer();
+      await renamer.openRenameDialog('f1');
+
+      const input = document.getElementById(
+        'folder-rename-name'
+      ) as HTMLInputElement;
+      input.value = '失敗する名前';
+      (
+        document.querySelector('.folder-rename-confirm') as HTMLButtonElement
+      ).click();
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(document.getElementById('folder-rename-dialog')).not.toBeNull();
+      const errorEl = document.querySelector(
+        '.folder-rename-error'
+      ) as HTMLElement;
+      expect(errorEl?.style.display).toBe('block');
+      expect(errorEl?.textContent).toContain('フォルダ名の変更に失敗しました');
+      expect(errorSpy).toHaveBeenCalledWith(
+        '❌ フォルダ名の変更に失敗しました:',
+        expect.any(Error)
+      );
+      errorSpy.mockRestore();
+    });
+
+    it('×（閉じる）ボタンでダイアログが閉じる', async () => {
+      const renamer = new FolderRenamer();
+      await renamer.openRenameDialog('f1');
+
+      (
+        document.querySelector('.edit-dialog-close') as HTMLButtonElement
+      ).click();
+
+      expect(document.getElementById('folder-rename-dialog')).toBeNull();
+    });
+
+    it('キャンセルボタンでダイアログが閉じる', async () => {
+      const renamer = new FolderRenamer();
+      await renamer.openRenameDialog('f1');
+
+      (
+        document.querySelector('.edit-dialog-cancel') as HTMLButtonElement
+      ).click();
+
+      expect(document.getElementById('folder-rename-dialog')).toBeNull();
+    });
+
+    it('Enter 以外のキーでは保存されずダイアログが開いたまま', async () => {
+      const renamer = new FolderRenamer();
+      await renamer.openRenameDialog('f1');
+
+      const input = document.getElementById(
+        'folder-rename-name'
+      ) as HTMLInputElement;
+      input.value = '別の名前';
+      input.dispatchEvent(
+        new dom.window.KeyboardEvent('keydown', { key: 'a', bubbles: true })
+      );
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(chrome.bookmarks.update).not.toHaveBeenCalled();
+      expect(document.getElementById('folder-rename-dialog')).not.toBeNull();
+    });
+
+    it('Escape 以外のキーではダイアログが閉じない', async () => {
+      const renamer = new FolderRenamer();
+      await renamer.openRenameDialog('f1');
+
+      document.dispatchEvent(
+        new dom.window.KeyboardEvent('keydown', { key: 'Tab' })
+      );
+
+      expect(document.getElementById('folder-rename-dialog')).not.toBeNull();
+    });
+  });
 });
