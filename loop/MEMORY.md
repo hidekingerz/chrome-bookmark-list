@@ -280,10 +280,25 @@
   1 ケース pass(全 500 → 17 ファイル内)。全体 Stmts 95.74→**95.86%** / Branch 82.92→**83.01%**
   (991→992, +1 branch)。VERIFY 緑。残るは onerror 内の `if(placeholder)` false 側など防御分岐。
 
+## Done（達成済み）追記8
+
+- [history-panel/branch] `test/history-panel.test.ts` に 3 ケース追加し
+  `src/components/HistoryPanel/HistoryPanel.ts` を 94.8% Stmts / 67.85% Branch →
+  **96.1% Stmts / 78.57% Branch / 100% Funcs / 100% Lines** に。Lines は既に 100% で残るは未到達 branch
+  のみだったため、src 非変更で到達可能な 3 分岐を補完: (1)`.history-item-title` 以外（`.history-item-url`）の
+  クリックで `closest('.history-item-title')`→null → `if(!link)return`(48 行 true 側)で tabs.create 呼ばず、
+  (2)`url:''` のアイテムで `data-url=""` → クリックしても `if(url)`(52 行 false 側)で tabs.create 呼ばず、
+  (3)`url:''` のアイテムで `data-history-url=""` → loadFavicons の `if(url)`(148 行 false 側)で getFavicon
+  呼ばず・画像 hidden 維持。escapeHtml('')='' を利用して空 URL アイテムで 52/148 の false 側に到達。
+  assert は chrome.tabs.create の呼び出し有無・mockGetFavicon の未呼・classList で実検証。3 ケース全 pass。
+  全体 Stmts 95.86→**95.9%** / Branch 83.01→**83.26%**(992→995, +3 branch)。VERIFY 緑。残 154-164 は
+  onload/onerror/catch 内の `if(placeholder)` false 側で、img と placeholder が markup 上 1:1 ペアのため
+  src 非変更では placeholder 欠落を作れず到達不可（dead branch）。放置可。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（history-panel 後）は
-  **Statements 95.86%（しきい値クリア済み）/ Branches 83.01%（あと約 1.99%, 約 24 branch）**。残るは
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（history-panel/branch 後）は
+  **Statements 95.9%（しきい値クリア済み）/ Branches 83.26%（あと約 1.74%, 約 21 branch）**。残るは
   Branch のみ。次に攻める低 branch ファイル:
   `ShortcutHelp`(97.72/66.66, 残: Esc 以外キーの 124 行 false 側・背景クリックの内側要素=
   e.target≠dialogElement の false 側の 2 分岐は src 非変更で到達可。closeBtn?.optional の null 側は dead)・
