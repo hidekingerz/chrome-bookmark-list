@@ -437,5 +437,37 @@ describe('HistoryPanel', () => {
 
       consoleSpy.mockRestore();
     });
+
+    it('Favicon取得成功後に画像のonerrorが発火するとプレースホルダーが表示される', async () => {
+      mockGetRecentHistory.mockResolvedValue([
+        {
+          id: '1',
+          url: 'https://example.com',
+          title: 'Example Site',
+          lastVisitTime: 1640995200000,
+          visitCount: 5,
+          typedCount: 2,
+        },
+      ]);
+      mockGetFavicon.mockResolvedValue('data:image/png;base64,broken');
+
+      await panel.activate();
+
+      const favicon = container.querySelector(
+        '.history-favicon'
+      ) as HTMLImageElement;
+      const placeholder = container.querySelector(
+        '.favicon-placeholder'
+      ) as HTMLElement;
+
+      // getFavicon 成功で onerror ハンドラが設定されている
+      expect(favicon.onerror).toBeTypeOf('function');
+
+      // 画像のデコードに失敗（壊れた data URL 等）→ onerror 発火
+      favicon.onerror?.({} as Event);
+
+      expect(placeholder.textContent).toBe('🌐');
+      expect(placeholder.style.display).toBe('block');
+    });
   });
 });

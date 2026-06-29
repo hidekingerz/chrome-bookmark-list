@@ -267,15 +267,24 @@
   Branch 82.51→**82.92%**(986→991, +5 branch)。VERIFY 緑。残 61,65 は countContents の
   `if(!n.children)`/`else if(child.children)` の防御分岐、176 は ESC 以外キー false 側で dead 寄り、放置可。
 
+## Done（達成済み）追記7
+
+- [history-panel/onerror] `test/history-panel.test.ts` に 1 ケース追加し
+  `src/components/HistoryPanel/HistoryPanel.ts` を 90.9% Stmts / 64.28% Branch →
+  **94.8% Stmts / 67.85% Branch / 100% Funcs / 100% Lines** に。既存テストは onload と
+  getFavicon reject のみ通っていたため未到達だった `img.onerror` ハンドラ本体(157-160 行)を補完:
+  getFavicon を resolve させた後 `favicon.onerror?.({} as Event)` を手動発火し、`if(placeholder)`
+  true 側で placeholder の textContent='🌐'/display='block' になることを実 assert で検証。
+  発火前に `favicon.onerror` が function であることも確認(getFavicon 成功時にのみ設定されるため)。
+  JSDOM は src 代入で load/error を発火しないため手動発火が必須(既存 onload テストと同パターン)。
+  1 ケース pass(全 500 → 17 ファイル内)。全体 Stmts 95.74→**95.86%** / Branch 82.92→**83.01%**
+  (991→992, +1 branch)。VERIFY 緑。残るは onerror 内の `if(placeholder)` false 側など防御分岐。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（folder-deleter 後）は
-  **Statements 95.74%（しきい値クリア済み）/ Branches 82.92%（あと約 2.08%, 約 26 branch）**。残るは
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（history-panel 後）は
+  **Statements 95.86%（しきい値クリア済み）/ Branches 83.01%（あと約 1.99%, 約 24 branch）**。残るは
   Branch のみ。次に攻める低 branch ファイル:
-  `src/components/HistoryPanel`(90.9/64.28, 残 157-159 = img.onerror ハンドラ本体未到達。これが
-  全ファイル中で最も低い branch%。既存テストは onload と getFavicon reject のみ通すため
-  img.onerror?.() を手動発火すれば 157-160 を拾える。getFavicon success 後に
-  `favicon.onerror?.()` を呼び placeholder の textContent='🌐'/display='block' を検証)・
   `ShortcutHelp`(97.72/66.66, 残: Esc 以外キーの 124 行 false 側・背景クリックの内側要素=
   e.target≠dialogElement の false 側の 2 分岐は src 非変更で到達可。closeBtn?.optional の null 側は dead)・
   `Toast`(91.52/77.77, 残 69/90/96/103 = getCurrentInstance/hasAction は関数カバレッジ寄与・
