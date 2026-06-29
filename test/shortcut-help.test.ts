@@ -97,4 +97,41 @@ describe('ShortcutHelp', () => {
 
     expect(document.querySelectorAll('.shortcut-help-overlay').length).toBe(1);
   });
+
+  it('ダイアログ内側要素のクリックでは閉じない', () => {
+    const help = new ShortcutHelp();
+    help.open();
+
+    const overlay = document.getElementById(
+      'shortcut-help-dialog'
+    ) as HTMLElement;
+    const inner = overlay.querySelector('.shortcut-help-dialog') as HTMLElement;
+    // overlay 自身ではなく内側要素を target にする → e.target !== dialogElement の false 側
+    const clickEvent = new dom.window.MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(clickEvent, 'target', { value: inner });
+    overlay.dispatchEvent(clickEvent);
+
+    expect(document.getElementById('shortcut-help-dialog')).not.toBeNull();
+    expect(help.isOpen()).toBe(true);
+  });
+
+  it('Esc 以外のキーではダイアログは閉じない', () => {
+    const help = new ShortcutHelp();
+    help.open();
+
+    const event = new dom.window.KeyboardEvent('keydown', {
+      key: 'a',
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(event);
+
+    // e.key === 'Escape' の false 側 → close されず preventDefault もされない
+    expect(document.getElementById('shortcut-help-dialog')).not.toBeNull();
+    expect(help.isOpen()).toBe(true);
+    expect(event.defaultPrevented).toBe(false);
+  });
 });

@@ -295,13 +295,24 @@
   onload/onerror/catch 内の `if(placeholder)` false 側で、img と placeholder が markup 上 1:1 ペアのため
   src 非変更では placeholder 欠落を作れず到達不可（dead branch）。放置可。
 
+## Done（達成済み）追記9
+
+- [shortcut-help/branch] `test/shortcut-help.test.ts` に 2 ケース追加し
+  `src/components/ShortcutHelp/index.ts` を 97.72% Stmts / 66.66% Branch →
+  **97.72% Stmts / 75% Branch / 100% Funcs / 100% Lines** に。既存テストは背景クリック(overlay 自身=
+  true 側)と Esc(true 側)のみ通っていたため src 非変更で到達可能な false 側 2 分岐を補完: (1)ダイアログ
+  内側要素(.shortcut-help-dialog)を target にした click → `if(e.target === this.dialogElement)`(117 行)
+  false 側で close されず isOpen()=true 維持、(2)Esc 以外('a')の keydown → `if(e.key === 'Escape')`(124 行)
+  false 側で close されず defaultPrevented=false。MouseEvent の target は Object.defineProperty で注入
+  (既存背景クリックテストと同パターン)。2 ケース全 pass。全体 Branches 83.26→**83.34%**(995→996, +1 branch。
+  内側クリック分岐のみ新規計上、Esc-false は denominator 上既計上だったか net +1)。VERIFY 緑。
+
 ## Open（未解決 / 次周への申し送り）
 
-- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（history-panel/branch 後）は
-  **Statements 95.9%（しきい値クリア済み）/ Branches 83.26%（あと約 1.74%, 約 21 branch）**。残るは
+- [next] ゴールはカバレッジ向上（DoD: Statements 95% / Branches 85%）。現状（shortcut-help/branch 後）は
+  **Statements 95.9%（しきい値クリア済み）/ Branches 83.34%（あと約 1.66%, 約 20 branch）**。残るは
   Branch のみ。次に攻める低 branch ファイル:
-  `ShortcutHelp`(97.72/66.66, 残: Esc 以外キーの 124 行 false 側・背景クリックの内側要素=
-  e.target≠dialogElement の false 側の 2 分岐は src 非変更で到達可。closeBtn?.optional の null 側は dead)・
+  `ShortcutHelp`(97.72/75, 残: closeBtn?.optional の null 側は dead で放置可。これ以上の到達分岐なし)・
   `Toast`(91.52/77.77, 残 69/90/96/103 = getCurrentInstance/hasAction は関数カバレッジ寄与・
   activateAction の `if(!action)` true 側は private で到達困難 dead 寄り・onActivate reject の catch 103 は
   到達可。branch 寄与は小さめ)・`FolderCreator`(92.42/77.27, 残 20=ダイアログ表示 catch・
