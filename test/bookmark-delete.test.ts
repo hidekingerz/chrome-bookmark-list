@@ -295,4 +295,126 @@ describe('ブックマーク削除機能のテスト', () => {
     expect(chrome.bookmarks.search).not.toHaveBeenCalled();
     expect(chrome.bookmarks.remove).not.toHaveBeenCalled();
   });
+
+  const createDeleteBtn = (): HTMLButtonElement => {
+    const deleteBtn = document.createElement('button');
+    deleteBtn.setAttribute('data-bookmark-url', 'https://example.com');
+    deleteBtn.setAttribute('data-bookmark-title', 'テストブックマーク');
+    return deleteBtn;
+  };
+
+  it('削除確認ダイアログの×（閉じる）ボタンでキャンセル扱いになる', async () => {
+    const deletePromise = handleBookmarkDelete(createDeleteBtn());
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // ×（閉じる）ボタンをクリック（cancel ではなく close 経路）
+    const dialog = document.getElementById('delete-dialog');
+    const closeBtn = dialog?.querySelector('.edit-dialog-close') as HTMLElement;
+    expect(closeBtn).toBeTruthy();
+    closeBtn.click();
+
+    await deletePromise;
+
+    // キャンセル扱いなので削除 API は呼ばれず、ダイアログも消える
+    expect(chrome.bookmarks.search).not.toHaveBeenCalled();
+    expect(chrome.bookmarks.remove).not.toHaveBeenCalled();
+    expect(document.getElementById('delete-dialog')).toBeNull();
+  });
+
+  it('削除確認ダイアログを ESC キーでキャンセルできる', async () => {
+    const deletePromise = handleBookmarkDelete(createDeleteBtn());
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(document.getElementById('delete-dialog')).toBeTruthy();
+
+    // ESC キーを押下
+    document.dispatchEvent(
+      new dom.window.KeyboardEvent('keydown', { key: 'Escape' })
+    );
+
+    await deletePromise;
+
+    // キャンセル扱いなので削除 API は呼ばれず、ダイアログも消える
+    expect(chrome.bookmarks.search).not.toHaveBeenCalled();
+    expect(chrome.bookmarks.remove).not.toHaveBeenCalled();
+    expect(document.getElementById('delete-dialog')).toBeNull();
+  });
+
+  it('削除確認ダイアログを開いた状態で再度開くと既存ダイアログが差し替わる', async () => {
+    // 1 回目（閉じずに残す）
+    handleBookmarkDelete(createDeleteBtn());
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(document.querySelectorAll('#delete-dialog').length).toBe(1);
+
+    // 2 回目（既存ダイアログを remove して新規に差し替え）
+    const secondPromise = handleBookmarkDelete(createDeleteBtn());
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // ダイアログは常に 1 つだけ
+    expect(document.querySelectorAll('#delete-dialog').length).toBe(1);
+
+    // 後始末: 2 回目のダイアログをキャンセルで閉じる
+    const cancelBtn = document
+      .getElementById('delete-dialog')
+      ?.querySelector('.edit-dialog-cancel') as HTMLElement;
+    cancelBtn.click();
+    await secondPromise;
+    expect(document.getElementById('delete-dialog')).toBeNull();
+  });
+
+  // 削除失敗でエラーダイアログを表示させるためのヘルパー
+  const openErrorDialog = async () => {
+    const mockChrome = globalThis.chrome as any;
+    mockChrome.bookmarks.search.mockResolvedValue([
+      {
+        id: 'bookmark-1',
+        title: 'テストブックマーク',
+        url: 'https://example.com',
+      },
+    ]);
+    mockChrome.bookmarks.remove.mockRejectedValue(
+      new Error('削除に失敗しました')
+    );
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const deletePromise = handleBookmarkDelete(createDeleteBtn());
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const confirmBtn = document
+      .getElementById('delete-dialog')
+      ?.querySelector('.delete-dialog-confirm') as HTMLElement;
+    confirmBtn.click();
+    await deletePromise;
+    expect(document.getElementById('error-dialog')).toBeTruthy();
+  };
+
+  it('エラーダイアログを OK ボタンで閉じられる', async () => {
+    await openErrorDialog();
+
+    const okBtn = document
+      .getElementById('error-dialog')
+      ?.querySelector('.edit-dialog-cancel') as HTMLElement;
+    expect(okBtn).toBeTruthy();
+    okBtn.click();
+
+    expect(document.getElementById('error-dialog')).toBeNull();
+  });
+
+  it('エラーダイアログを ESC キーで閉じられる', async () => {
+    await openErrorDialog();
+
+    document.dispatchEvent(
+      new dom.window.KeyboardEvent('keydown', { key: 'Escape' })
+    );
+
+    expect(document.getElementById('error-dialog')).toBeNull();
+  });
+
+  it('エラーダイアログ表示中に再度エラーが起きると既存ダイアログが差し替わる', async () => {
+    await openErrorDialog();
+    expect(document.querySelectorAll('#error-dialog').length).toBe(1);
+
+    // 閉じずにもう一度削除失敗させる（既存 error-dialog を remove して差し替え）
+    await openErrorDialog();
+    expect(document.querySelectorAll('#error-dialog').length).toBe(1);
+  });
 });

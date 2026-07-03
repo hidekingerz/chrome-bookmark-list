@@ -272,6 +272,57 @@ describe('HistoryPanel', () => {
         url: 'https://example.com',
       });
     });
+
+    it('タイトル以外の要素をクリックしてもタブは開かない', async () => {
+      mockGetRecentHistory.mockResolvedValue([
+        {
+          id: '1',
+          url: 'https://example.com',
+          title: 'Example Site',
+          lastVisitTime: 1640995200000,
+          visitCount: 5,
+          typedCount: 2,
+        },
+      ]);
+
+      await panel.activate();
+
+      // .history-item-title の外側（URL 表示部分）をクリック
+      const urlElement = container.querySelector(
+        '.history-item-url'
+      ) as HTMLElement;
+      urlElement.dispatchEvent(
+        new dom.window.MouseEvent('click', { bubbles: true })
+      );
+
+      expect(chrome.tabs.create).not.toHaveBeenCalled();
+    });
+
+    it('data-url が空のタイトルをクリックしてもタブは開かない', async () => {
+      mockGetRecentHistory.mockResolvedValue([
+        {
+          id: '1',
+          url: '',
+          title: 'URL なしアイテム',
+          lastVisitTime: 1640995200000,
+          visitCount: 0,
+          typedCount: 0,
+        },
+      ]);
+
+      await panel.activate();
+
+      const title = container.querySelector(
+        '.history-item-title'
+      ) as HTMLElement;
+      expect(title.getAttribute('data-url')).toBe('');
+
+      title.dispatchEvent(
+        new dom.window.MouseEvent('click', { bubbles: true })
+      );
+
+      expect(chrome.tabs.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('検索機能', () => {
@@ -436,6 +487,61 @@ describe('HistoryPanel', () => {
       expect(placeholder?.style.display).toBe('block');
 
       consoleSpy.mockRestore();
+    });
+
+    it('Favicon取得成功後に画像のonerrorが発火するとプレースホルダーが表示される', async () => {
+      mockGetRecentHistory.mockResolvedValue([
+        {
+          id: '1',
+          url: 'https://example.com',
+          title: 'Example Site',
+          lastVisitTime: 1640995200000,
+          visitCount: 5,
+          typedCount: 2,
+        },
+      ]);
+      mockGetFavicon.mockResolvedValue('data:image/png;base64,broken');
+
+      await panel.activate();
+
+      const favicon = container.querySelector(
+        '.history-favicon'
+      ) as HTMLImageElement;
+      const placeholder = container.querySelector(
+        '.favicon-placeholder'
+      ) as HTMLElement;
+
+      // getFavicon 成功で onerror ハンドラが設定されている
+      expect(favicon.onerror).toBeTypeOf('function');
+
+      // 画像のデコードに失敗（壊れた data URL 等）→ onerror 発火
+      favicon.onerror?.({} as Event);
+
+      expect(placeholder.textContent).toBe('🌐');
+      expect(placeholder.style.display).toBe('block');
+    });
+
+    it('data-history-url が空のアイテムは Favicon を読み込まない', async () => {
+      mockGetRecentHistory.mockResolvedValue([
+        {
+          id: '1',
+          url: '',
+          title: 'URL なしアイテム',
+          lastVisitTime: 1640995200000,
+          visitCount: 0,
+          typedCount: 0,
+        },
+      ]);
+
+      await panel.activate();
+
+      const favicon = container.querySelector(
+        '.history-favicon'
+      ) as HTMLImageElement;
+      // data-history-url が空のため getFavicon は呼ばれず、画像は hidden のまま
+      expect(favicon.getAttribute('data-history-url')).toBe('');
+      expect(mockGetFavicon).not.toHaveBeenCalled();
+      expect(favicon.classList.contains('hidden')).toBe(true);
     });
   });
 });

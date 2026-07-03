@@ -238,4 +238,195 @@ describe('KeyboardShortcuts', () => {
 
     expect(tabsCreate).toHaveBeenCalledTimes(1);
   });
+
+  describe('未到達パスの補完', () => {
+    it('Shift + / でショートカットヘルプが表示される', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      fireKey('/', { shiftKey: true });
+
+      expect(document.getElementById('shortcut-help-dialog')).not.toBeNull();
+    });
+
+    it('Cmd + Shift + F は検索フォーカスを発火しない', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      const folderHeader = document.querySelector(
+        '.folder-header'
+      ) as HTMLElement;
+      folderHeader.focus();
+
+      fireKey('f', { metaKey: true, shiftKey: true });
+
+      // shiftKey が立っているため検索フォーカスへは進まない
+      expect(document.activeElement).toBe(folderHeader);
+    });
+
+    it('アクティブなタブパネルが無くても #searchInput にフォールバックする', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      // .tab-panel.active を消すと getActiveSearchInput はフォールバックする
+      const panel = document.querySelector('.tab-panel') as HTMLElement;
+      panel.classList.remove('active');
+
+      const folderHeader = document.querySelector(
+        '.folder-header'
+      ) as HTMLElement;
+      folderHeader.focus();
+
+      fireKey('f', { ctrlKey: true });
+
+      const searchInput = document.querySelector('#searchInput');
+      expect(document.activeElement).toBe(searchInput);
+    });
+
+    it('contentEditable 要素にフォーカスがあるとショートカットは抑制される', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      const editable = document.createElement('div');
+      editable.tabIndex = 0;
+      Object.defineProperty(editable, 'isContentEditable', {
+        value: true,
+        configurable: true,
+      });
+      document.body.appendChild(editable);
+      editable.focus();
+      expect(document.activeElement).toBe(editable);
+
+      fireKey('?');
+
+      // contentEditable なのでヘルプは開かない
+      expect(document.getElementById('shortcut-help-dialog')).toBeNull();
+    });
+
+    it('フォルダヘッダにフォーカス中の Delete は何もしない', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      const folderHeader = document.querySelector(
+        '.folder-header'
+      ) as HTMLElement;
+      folderHeader.focus();
+
+      const event = new dom.window.KeyboardEvent('keydown', {
+        key: 'Delete',
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+
+      // handleDelete が false を返すため preventDefault されない
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('削除ボタンを持たないブックマーク項目の Delete は何もしない', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      const container = document.querySelector(
+        '#bookmarkContainer'
+      ) as HTMLElement;
+      const bareItem = document.createElement('li');
+      bareItem.className = 'bookmark-item';
+      bareItem.tabIndex = 0;
+      container.appendChild(bareItem);
+      bareItem.focus();
+
+      const event = new dom.window.KeyboardEvent('keydown', {
+        key: 'Delete',
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('フォルダヘッダにフォーカス中の F2 は何もしない', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      const folderHeader = document.querySelector(
+        '.folder-header'
+      ) as HTMLElement;
+      folderHeader.focus();
+
+      const event = new dom.window.KeyboardEvent('keydown', {
+        key: 'F2',
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('編集ボタンを持たないブックマーク項目の F2 は何もしない', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      const container = document.querySelector(
+        '#bookmarkContainer'
+      ) as HTMLElement;
+      const bareItem = document.createElement('li');
+      bareItem.className = 'bookmark-item';
+      bareItem.tabIndex = 0;
+      container.appendChild(bareItem);
+      bareItem.focus();
+
+      const event = new dom.window.KeyboardEvent('keydown', {
+        key: 'F2',
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('data-url を持たないブックマーク項目の Enter は何もしない', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      const tabsCreate = vi.fn();
+      (globalThis as { chrome?: { tabs: { create: unknown } } }).chrome = {
+        tabs: { create: tabsCreate },
+      };
+
+      const container = document.querySelector(
+        '#bookmarkContainer'
+      ) as HTMLElement;
+      const item = document.createElement('li');
+      item.className = 'bookmark-item';
+      item.tabIndex = 0;
+      // data-url の無い bookmark-link を持つ
+      item.innerHTML = '<a href="#" class="bookmark-link"></a>';
+      container.appendChild(item);
+      item.focus();
+
+      const event = new dom.window.KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+
+      expect(tabsCreate).not.toHaveBeenCalled();
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('ブックマークでもフォルダでもない要素の Enter は何もしない', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      const container = document.querySelector(
+        '#bookmarkContainer'
+      ) as HTMLElement;
+      container.tabIndex = 0;
+      container.focus();
+
+      const event = new dom.window.KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+    });
+  });
 });
