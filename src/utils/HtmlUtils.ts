@@ -7,9 +7,15 @@ export class HtmlUtils {
    * HTMLの特殊文字をエスケープする
    */
   static escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    // textContent→innerHTML 方式は & < > のみをエスケープし " ' を残すため、
+    // 属性値に埋め込むと属性インジェクション/属性値破壊が起きる (#96)。
+    // & < > " ' をすべて明示的に置換する。
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   /**
