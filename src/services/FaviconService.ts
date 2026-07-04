@@ -5,6 +5,9 @@ import type { FaviconCacheData } from '../types/bookmark.js';
  */
 export class FaviconService {
   private cache = new Map<string, string>();
+  // ドメイン単位の in-flight リクエスト。同一ドメインの並行取得を1つの
+  // Promise に集約し、多重フェッチ・多重 storage 書込を防ぐ（#104）
+  private inFlight = new Map<string, Promise<string>>();
   private readonly cacheKey = 'bookmark_favicon_cache';
   private readonly cacheExpiryDays = 7;
 
@@ -49,18 +52,34 @@ export class FaviconService {
         return cached;
       }
 
-      // 新規取得
-      const faviconUrl = await this.fetchFavicon(url);
+      // 同一ドメインが既に取得中なら、その Promise を共有して重複を避ける
+      const pending = this.inFlight.get(domain);
+      if (pending) {
+        return await pending;
+      }
 
-      // キャッシュに保存
-      this.cache.set(domain, faviconUrl);
-      await this.saveCacheToStorage();
-
-      return faviconUrl;
+      // 新規取得（in-flight に登録し、完了後に必ず解除する）
+      const request = this.fetchAndCache(domain, url);
+      this.inFlight.set(domain, request);
+      try {
+        return await request;
+      } finally {
+        this.inFlight.delete(domain);
+      }
     } catch (error) {
       console.warn('Favicon取得エラー:', url, error);
       return this.getDefaultFavicon();
     }
+  }
+
+  /**
+   * ファビコンを取得してキャッシュへ保存する（in-flight 集約の実体）
+   */
+  private async fetchAndCache(domain: string, url: string): Promise<string> {
+    const faviconUrl = await this.fetchFavicon(url);
+    this.cache.set(domain, faviconUrl);
+    await this.saveCacheToStorage();
+    return faviconUrl;
   }
 
   /**
