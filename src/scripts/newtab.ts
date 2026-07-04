@@ -7,6 +7,7 @@ import { UndoManager } from '../components/UndoManager/index.js';
 import { SELECTORS } from '../constants/index.js';
 import type { BookmarkFolder, ChromeBookmarkNode } from '../types/bookmark.js';
 import { renderFolder, setupFolderClickHandler } from './newtab-core.js';
+import { setupBookmarkSearch } from './searchInput.js';
 import {
   filterBookmarks,
   getFavicon,
@@ -91,13 +92,12 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
 
     await displayBookmarks(allBookmarks);
 
-    // 検索機能
-    searchInput.addEventListener('input', async (e: Event): Promise<void> => {
-      const target = e.target as HTMLInputElement;
-      const searchTerm = target.value.toLowerCase();
-      const filteredBookmarks = filterBookmarks(allBookmarks, searchTerm);
-      await displayBookmarks(filteredBookmarks);
-    });
+    // 検索機能（デバウンス適用: 1キーストロークごとの全再描画を避ける #104）
+    setupBookmarkSearch(
+      searchInput,
+      () => allBookmarks,
+      (folders) => displayBookmarks(folders)
+    );
   } catch (error) {
     console.error('❌ ブックマークの取得に失敗しました:', error);
     bookmarkContainer.innerHTML =
