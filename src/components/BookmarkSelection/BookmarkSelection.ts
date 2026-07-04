@@ -1,6 +1,7 @@
 import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
+import { Toast } from '../Toast/index.js';
 import { UndoManager } from '../UndoManager/index.js';
 
 /**
@@ -236,29 +237,48 @@ export class BookmarkSelection {
     if (!confirmed) return;
 
     const restoreInfos: BookmarkRestoreInfo[] = [];
-    try {
-      for (const item of items) {
+    let failureCount = 0;
+    // 途中で1件失敗しても残りを処理し、成功分だけを記録する (#101)。
+    // ループ全体を try/catch で囲うと最初の失敗で中断し、成功済みの削除が
+    // UI/Undo に反映されず実状態と乖離するため、各件ごとに捕捉する。
+    for (const item of items) {
+      try {
         // 選択要素が保持する data-bookmark-id で一意に同定する (#97)
         const target = await resolveBookmarkNode(
           item.element?.getAttribute('data-bookmark-id') ?? null,
           item.url
         );
         if (!target) continue;
-        restoreInfos.push({
+        const info: BookmarkRestoreInfo = {
           parentId: target.parentId,
           index: target.index,
           title: target.title,
           url: target.url ?? item.url,
-        });
+        };
         await chrome.bookmarks.remove(target.id);
+        // 実際に削除できたものだけ Undo 対象にする
+        restoreInfos.push(info);
+      } catch (error) {
+        failureCount++;
+        console.error(
+          '❌ 一括削除中にブックマークの削除に失敗しました:',
+          error
+        );
       }
+    }
 
-      this.clear();
+    // 成否にかかわらず選択を解除し、UI を実状態に同期する
+    this.clear();
+
+    const count = restoreInfos.length;
+    if (count > 0) {
       this.dispatchBookmarksChanged('bulk-delete');
-
-      const count = restoreInfos.length;
+      const message =
+        failureCount > 0
+          ? `${count} 件を削除しました（${failureCount} 件は失敗）`
+          : `${count} 件のブックマークを削除しました`;
       UndoManager.getInstance().register({
-        message: `${count} 件のブックマークを削除しました`,
+        message,
         undo: async () => {
           for (const info of restoreInfos) {
             await chrome.bookmarks.create({
@@ -271,8 +291,11 @@ export class BookmarkSelection {
           this.dispatchBookmarksChanged('undo-bulk-delete');
         },
       });
-    } catch (error) {
-      console.error('❌ 一括削除に失敗しました:', error);
+    } else if (failureCount > 0) {
+      // 全件失敗時は Undo 対象が無いので、失敗をそのまま通知する
+      Toast.show({
+        message: `${failureCount} 件のブックマークを削除できませんでした`,
+      });
     }
   }
 
@@ -292,28 +315,45 @@ export class BookmarkSelection {
       previousParentId: string | undefined;
       previousIndex: number | undefined;
     }[] = [];
-    try {
-      for (const item of items) {
+    let failureCount = 0;
+    // 途中で1件失敗しても残りを処理し、成功分だけを記録する (#101)。
+    for (const item of items) {
+      try {
         // 選択要素が保持する data-bookmark-id で一意に同定する (#97)
         const target = await resolveBookmarkNode(
           item.element?.getAttribute('data-bookmark-id') ?? null,
           item.url
         );
         if (!target) continue;
-        moveInfos.push({
+        const info = {
           id: target.id,
           previousParentId: target.parentId,
           previousIndex: target.index,
-        });
+        };
         await chrome.bookmarks.move(target.id, { parentId });
+        // 実際に移動できたものだけ Undo 対象にする
+        moveInfos.push(info);
+      } catch (error) {
+        failureCount++;
+        console.error(
+          '❌ 一括移動中にブックマークの移動に失敗しました:',
+          error
+        );
       }
+    }
 
-      this.clear();
+    // 成否にかかわらず選択を解除し、UI を実状態に同期する
+    this.clear();
+
+    const count = moveInfos.length;
+    if (count > 0) {
       this.dispatchBookmarksChanged('bulk-move');
-
-      const count = moveInfos.length;
+      const message =
+        failureCount > 0
+          ? `${count} 件を移動しました（${failureCount} 件は失敗）`
+          : `${count} 件のブックマークを移動しました`;
       UndoManager.getInstance().register({
-        message: `${count} 件のブックマークを移動しました`,
+        message,
         undo: async () => {
           for (const info of moveInfos) {
             if (info.previousParentId === undefined) continue;
@@ -325,8 +365,11 @@ export class BookmarkSelection {
           this.dispatchBookmarksChanged('undo-bulk-move');
         },
       });
-    } catch (error) {
-      console.error('❌ 一括移動に失敗しました:', error);
+    } else if (failureCount > 0) {
+      // 全件失敗時は Undo 対象が無いので、失敗をそのまま通知する
+      Toast.show({
+        message: `${failureCount} 件のブックマークを移動できませんでした`,
+      });
     }
   }
 
