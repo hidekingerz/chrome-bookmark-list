@@ -9,6 +9,7 @@ import type { BookmarkFolder, ChromeBookmarkNode } from '../types/bookmark.js';
 import { renderFolder, setupFolderClickHandler } from './newtab-core.js';
 import { setupBookmarkSearch } from './searchInput.js';
 import {
+  applyExpandedState,
   filterBookmarks,
   getFavicon,
   initFaviconCache,
@@ -184,7 +185,10 @@ async function loadFavicons(container?: HTMLElement): Promise<void> {
 async function reloadBookmarks(): Promise<void> {
   try {
     const bookmarkTree: ChromeBookmarkNode[] = await chrome.bookmarks.getTree();
+    const previousBookmarks = allBookmarks;
     allBookmarks = processBookmarkTree(bookmarkTree);
+    // 再描画でユーザーの展開/折りたたみ状態が失われないよう引き継ぐ (#104)
+    applyExpandedState(allBookmarks, previousBookmarks);
 
     // 検索入力がある場合はフィルタリングして表示
     const searchInput = document.querySelector(

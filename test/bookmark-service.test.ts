@@ -515,4 +515,111 @@ describe('BookmarkService', () => {
       expect(console.error).toHaveBeenCalled();
     });
   });
+
+  describe('展開状態の引き継ぎ (#104)', () => {
+    const tree: ChromeBookmarkNode[] = [
+      {
+        id: '0',
+        title: '',
+        children: [
+          {
+            id: '2',
+            title: 'Other bookmarks',
+            children: [
+              {
+                id: '100',
+                title: 'FolderA',
+                children: [{ id: '101', title: 'a', url: 'https://a.example' }],
+              },
+              {
+                id: '200',
+                title: 'FolderB',
+                children: [{ id: '201', title: 'b', url: 'https://b.example' }],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    it('再描画で作り直しても以前の折りたたみ状態を保持し、他フォルダは展開のまま', () => {
+      const first = service.processBookmarkTree(tree);
+      // ユーザーが FolderB を折りたたむ
+      for (const folder of first[0].subfolders) {
+        if (folder.id === '200') {
+          folder.expanded = false;
+        }
+      }
+
+      // 再描画: 同じツリーから作り直すと全て expanded=true にリセットされる
+      const reloaded = service.processBookmarkTree(tree);
+      expect(reloaded[0].subfolders.find((f) => f.id === '200')?.expanded).toBe(
+        true
+      );
+
+      // 展開状態を引き継ぐと、折りたたみが保持される
+      service.applyExpandedState(reloaded, first);
+
+      expect(reloaded[0].subfolders.find((f) => f.id === '200')?.expanded).toBe(
+        false
+      );
+      // 折りたたんでいないフォルダ・親は展開のまま
+      expect(reloaded[0].subfolders.find((f) => f.id === '100')?.expanded).toBe(
+        true
+      );
+      expect(reloaded[0].expanded).toBe(true);
+    });
+
+    it('新しく追加されたフォルダはデフォルトで展開のまま', () => {
+      const first = service.processBookmarkTree(tree);
+      // 親 (Other bookmarks) を折りたたむ
+      first[0].expanded = false;
+
+      // FolderC を追加したツリーで再描画
+      const treeWithNew: ChromeBookmarkNode[] = [
+        {
+          id: '0',
+          title: '',
+          children: [
+            {
+              id: '2',
+              title: 'Other bookmarks',
+              children: [
+                {
+                  id: '100',
+                  title: 'FolderA',
+                  children: [
+                    { id: '101', title: 'a', url: 'https://a.example' },
+                  ],
+                },
+                {
+                  id: '200',
+                  title: 'FolderB',
+                  children: [
+                    { id: '201', title: 'b', url: 'https://b.example' },
+                  ],
+                },
+                {
+                  id: '300',
+                  title: 'FolderC',
+                  children: [
+                    { id: '301', title: 'c', url: 'https://c.example' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const reloaded = service.processBookmarkTree(treeWithNew);
+      service.applyExpandedState(reloaded, first);
+
+      // 既存の親は折りたたみ復元、新規 FolderC はデフォルト展開
+      expect(reloaded[0].expanded).toBe(false);
+      expect(reloaded[0].subfolders.find((f) => f.id === '300')?.expanded).toBe(
+        true
+      );
+    });
+  });
 });

@@ -68,6 +68,16 @@ export function filterBookmarks(
 }
 
 /**
+ * @deprecated BookmarkService.applyExpandedState() を使用してください
+ */
+export function applyExpandedState(
+  folders: BookmarkFolder[],
+  previous: BookmarkFolder[]
+): void {
+  getBookmarkService().applyExpandedState(folders, previous);
+}
+
+/**
  * @deprecated BookmarkService.findFolderById() を使用してください
  */
 export function findFolderById(

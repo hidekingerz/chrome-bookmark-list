@@ -126,6 +126,39 @@ export class BookmarkService {
   }
 
   /**
+   * 再描画でフォルダツリーを作り直したとき、以前のツリーの展開/折りたたみ状態を
+   * フォルダ ID をキーに引き継ぐ (#104)。processBookmarkTree は全フォルダを
+   * expanded=true で初期化するため、そのまま再描画するとユーザーが折りたたんだ
+   * 状態が失われる。以前も存在したフォルダは前回の展開状態を復元し、新規フォルダは
+   * デフォルト (expanded=true) のままにする。folders は破壊的に更新する。
+   */
+  applyExpandedState(
+    folders: BookmarkFolder[],
+    previous: BookmarkFolder[]
+  ): void {
+    const expandedById = new Map<string, boolean>();
+
+    const collect = (list: BookmarkFolder[]): void => {
+      for (const folder of list) {
+        expandedById.set(folder.id, folder.expanded);
+        collect(folder.subfolders);
+      }
+    };
+    collect(previous);
+
+    const restore = (list: BookmarkFolder[]): void => {
+      for (const folder of list) {
+        const previousExpanded = expandedById.get(folder.id);
+        if (previousExpanded !== undefined) {
+          folder.expanded = previousExpanded;
+        }
+        restore(folder.subfolders);
+      }
+    };
+    restore(folders);
+  }
+
+  /**
    * IDでフォルダを検索する
    */
   findFolderById(folders: BookmarkFolder[], id: string): BookmarkFolder | null {
