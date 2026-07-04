@@ -70,7 +70,6 @@ export class FaviconService {
     const strategies = [
       () => this.tryStandardPath(url),
       () => this.tryHtmlParsing(url),
-      () => this.tryGoogleFavicon(url),
     ];
 
     for (const strategy of strategies) {
@@ -121,16 +120,6 @@ export class FaviconService {
     } catch {
       return null;
     }
-  }
-
-  /**
-   * Google Favicon APIを使用
-   */
-  private async tryGoogleFavicon(url: string): Promise<string | null> {
-    const domain = this.getDomain(url);
-    const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
-
-    return this.validateFaviconUrl(googleFaviconUrl);
   }
 
   /**

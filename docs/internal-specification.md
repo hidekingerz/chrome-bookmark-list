@@ -351,10 +351,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 - `getFavicon()`: Favicon取得（キャッシュ優先）
 - `fetchFavicon()`: 複数戦略による実際の取得
   1. 標準パス（/favicon.ico）
-  2. HTML解析
-  3. Google Favicon API
+  2. HTML解析（ホスト権限がある場合のみ）
+  3. デフォルトSVGプレースホルダー
 - キャッシュ機能（7日間有効期限）
-- プライバシー重視（外部API最小使用）
+- プライバシー重視（外部APIサービス不使用・ホスト名の外部流出防止）
 
 #### 4.3 ErrorHandler
 **責務**: エラーハンドリングとユーザー通知の統一管理
