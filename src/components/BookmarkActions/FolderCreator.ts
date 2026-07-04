@@ -7,6 +7,10 @@ import { UndoManager } from '../UndoManager/index.js';
  * 親フォルダ選択 + 名前入力のダイアログを表示し、Chrome API でフォルダを作成する。
  */
 export class FolderCreator {
+  // ESC 用 keydown ハンドラ。closeDialog で確実に解除するため参照を保持する
+  // (#100: ボタンで閉じた場合に document へ残留するリークを防ぐ)。
+  private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+
   /**
    * フォルダ作成ダイアログを開く。
    *
@@ -122,13 +126,13 @@ export class FolderCreator {
       }
     });
 
-    const keydownHandler = (e: KeyboardEvent) => {
+    // ESCキーで閉じる。解除は closeDialog に集約し、どの経路で閉じても外れるようにする
+    this.keydownHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         this.closeDialog();
-        document.removeEventListener('keydown', keydownHandler);
       }
     };
-    document.addEventListener('keydown', keydownHandler);
+    document.addEventListener('keydown', this.keydownHandler);
   }
 
   private async handleConfirm(): Promise<void> {
@@ -175,6 +179,10 @@ export class FolderCreator {
   }
 
   private closeDialog(): void {
+    if (this.keydownHandler) {
+      document.removeEventListener('keydown', this.keydownHandler);
+      this.keydownHandler = null;
+    }
     document.getElementById('folder-create-dialog')?.remove();
   }
 }

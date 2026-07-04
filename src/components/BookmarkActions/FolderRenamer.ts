@@ -7,6 +7,10 @@ import { UndoManager } from '../UndoManager/index.js';
  * 名前入力ダイアログを表示し、Chrome API でフォルダ名を更新する。
  */
 export class FolderRenamer {
+  // ESC 用 keydown ハンドラ。closeDialog で確実に解除するため参照を保持する
+  // (#100: ボタンで閉じた場合に document へ残留するリークを防ぐ)。
+  private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+
   /**
    * リネームダイアログを開く。
    */
@@ -94,13 +98,13 @@ export class FolderRenamer {
       }
     });
 
-    const keydownHandler = (e: KeyboardEvent) => {
+    // ESCキーで閉じる。解除は closeDialog に集約し、どの経路で閉じても外れるようにする
+    this.keydownHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         this.closeDialog();
-        document.removeEventListener('keydown', keydownHandler);
       }
     };
-    document.addEventListener('keydown', keydownHandler);
+    document.addEventListener('keydown', this.keydownHandler);
   }
 
   private async handleConfirm(
@@ -168,6 +172,10 @@ export class FolderRenamer {
   }
 
   private closeDialog(): void {
+    if (this.keydownHandler) {
+      document.removeEventListener('keydown', this.keydownHandler);
+      this.keydownHandler = null;
+    }
     document.getElementById('folder-rename-dialog')?.remove();
   }
 }

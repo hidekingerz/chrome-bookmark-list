@@ -30,6 +30,14 @@ export class BookmarkDragAndDrop {
   private dropIndicator: HTMLElement | null = null;
   private autoscroller: Autoscroller = new Autoscroller();
 
+  // bind(this) は毎回新しい関数を返すため、登録と解除で同じ参照を使えるよう
+  // バインド済みハンドラをフィールドに保持する (#100: destroy の remove が no-op になる問題)。
+  private readonly boundDragStart = this.handleDragStart.bind(this);
+  private readonly boundDragEnd = this.handleDragEnd.bind(this);
+  private readonly boundDragOver = this.handleDragOver.bind(this);
+  private readonly boundDragLeave = this.handleDragLeave.bind(this);
+  private readonly boundDrop = this.handleDrop.bind(this);
+
   /**
    * ドラッグ&ドロップ機能を初期化する
    */
@@ -53,11 +61,11 @@ export class BookmarkDragAndDrop {
    * イベントリスナーを設定する
    */
   private setupEventListeners(): void {
-    document.addEventListener('dragstart', this.handleDragStart.bind(this));
-    document.addEventListener('dragend', this.handleDragEnd.bind(this));
-    document.addEventListener('dragover', this.handleDragOver.bind(this));
-    document.addEventListener('dragleave', this.handleDragLeave.bind(this));
-    document.addEventListener('drop', this.handleDrop.bind(this));
+    document.addEventListener('dragstart', this.boundDragStart);
+    document.addEventListener('dragend', this.boundDragEnd);
+    document.addEventListener('dragover', this.boundDragOver);
+    document.addEventListener('dragleave', this.boundDragLeave);
+    document.addEventListener('drop', this.boundDrop);
   }
 
   /**
@@ -1094,10 +1102,10 @@ export class BookmarkDragAndDrop {
       this.dropIndicator.parentNode.removeChild(this.dropIndicator);
     }
 
-    document.removeEventListener('dragstart', this.handleDragStart.bind(this));
-    document.removeEventListener('dragend', this.handleDragEnd.bind(this));
-    document.removeEventListener('dragover', this.handleDragOver.bind(this));
-    document.removeEventListener('dragleave', this.handleDragLeave.bind(this));
-    document.removeEventListener('drop', this.handleDrop.bind(this));
+    document.removeEventListener('dragstart', this.boundDragStart);
+    document.removeEventListener('dragend', this.boundDragEnd);
+    document.removeEventListener('dragover', this.boundDragOver);
+    document.removeEventListener('dragleave', this.boundDragLeave);
+    document.removeEventListener('drop', this.boundDrop);
   }
 }

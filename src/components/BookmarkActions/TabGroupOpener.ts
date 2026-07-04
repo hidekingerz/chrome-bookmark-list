@@ -122,6 +122,8 @@ export class TabGroupOpener {
       const confirmBtn = dialog?.querySelector('.tab-group-confirm');
 
       const close = (result: boolean) => {
+        // どの経路で閉じても ESC 用リスナーを確実に解除する (#100 リーク防止)
+        document.removeEventListener('keydown', keydown);
         dialog?.remove();
         resolve(result);
       };
@@ -133,7 +135,6 @@ export class TabGroupOpener {
       const keydown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
           close(false);
-          document.removeEventListener('keydown', keydown);
         }
       };
       document.addEventListener('keydown', keydown);

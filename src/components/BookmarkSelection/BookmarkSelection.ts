@@ -494,6 +494,8 @@ export class BookmarkSelection {
 
       const dialog = document.getElementById('bulk-confirm-dialog');
       const close = (result: boolean) => {
+        // どの経路で閉じても ESC 用リスナーを確実に解除する (#100 リーク防止)
+        document.removeEventListener('keydown', handleKey);
         dialog?.remove();
         resolve(result);
       };
@@ -509,7 +511,6 @@ export class BookmarkSelection {
 
       const handleKey = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
-          document.removeEventListener('keydown', handleKey);
           close(false);
         }
       };
@@ -558,6 +559,8 @@ export class BookmarkSelection {
 
       const dialog = document.getElementById('bulk-move-dialog');
       const close = (result: string | null) => {
+        // どの経路で閉じても ESC 用リスナーを確実に解除する (#100 リーク防止)
+        document.removeEventListener('keydown', handleKey);
         dialog?.remove();
         resolve(result);
       };
@@ -578,7 +581,6 @@ export class BookmarkSelection {
 
       const handleKey = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
-          document.removeEventListener('keydown', handleKey);
           close(null);
         }
       };
