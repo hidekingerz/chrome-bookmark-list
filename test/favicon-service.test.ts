@@ -10,6 +10,8 @@ import { FaviconService } from '../src/services/FaviconService';
 
 let imageLoadPredicate: (src: string) => boolean = () => true;
 let imageNeverResolves = false;
+// 実際に検証（フェッチ）した favicon URL を記録し、多重フェッチを観測する
+const imageSrcLog: string[] = [];
 
 class StubImage {
   onload: (() => void) | null = null;
@@ -22,6 +24,7 @@ class StubImage {
 
   set src(value: string) {
     this.#src = value;
+    imageSrcLog.push(value);
     if (imageNeverResolves) {
       return;
     }
@@ -49,6 +52,7 @@ let originalStorageLocal: unknown;
 beforeEach(() => {
   imageLoadPredicate = () => true;
   imageNeverResolves = false;
+  imageSrcLog.length = 0;
   vi.stubGlobal('Image', StubImage);
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -186,6 +190,29 @@ describe('FaviconService.getFavicon', () => {
     const favicon = await service.getFavicon('https://example.com');
 
     expect(favicon.startsWith(DEFAULT_FAVICON_PREFIX)).toBe(true);
+  });
+});
+
+describe('FaviconService in-flight 重複排除 (#104)', () => {
+  it('同一ドメインの並行 getFavicon は fetch も storage 保存も1回だけにする', async () => {
+    const service = new FaviconService();
+
+    // 同一ドメインの2件を並行取得（初回起動の全件並列を模す）
+    const [a, b] = await Promise.all([
+      service.getFavicon('https://dup.example/a'),
+      service.getFavicon('https://dup.example/b'),
+    ]);
+
+    expect(a).toBe('https://dup.example/favicon.ico');
+    expect(b).toBe(a);
+
+    // 同一ドメインの favicon 検証（フェッチ）は1回だけ
+    const fetches = imageSrcLog.filter((src) =>
+      src.includes('dup.example/favicon.ico')
+    );
+    expect(fetches).toHaveLength(1);
+    // chrome.storage.local.set も1回だけ（キャッシュ全体の直列化を N 回走らせない）
+    expect(chrome.storage.local.set).toHaveBeenCalledTimes(1);
   });
 });
 
