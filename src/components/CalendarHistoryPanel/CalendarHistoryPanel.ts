@@ -26,6 +26,9 @@ export class CalendarHistoryPanel {
   private monthHistory: Map<string, DayHistory> = new Map();
   private searchInput: HTMLInputElement | null = null;
   private searchTerm = '';
+  // 月送りの非同期競合対策。loadMonthHistory はこの世代トークンを進め、
+  // await 後に自分が最新世代でなければ結果を破棄する。
+  private loadRequestId = 0;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -131,6 +134,7 @@ export class CalendarHistoryPanel {
   }
 
   private async loadMonthHistory(): Promise<void> {
+    const requestId = ++this.loadRequestId;
     try {
       const startOfMonth = new Date(this.currentMonth);
       startOfMonth.setDate(1);
@@ -147,6 +151,13 @@ export class CalendarHistoryPanel {
         endTime: endOfMonth.getTime(),
         maxResults: 10000,
       });
+
+      // 世代チェック: await 中により新しい読み込みが始まっていたら、この結果は破棄する。
+      // 先発リクエストの遅延完了が後発（新しい月）の表示を上書きし、ヘッダとデータが
+      // 食い違うのを防ぐ。
+      if (requestId !== this.loadRequestId) {
+        return;
+      }
 
       // 日付ごとにグループ化
       this.monthHistory.clear();
@@ -178,6 +189,11 @@ export class CalendarHistoryPanel {
         }
       }
     } catch (error) {
+      // 失敗したのが最新世代の読み込みなら、古い月のデータを破棄して
+      // 新しい月として流用されるのを防ぐ（古い世代の失敗は無視）。
+      if (requestId === this.loadRequestId) {
+        this.monthHistory.clear();
+      }
       console.error('履歴の読み込みに失敗しました:', error);
     }
   }

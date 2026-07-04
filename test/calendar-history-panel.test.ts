@@ -665,6 +665,100 @@ describe('CalendarHistoryPanel', () => {
     });
   });
 
+  describe('月送り連打の非同期競合（#102）', () => {
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    // 「今月の1日」を基準に monthsAgo ヶ月前の15日に1件の履歴を作る
+    const monthAgoHistory = (
+      monthsAgo: number,
+      tag: string
+    ): chrome.history.HistoryItem[] => {
+      const d = new Date();
+      d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+      d.setMonth(d.getMonth() - monthsAgo);
+      d.setDate(15);
+      d.setHours(10, 0, 0, 0);
+      return [
+        {
+          id: tag,
+          url: `https://${tag}.com`,
+          title: tag,
+          lastVisitTime: d.getTime(),
+          visitCount: 1,
+          typedCount: 0,
+        },
+      ];
+    };
+
+    const monthLabel = (monthsAgo: number): string => {
+      const d = new Date();
+      d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+      d.setMonth(d.getMonth() - monthsAgo);
+      return `${d.getFullYear()}年 ${d.getMonth() + 1}月`;
+    };
+
+    it('先発リクエストの遅延完了が後発（最新月）の表示を上書きしない', async () => {
+      panel = new CalendarHistoryPanel(container);
+      await panel.activate();
+
+      // 以降の search は手動制御する Promise を返す
+      const resolvers: Array<(v: chrome.history.HistoryItem[]) => void> = [];
+      vi.mocked(chrome.history.search).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvers.push(resolve);
+          })
+      );
+
+      const prevBtn = container.querySelector('.prev-month') as HTMLElement;
+      prevBtn.click(); // req A: 1ヶ月前
+      prevBtn.click(); // req B: 2ヶ月前（最新）
+      await flush();
+
+      expect(resolvers).toHaveLength(2);
+
+      // 後発 B を先に解決 → 表示は「2ヶ月前」
+      resolvers[1](monthAgoHistory(2, 'b'));
+      await flush();
+
+      // 先発 A が遅れて解決（古い月のデータ）→ 破棄されるべき
+      resolvers[0](monthAgoHistory(1, 'a'));
+      await flush();
+
+      // ヘッダは2ヶ月前のまま、かつ2ヶ月前の履歴インジケーターが残っている
+      expect(container.querySelector('.calendar-month-year')?.textContent).toBe(
+        monthLabel(2)
+      );
+      expect(
+        container.querySelectorAll('.calendar-day.has-history').length
+      ).toBe(1);
+    });
+
+    it('履歴取得に失敗したら古い月のデータを破棄する（古いデータを流用しない）', async () => {
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      vi.mocked(chrome.history.search).mockResolvedValue(
+        monthAgoHistory(0, 'x')
+      );
+      panel = new CalendarHistoryPanel(container);
+      await panel.activate();
+      expect(
+        container.querySelectorAll('.calendar-day.has-history').length
+      ).toBe(1);
+
+      // 同じ月の再読込が失敗 → 古いデータを残さない
+      vi.mocked(chrome.history.search).mockRejectedValue(new Error('boom'));
+      await panel.activate();
+      expect(
+        container.querySelectorAll('.calendar-day.has-history').length
+      ).toBe(0);
+
+      errSpy.mockRestore();
+    });
+  });
+
   describe('未到達パスの補完', () => {
     const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
