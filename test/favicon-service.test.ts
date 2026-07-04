@@ -216,6 +216,49 @@ describe('FaviconService in-flight 重複排除 (#104)', () => {
   });
 });
 
+describe('FaviconService 保存バッチ集約 (#104)', () => {
+  it('異なるドメインの並行取得は storage 保存を集約し書込回数を抑える', async () => {
+    const service = new FaviconService();
+
+    // set を手動制御にして「保存中」の状態を作り、並行取得の書込を重ねる。
+    // 最初の呼び出しだけ pending にし、以降は即解決する。
+    let resolveFirstSet: (() => void) | null = null;
+    const setMock = chrome.storage.local.set as ReturnType<typeof vi.fn>;
+    setMock.mockImplementation(() => {
+      if (!resolveFirstSet) {
+        return new Promise<void>((res) => {
+          resolveFirstSet = () => res();
+        });
+      }
+      return Promise.resolve();
+    });
+
+    // 3 つの異なるドメインを並行取得（初回起動の全件並列を模す）
+    const all = Promise.all([
+      service.getFavicon('https://a.example/x'),
+      service.getFavicon('https://b.example/x'),
+      service.getFavicon('https://c.example/x'),
+    ]);
+
+    // StubImage の onload（setTimeout 0）を流し、各取得が保存段階へ到達する。
+    // この時点で最初の保存が pending のまま後続が重なる。
+    const flush = async () => {
+      for (let i = 0; i < 5; i++) {
+        await new Promise((res) => setTimeout(res, 0));
+      }
+    };
+    await flush();
+
+    // 保存中に重なった要求を1回にまとめる。ここで最初の保存を解決する。
+    resolveFirstSet?.();
+    await all;
+
+    // 修正前は各取得が個別に set を呼ぶため 3 回。集約後は最初の保存＋
+    // 末尾のまとめ保存の 2 回に収まる（キャッシュ全体を N 回直列化しない）。
+    expect(setMock).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('FaviconService フォールバック戦略', () => {
   it('標準パスが失敗してもデフォルトを返し、外部 Google API へ流出しない', async () => {
     // 標準パスは失敗、（仮に Google が有効なら）成功する条件を用意しても

@@ -8,6 +8,10 @@ export class FaviconService {
   // ドメイン単位の in-flight リクエスト。同一ドメインの並行取得を1つの
   // Promise に集約し、多重フェッチ・多重 storage 書込を防ぐ（#104）
   private inFlight = new Map<string, Promise<string>>();
+  // 進行中の storage 保存。保存中に来た保存要求はこの Promise に集約し、
+  // 完了後にキャッシュ全体を1度だけ書き直す（#104 多重書込の抑制）
+  private saveInFlight: Promise<void> | null = null;
+  private saveQueued = false;
   private readonly cacheKey = 'bookmark_favicon_cache';
   private readonly cacheExpiryDays = 7;
 
@@ -78,8 +82,40 @@ export class FaviconService {
   private async fetchAndCache(domain: string, url: string): Promise<string> {
     const faviconUrl = await this.fetchFavicon(url);
     this.cache.set(domain, faviconUrl);
-    await this.saveCacheToStorage();
+    await this.persistCache();
     return faviconUrl;
+  }
+
+  /**
+   * キャッシュ保存を集約する。保存が進行中の間に来た要求は1回にまとめ、
+   * 進行中の保存完了後にキャッシュ全体を1度だけ書き直す。これにより多数
+   * ドメインの並行取得でも storage 書込回数（Map 全体の直列化）を抑える（#104）。
+   * ※ persist 前に cache.set 済みなので、まとめ保存は蓄積分をすべて含む。
+   */
+  private async persistCache(): Promise<void> {
+    // 直近の変更を必ず保存対象にする
+    this.saveQueued = true;
+
+    // 既に保存が進行中なら、その完了を待てばよい（保存要求は集約される）
+    if (this.saveInFlight) {
+      await this.saveInFlight;
+      return;
+    }
+
+    this.saveInFlight = (async () => {
+      try {
+        // キューが立っている限りまとめて書き直す。while 条件が false になる
+        // 判定と saveInFlight のクリアの間には await が無く、この間に来た
+        // 新規要求は必ず saveQueued=true を見て次周で拾われる（取りこぼし無し）。
+        while (this.saveQueued) {
+          this.saveQueued = false;
+          await this.saveCacheToStorage();
+        }
+      } finally {
+        this.saveInFlight = null;
+      }
+    })();
+    await this.saveInFlight;
   }
 
   /**
