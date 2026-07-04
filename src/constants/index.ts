@@ -13,7 +13,16 @@ export const SEARCH_DEBOUNCE_MS = 300;
 
 // Chrome API関連
 export const CHROME_EXTENSION_SCHEME = 'chrome-extension://';
-export const EXCLUDED_BOOKMARK_FOLDERS = ['Mobile bookmarks'];
+// Chrome のパーマネントルートフォルダ ID は固定でロケール非依存。
+// タイトル文字列比較は多言語で壊れるため ID で判定する (#103)。
+export const BOOKMARK_ROOT_IDS = {
+  /** ブックマークバー */
+  BOOKMARKS_BAR: '1',
+  /** その他のブックマーク */
+  OTHER: '2',
+  /** モバイルのブックマーク */
+  MOBILE: '3',
+} as const;
 
 // エラーメッセージ
 export const ERROR_MESSAGES = {

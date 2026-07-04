@@ -200,6 +200,92 @@ describe('BookmarkService', () => {
     });
   });
 
+  // #103: ルート判定はロケール依存のタイトル比較ではなく Chrome の
+  // パーマネントルート ID(1=バー / 2=その他 / 3=モバイル)で行う。
+  describe('ロケール非依存のルート判定 (#103)', () => {
+    it('日本語ロケールのモバイルフォルダ「モバイルのブックマーク」(id=3) を除外する', () => {
+      const tree: ChromeBookmarkNode[] = [
+        {
+          id: '0',
+          title: '',
+          children: [
+            {
+              id: '3',
+              title: 'モバイルのブックマーク',
+              children: [
+                { id: '30', title: 'Mob', url: 'https://mobile.example' },
+              ],
+            },
+            {
+              id: '2',
+              title: 'その他のブックマーク',
+              children: [
+                { id: '20', title: 'Other', url: 'https://other.example' },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const folders = service.processBookmarkTree(tree);
+
+      // モバイル(id=3)はタイトルが英語名でなくても除外される
+      expect(folders.some((f) => f.id === '3')).toBe(false);
+      expect(folders.some((f) => f.title === 'モバイルのブックマーク')).toBe(
+        false
+      );
+      // その他(id=2)は残る
+      expect(folders).toHaveLength(1);
+      expect(folders[0].id).toBe('2');
+    });
+
+    it('非英日ロケールのブックマークバー(id=1) でも平坦化処理が発動する', () => {
+      const tree: ChromeBookmarkNode[] = [
+        {
+          id: '0',
+          title: '',
+          children: [
+            {
+              // スペイン語ロケールのブックマークバー
+              id: '1',
+              title: 'Barra de marcadores',
+              children: [
+                { id: '10', title: 'Root Link', url: 'https://root.example' },
+                {
+                  id: '11',
+                  title: 'Sub',
+                  children: [
+                    { id: '12', title: 'Child', url: 'https://child.example' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const folders = service.processBookmarkTree(tree);
+
+      // 先頭にルートブックマーク用「ブックマークバー」フォルダが平坦化される
+      expect(folders[0].title).toBe('ブックマークバー');
+      expect(folders[0].id).toBe('1');
+      expect(folders[0].bookmarks).toEqual([
+        {
+          id: '10',
+          title: 'Root Link',
+          url: 'https://root.example',
+          favicon: null,
+        },
+      ]);
+      // サブフォルダは平坦化されて続く
+      expect(folders[1].title).toBe('Sub');
+      // ローカライズ名のフォルダがそのまま残っていない
+      expect(folders.some((f) => f.title === 'Barra de marcadores')).toBe(
+        false
+      );
+    });
+  });
+
   describe('findFolderById', () => {
     const folders = [
       {
