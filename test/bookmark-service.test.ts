@@ -42,7 +42,12 @@ describe('BookmarkService', () => {
       expect(result).toHaveLength(1);
       expect(result[0].title).toBe('Other bookmarks');
       expect(result[0].bookmarks).toEqual([
-        { title: 'Example', url: 'https://example.com', favicon: null },
+        {
+          id: '5',
+          title: 'Example',
+          url: 'https://example.com',
+          favicon: null,
+        },
       ]);
     });
 
@@ -89,7 +94,12 @@ describe('BookmarkService', () => {
       expect(folders[0].title).toBe('ブックマークバー');
       expect(folders[0].id).toBe('1');
       expect(folders[0].bookmarks).toEqual([
-        { title: 'Root Link', url: 'https://root.example', favicon: null },
+        {
+          id: '10',
+          title: 'Root Link',
+          url: 'https://root.example',
+          favicon: null,
+        },
       ]);
       // サブフォルダはその後ろに展開される
       expect(folders[1].title).toBe('Sub');

@@ -4,6 +4,7 @@ import type {
   BookmarkUpdateData,
   ChromeBookmarkNode,
 } from '../../types/bookmark.js';
+import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
 import { UndoManager } from '../UndoManager/index.js';
 
 /**
@@ -16,6 +17,7 @@ export class BookmarkEditor {
   async handleBookmarkEdit(editBtn: HTMLElement): Promise<void> {
     const url = editBtn.getAttribute('data-bookmark-url');
     const currentTitle = editBtn.getAttribute('data-bookmark-title');
+    const bookmarkId = editBtn.getAttribute('data-bookmark-id');
 
     if (!url || !currentTitle) {
       console.error('❌ ブックマークのURLまたはタイトルが取得できませんでした');
@@ -23,15 +25,17 @@ export class BookmarkEditor {
     }
 
     try {
-      // Chrome APIを使用してブックマークを検索
-      const bookmarks = await chrome.bookmarks.search({ url: url });
+      // data-bookmark-id で一意に同定し、同一 URL が複数ある場合に別ノードを
+      // 編集してしまう問題を防ぐ (#97)。
+      const bookmark = (await resolveBookmarkNode(
+        bookmarkId,
+        url
+      )) as ChromeBookmarkNode | null;
 
-      if (bookmarks.length === 0) {
+      if (!bookmark) {
         console.error('❌ 編集対象のブックマークが見つかりませんでした');
         return;
       }
-
-      const bookmark = bookmarks[0];
 
       // すべてのフォルダーを取得
       const allFolders = await this.getAllFolders();
