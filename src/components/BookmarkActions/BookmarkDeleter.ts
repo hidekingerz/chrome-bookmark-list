@@ -134,6 +134,8 @@ export class BookmarkDeleter {
     const confirmBtn = dialog?.querySelector('.delete-dialog-confirm');
 
     const closeDialog = (confirmed: boolean) => {
+      // どの経路で閉じても ESC 用リスナーを確実に解除する (#100 リーク防止)
+      document.removeEventListener('keydown', handleKeydown);
       dialog?.remove();
       resolve(confirmed);
     };
@@ -152,7 +154,6 @@ export class BookmarkDeleter {
     const handleKeydown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         closeDialog(false);
-        document.removeEventListener('keydown', handleKeydown);
       }
     };
     document.addEventListener('keydown', handleKeydown);
@@ -213,6 +214,8 @@ export class BookmarkDeleter {
     const okBtn = dialog?.querySelector('.edit-dialog-cancel');
 
     const closeDialog = () => {
+      // どの経路で閉じても ESC 用リスナーを確実に解除する (#100 リーク防止)
+      document.removeEventListener('keydown', handleKeydown);
       dialog?.remove();
       resolve();
     };
@@ -225,7 +228,6 @@ export class BookmarkDeleter {
     const handleKeydown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         closeDialog();
-        document.removeEventListener('keydown', handleKeydown);
       }
     };
     document.addEventListener('keydown', handleKeydown);

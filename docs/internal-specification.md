@@ -351,8 +351,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 - `getFavicon()`: Favicon取得（キャッシュ優先）
 - `fetchFavicon()`: 複数戦略による実際の取得
   1. 標準パス（/favicon.ico）
-  2. HTML解析（ホスト権限がある場合のみ）
-  3. デフォルトSVGプレースホルダー
+  2. デフォルトSVGプレースホルダー
 - キャッシュ機能（7日間有効期限）
 - プライバシー重視（外部APIサービス不使用・ホスト名の外部流出防止）
 
@@ -446,8 +445,7 @@ export async function getFavicon(url: string): Promise<string>
 **Favicon取得戦略**:
 1. **キャッシュ確認**: 既存のキャッシュから高速取得
 2. **標準パス試行**: `/favicon.ico`, `/favicon.png`, `/favicon.svg`
-3. **HTML解析**: `<link rel="icon">` タグからの検出
-4. **デフォルト表示**: SVGプレースホルダーアイコン
+3. **デフォルト表示**: SVGプレースホルダーアイコン
 
 **セキュリティ方針**:
 - 外部APIサービス（Google Favicon API等）は使用しない

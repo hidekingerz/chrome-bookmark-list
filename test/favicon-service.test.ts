@@ -1,10 +1,12 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FaviconService } from '../src/services/FaviconService';
 
-// FaviconService は chrome.storage.local / chrome.permissions / fetch / Image に
-// 依存する。setup.ts の Image モックは常に onload を発火させてしまうため、戦略の
-// 分岐（標準パス失敗 → HTML 解析 → Google）や validateFaviconUrl のタイムアウトを
-// 検証するには Image を src の値に応じて load/error を切り替えられるスタブに差し替える。
+// FaviconService は chrome.storage.local / Image に依存する。setup.ts の Image
+// モックは常に onload を発火させてしまうため、標準パスの成否や validateFaviconUrl
+// のタイムアウトを検証するには Image を src の値に応じて load/error を切り替えられる
+// スタブに差し替える。HTML 解析・Google 戦略は #98/#99 で廃止済み。
 
 let imageLoadPredicate: (src: string) => boolean = () => true;
 let imageNeverResolves = false;
@@ -188,77 +190,7 @@ describe('FaviconService.getFavicon', () => {
 });
 
 describe('FaviconService フォールバック戦略', () => {
-  it('標準パスが失敗し HTML 解析でファビコンを発見できればそれを返す', async () => {
-    // /favicon.ico は失敗、HTML から抽出した icon.png は成功させる
-    imageLoadPredicate = (src) => src.includes('icon.png');
-    chromeRef.permissions = {
-      contains: vi.fn().mockResolvedValue(true),
-    };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        text: vi
-          .fn()
-          .mockResolvedValue(
-            '<html><head><link rel="icon" href="https://example.com/icon.png"></head></html>'
-          ),
-      })
-    );
-    const service = new FaviconService();
-
-    const favicon = await service.getFavicon('https://example.com/page');
-
-    expect(favicon).toBe('https://example.com/icon.png');
-  });
-
-  it('HTML の相対パス href を絶対 URL に解決する', async () => {
-    imageLoadPredicate = (src) => src.includes('/assets/fav.png');
-    chromeRef.permissions = {
-      contains: vi.fn().mockResolvedValue(true),
-    };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        text: vi
-          .fn()
-          .mockResolvedValue(
-            '<html><head><link rel="icon" href="/assets/fav.png"></head></html>'
-          ),
-      })
-    );
-    const service = new FaviconService();
-
-    const favicon = await service.getFavicon('https://relative.test/page');
-
-    expect(favicon).toBe('https://relative.test/assets/fav.png');
-  });
-
-  it('スラッシュ始まりでない相対 href も解決する', async () => {
-    imageLoadPredicate = (src) => src.includes('rel.png');
-    chromeRef.permissions = {
-      contains: vi.fn().mockResolvedValue(true),
-    };
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        text: vi
-          .fn()
-          .mockResolvedValue(
-            '<html><head><link rel="icon" href="rel.png"></head></html>'
-          ),
-      })
-    );
-    const service = new FaviconService();
-
-    const favicon = await service.getFavicon('https://noslash.test/page');
-
-    expect(favicon).toBe('https://noslash.test/rel.png');
-  });
-
-  it('標準パス・HTML 解析が失敗してもデフォルトを返し、外部 Google API へ流出しない', async () => {
+  it('標準パスが失敗してもデフォルトを返し、外部 Google API へ流出しない', async () => {
     // 標準パスは失敗、（仮に Google が有効なら）成功する条件を用意しても
     // Google 戦略は廃止済みなので default にフォールバックする（ホスト名流出防止）
     imageLoadPredicate = (src) => src.includes('google.com/s2/favicons');
@@ -287,6 +219,43 @@ describe('FaviconService フォールバック戦略', () => {
     await vi.advanceTimersByTimeAsync(1500);
     const favicon = await promise;
 
+    expect(favicon.startsWith(DEFAULT_FAVICON_PREFIX)).toBe(true);
+  });
+});
+
+describe('manifest #99 過剰権限の削除', () => {
+  it('optional_host_permissions を宣言しない（審査リスク・到達不能な権限の除去）', () => {
+    const manifestPath = resolve(process.cwd(), 'src/manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+
+    // #99: permissions.request 導線が無く到達不能な host 権限は宣言しない
+    expect(manifest.optional_host_permissions).toBeUndefined();
+  });
+});
+
+describe('FaviconService #99 到達不能な HTML 解析戦略の削除', () => {
+  it('ホスト権限があり HTML に favicon リンクがあっても fetch せず default にフォールバックする', async () => {
+    // 標準パス（/favicon.ico）は失敗、HTML から抽出できる icon.png は成功条件だが、
+    // HTML 解析戦略は削除済みなので fetch は呼ばれず default になる。
+    imageLoadPredicate = (src) => src.includes('icon.png');
+    chromeRef.permissions = {
+      contains: vi.fn().mockResolvedValue(true),
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi
+        .fn()
+        .mockResolvedValue(
+          '<html><head><link rel="icon" href="https://example.com/icon.png"></head></html>'
+        ),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const service = new FaviconService();
+
+    const favicon = await service.getFavicon('https://example.com/page');
+
+    // #99: 到達不能かつ過剰権限を要する HTML 解析は行わない
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(favicon.startsWith(DEFAULT_FAVICON_PREFIX)).toBe(true);
   });
 });

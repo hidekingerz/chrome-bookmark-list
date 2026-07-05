@@ -1,3 +1,4 @@
+import { BOOKMARK_ROOT_IDS } from '../constants/index.js';
 import type {
   BookmarkFolder,
   BookmarkItem,
@@ -30,55 +31,53 @@ export class BookmarkService {
     for (const rootNode of tree) {
       if (rootNode.children) {
         for (const child of rootNode.children) {
-          // ブックマークバー、その他のブックマーク、モバイルブックマークを処理
-          if (child.children && child.title !== 'Mobile bookmarks') {
-            // "Bookmarks Bar"の場合は、その子フォルダを直接追加し、ルートブックマークも含める
-            if (
-              child.title === 'Bookmarks bar' ||
-              child.title === 'Bookmarks Bar' ||
-              child.title === 'ブックマーク バー'
-            ) {
-              // ルートブックマークがある場合は、専用フォルダを作成
-              const rootBookmarks: BookmarkItem[] = [];
-              const subfolders: BookmarkFolder[] = [];
+          // ルートフォルダの判定はロケール依存のタイトル比較ではなく、
+          // Chrome が固定で割り当てるパーマネントルート ID で行う (#103)。
+          // モバイルのブックマーク (id=3) は表示対象外なので除外する。
+          if (!child.children || child.id === BOOKMARK_ROOT_IDS.MOBILE) {
+            continue;
+          }
+          if (child.id === BOOKMARK_ROOT_IDS.BOOKMARKS_BAR) {
+            // ルートブックマークがある場合は、専用フォルダを作成
+            const rootBookmarks: BookmarkItem[] = [];
+            const subfolders: BookmarkFolder[] = [];
 
-              for (const grandChild of child.children) {
-                if (grandChild.children) {
-                  // サブフォルダ
-                  const subfolder = this.convertNodeToFolder(grandChild);
-                  if (subfolder) {
-                    subfolders.push(subfolder);
-                  }
-                } else if (grandChild.url && grandChild.title) {
-                  // ルートブックマーク
-                  rootBookmarks.push({
-                    id: grandChild.id,
-                    title: grandChild.title,
-                    url: grandChild.url,
-                    favicon: null,
-                  });
+            for (const grandChild of child.children) {
+              if (grandChild.children) {
+                // サブフォルダ
+                const subfolder = this.convertNodeToFolder(grandChild);
+                if (subfolder) {
+                  subfolders.push(subfolder);
                 }
-              }
-
-              // サブフォルダを追加
-              folders.push(...subfolders);
-
-              // ルートブックマークがある場合は、「ブックマークバー」フォルダとして追加
-              if (rootBookmarks.length > 0) {
-                folders.unshift({
-                  id: child.id,
-                  title: 'ブックマークバー',
-                  bookmarks: rootBookmarks,
-                  subfolders: [],
-                  expanded: true,
+              } else if (grandChild.url && grandChild.title) {
+                // ルートブックマーク
+                rootBookmarks.push({
+                  id: grandChild.id,
+                  title: grandChild.title,
+                  url: grandChild.url,
+                  favicon: null,
                 });
               }
-            } else {
-              // その他のブックマークフォルダは直接追加
-              const folder = this.convertNodeToFolder(child);
-              if (folder) {
-                folders.push(folder);
-              }
+            }
+
+            // サブフォルダを追加
+            folders.push(...subfolders);
+
+            // ルートブックマークがある場合は、「ブックマークバー」フォルダとして追加
+            if (rootBookmarks.length > 0) {
+              folders.unshift({
+                id: child.id,
+                title: 'ブックマークバー',
+                bookmarks: rootBookmarks,
+                subfolders: [],
+                expanded: true,
+              });
+            }
+          } else {
+            // その他のブックマークフォルダは直接追加
+            const folder = this.convertNodeToFolder(child);
+            if (folder) {
+              folders.push(folder);
             }
           }
         }

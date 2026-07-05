@@ -164,6 +164,8 @@ export class FolderDeleter {
     const confirmBtn = dialog?.querySelector('.folder-delete-confirm');
 
     const close = (confirmed: boolean) => {
+      // どの経路で閉じても ESC 用リスナーを確実に解除する (#100 リーク防止)
+      document.removeEventListener('keydown', keydownHandler);
       dialog?.remove();
       resolve(confirmed);
     };
@@ -175,7 +177,6 @@ export class FolderDeleter {
     const keydownHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         close(false);
-        document.removeEventListener('keydown', keydownHandler);
       }
     };
     document.addEventListener('keydown', keydownHandler);

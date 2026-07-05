@@ -11,6 +11,10 @@ import { UndoManager } from '../UndoManager/index.js';
  * ブックマーク編集機能を担当するクラス
  */
 export class BookmarkEditor {
+  // ESC 用 keydown ハンドラ。closeEditDialog で確実に解除するため参照を保持する
+  // (#100: ボタンで閉じた場合に document へ残留するリークを防ぐ)。
+  private editKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
+
   /**
    * ブックマーク編集の処理を行う
    */
@@ -157,14 +161,13 @@ export class BookmarkEditor {
     // 保存ボタン
     saveBtn?.addEventListener('click', () => this.handleSave(bookmark));
 
-    // ESCキーで閉じる
-    const handleKeydown = (e: KeyboardEvent) => {
+    // ESCキーで閉じる。解除は closeEditDialog に集約し、どの経路で閉じても外れるようにする
+    this.editKeydownHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         this.closeEditDialog();
-        document.removeEventListener('keydown', handleKeydown);
       }
     };
-    document.addEventListener('keydown', handleKeydown);
+    document.addEventListener('keydown', this.editKeydownHandler);
 
     // 開いた直後にタイトル入力欄へフォーカス (a11y)
     const titleInput = document.getElementById(
@@ -284,6 +287,10 @@ export class BookmarkEditor {
    * 編集ダイアログを閉じる
    */
   private closeEditDialog(): void {
+    if (this.editKeydownHandler) {
+      document.removeEventListener('keydown', this.editKeydownHandler);
+      this.editKeydownHandler = null;
+    }
     const dialog = document.getElementById('edit-dialog');
     if (dialog) {
       dialog.remove();

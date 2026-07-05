@@ -9,10 +9,6 @@
     "storage",
     "tabGroups"
   ],
-  "optional_host_permissions": [
-    "http://*/",
-    "https://*/"
-  ],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
   },

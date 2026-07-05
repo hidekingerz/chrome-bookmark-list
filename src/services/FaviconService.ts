@@ -67,10 +67,7 @@ export class FaviconService {
    * ファビコンを実際に取得する
    */
   private async fetchFavicon(url: string): Promise<string> {
-    const strategies = [
-      () => this.tryStandardPath(url),
-      () => this.tryHtmlParsing(url),
-    ];
+    const strategies = [() => this.tryStandardPath(url)];
 
     for (const strategy of strategies) {
       try {
@@ -97,56 +94,6 @@ export class FaviconService {
   }
 
   /**
-   * HTMLを解析してファビコンリンクを取得
-   */
-  private async tryHtmlParsing(url: string): Promise<string | null> {
-    const hasPermission = await this.checkHostPermission(url);
-    if (!hasPermission) {
-      return null;
-    }
-
-    try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-      });
-
-      if (!response.ok) return null;
-
-      const html = await response.text();
-      const faviconUrl = this.extractFaviconFromHtml(html, url);
-
-      return faviconUrl ? await this.validateFaviconUrl(faviconUrl) : null;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * HTMLからファビコンリンクを抽出
-   */
-  private extractFaviconFromHtml(html: string, baseUrl: string): string | null {
-    const faviconRegex =
-      /<link[^>]*rel=['"](?:shortcut )?icon['"][^>]*href=['"]([^'"]+)['"][^>]*>/i;
-    const match = html.match(faviconRegex);
-
-    if (match?.[1]) {
-      const href = match[1];
-
-      if (href.startsWith('http')) {
-        return href;
-      }
-
-      const domain = this.getDomain(baseUrl);
-      return href.startsWith('/')
-        ? `https://${domain}${href}`
-        : `https://${domain}/${href}`;
-    }
-
-    return null;
-  }
-
-  /**
    * ファビコンURLの有効性を検証
    */
   private async validateFaviconUrl(faviconUrl: string): Promise<string | null> {
@@ -169,21 +116,6 @@ export class FaviconService {
 
       img.src = faviconUrl;
     });
-  }
-
-  /**
-   * ホストの権限を確認
-   */
-  private async checkHostPermission(url: string): Promise<boolean> {
-    try {
-      return await chrome.permissions.contains({
-        origins: [`${new URL(url).origin}/*`],
-      });
-    } catch (error) {
-      console.warn('権限チェックエラー:', error);
-      console.warn('HTMLからのfavicon検出には権限が必要です:', url);
-      return false;
-    }
   }
 
   /**
