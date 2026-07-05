@@ -375,7 +375,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 ### 6. 定数管理 (Constants/)
 **責務**: アプリケーション全体で使用する定数の一元管理
-- Favicon関連定数（タイムアウト等、レガシー定数含む）
 - UI関連定数（アニメーション時間、検索デバウンス）
 - Chrome API関連定数（除外フォルダ、スキーム）
 - エラーメッセージ定数
