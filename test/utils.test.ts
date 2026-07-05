@@ -11,30 +11,24 @@ import {
 import type { BookmarkFolder, ChromeBookmarkNode } from '../src/types/bookmark';
 
 // Chrome API のモック
-const mockChromeStorage = {
-  local: {
-    get: vi.fn(),
-    set: vi.fn(),
-    remove: vi.fn(),
-    clear: vi.fn(),
-  },
-};
-
 // @ts-expect-error
 global.chrome = {
-  storage: mockChromeStorage,
   permissions: {
     contains: vi.fn().mockResolvedValue(false),
+  },
+  runtime: {
+    getURL: vi.fn((path: string) => `chrome-extension://test-id${path}`),
   },
 };
 
 describe('ユーティリティ関数', () => {
   beforeEach(() => {
-    // 各テスト前にモックをクリア
+    // 各テスト前にモックの呼び出し履歴をクリア
     vi.clearAllMocks();
-    mockChromeStorage.local.get.mockResolvedValue({});
-    mockChromeStorage.local.set.mockResolvedValue(undefined);
-    mockChromeStorage.local.remove.mockResolvedValue(undefined);
+    // clearAllMocks は実装を保持するため、getURL の実装を再設定
+    (
+      chrome.runtime.getURL as unknown as ReturnType<typeof vi.fn>
+    ).mockImplementation((path: string) => `chrome-extension://test-id${path}`);
   });
 
   describe('processBookmarkTree', () => {
@@ -361,35 +355,27 @@ describe('ユーティリティ関数', () => {
   });
 
   describe('getFavicon', () => {
-    beforeEach(() => {
-      // Image コンストラクタをモック
-      global.Image = vi.fn(() => ({
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        set src(_value: string) {
-          // デフォルトでは失敗させる
-          setTimeout(() => this.onerror?.(), 0);
-        },
-        onerror: null,
-        onload: null,
-      })) as any;
-
-      // fetch をモック
-      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+    it('chrome.runtime.getURL を呼び出して _favicon URL を返すことを確認', async () => {
+      const url = 'https://example.com';
+      const expectedPath = `/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
+      const result = await getFavicon(url);
+      expect(
+        chrome.runtime.getURL as unknown as ReturnType<typeof vi.fn>
+      ).toHaveBeenCalledWith(expectedPath);
+      expect(result).toBe(`chrome-extension://test-id${expectedPath}`);
     });
 
-    it('デフォルトfaviconが正しく返されることを確認', async () => {
-      const result = await getFavicon('https://nonexistent-domain-test.com');
-      expect(typeof result).toBe('string');
-      expect(result.length).toBeGreaterThan(0);
-    });
-
-    it('キャッシュ機能が動作することを確認', async () => {
-      // 2回目の呼び出しでも同じ結果が返されることを確認
-      const url = 'https://cached-test.com';
+    it('同一 URL は同一の favicon URL を返すことを確認', async () => {
+      const url = 'https://same-url.com';
       const result1 = await getFavicon(url);
       const result2 = await getFavicon(url);
       expect(result1).toBe(result2);
+    });
+
+    it('異なる URL は異なる favicon URL を返すことを確認', async () => {
+      const result1 = await getFavicon('https://example.com');
+      const result2 = await getFavicon('https://another.com');
+      expect(result1).not.toBe(result2);
     });
   });
 });
