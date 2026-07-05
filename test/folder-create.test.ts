@@ -249,4 +249,36 @@ describe('FolderCreator', () => {
     registerSpy.mockRestore();
     errorSpy.mockRestore();
   });
+
+  it('create 失敗時にダイアログ内へエラーメッセージを表示する (#105)', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (
+      globalThis.chrome.bookmarks.create as ReturnType<typeof vi.fn>
+    ).mockRejectedValue(new Error('create failure'));
+
+    const creator = new FolderCreator();
+    await creator.openCreateDialog('1');
+
+    const nameInput = document.getElementById(
+      'folder-create-name'
+    ) as HTMLInputElement;
+    nameInput.value = '失敗フォルダ';
+
+    (
+      document.querySelector('.folder-create-confirm') as HTMLButtonElement
+    ).click();
+    await new Promise((r) => setTimeout(r, 10));
+
+    // 失敗はダイアログ内で通知される（console のみで握りつぶさない）
+    const errorEl = document.querySelector(
+      '.folder-create-error'
+    ) as HTMLElement | null;
+    expect(errorEl).not.toBeNull();
+    expect(errorEl?.style.display).toBe('block');
+    expect(errorEl?.textContent).toContain('作成に失敗');
+    // ダイアログは開いたまま残り、ユーザーが再試行できる
+    expect(document.getElementById('folder-create-dialog')).not.toBeNull();
+
+    errorSpy.mockRestore();
+  });
 });

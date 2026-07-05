@@ -94,6 +94,7 @@ export class FolderCreator {
                 ${folderOptions}
               </select>
             </div>
+            <div class="folder-create-error" style="display:none; color: var(--danger); margin-top: 8px;"></div>
           </div>
           <div class="edit-dialog-actions">
             <button type="button" class="edit-dialog-cancel">キャンセル</button>
@@ -142,6 +143,9 @@ export class FolderCreator {
     const parentSelect = document.getElementById(
       'folder-create-parent'
     ) as HTMLSelectElement | null;
+    const errorEl = document.querySelector(
+      '.folder-create-error'
+    ) as HTMLElement | null;
     if (!nameInput || !parentSelect) return;
 
     const title = nameInput.value.trim();
@@ -169,8 +173,17 @@ export class FolderCreator {
         });
       }
     } catch (error) {
+      // 失敗はダイアログ内で通知し、ユーザーが再試行できるようにする
+      // (FolderRenamer のダイアログ内エラー表示に揃える。console のみで握りつぶさない)
       console.error('❌ フォルダの作成に失敗しました:', error);
+      this.showError(errorEl, 'フォルダの作成に失敗しました。');
     }
+  }
+
+  private showError(el: HTMLElement | null, message: string): void {
+    if (!el) return;
+    el.textContent = message;
+    el.style.display = 'block';
   }
 
   private dispatchBookmarksChanged(action: string): void {

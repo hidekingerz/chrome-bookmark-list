@@ -210,6 +210,35 @@ describe('FolderDeleter', () => {
     consoleSpy.mockRestore();
   });
 
+  it('removeTree 失敗時に Toast でエラーを通知する (#105)', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (
+      globalThis.chrome.bookmarks.removeTree as ReturnType<typeof vi.fn>
+    ).mockRejectedValue(new Error('remove failure'));
+    const registerSpy = vi.spyOn(UndoManager.getInstance(), 'register');
+
+    const deleter = new FolderDeleter();
+    const promise = deleter.openDeleteDialog('target');
+    await new Promise((r) => setTimeout(r, 10));
+
+    (
+      document.querySelector('.folder-delete-confirm') as HTMLButtonElement
+    ).click();
+    await promise;
+    await new Promise((r) => setTimeout(r, 10));
+
+    // 失敗はユーザーへ Toast で通知される（console のみで握りつぶさない）
+    const toast = document.querySelector('.app-toast');
+    expect(toast).not.toBeNull();
+    expect(toast?.textContent).toContain('削除に失敗');
+    // 削除自体が失敗したため Undo アクションは付かない
+    expect(toast?.querySelector('.app-toast-action')).toBeNull();
+    expect(registerSpy).not.toHaveBeenCalled();
+
+    registerSpy.mockRestore();
+    consoleSpy.mockRestore();
+  });
+
   it('parentId が無いフォルダの削除では Undo が登録されない', async () => {
     const mockChrome = globalThis.chrome as unknown as {
       bookmarks: { getSubTree: ReturnType<typeof vi.fn> };
