@@ -429,4 +429,46 @@ describe('KeyboardShortcuts', () => {
       expect(event.defaultPrevented).toBe(false);
     });
   });
+
+  describe('フォーカス移動のパフォーマンス (#105)', () => {
+    it('フォーカス可能項目の取得で各要素の getComputedStyle を最大1回に抑える', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      const spy = vi.spyOn(dom.window, 'getComputedStyle');
+
+      const folderHeader = document.querySelector(
+        '.folder-header'
+      ) as HTMLElement;
+      folderHeader.focus();
+      // ↓ で getFocusableItems → isVisible が全項目に対して走る。
+      // 祖先 (.bookmark-folder / #bookmarkContainer / .tab-panel) を項目ごとに
+      // 辿るため、キャッシュが無いと同じ要素へ getComputedStyle が重複する。
+      fireKey('ArrowDown');
+
+      const queried = spy.mock.calls.map((call) => call[0]);
+      const unique = new Set(queried);
+      // 同じ要素への重複呼び出しが無い (= O(n×depth) の強制スタイル計算を回避)
+      expect(queried.length).toBe(unique.size);
+      // 挙動は不変: フォーカスは最初のブックマーク項目へ移動する
+      const firstItem = document.querySelectorAll('.bookmark-item')[0];
+      expect(document.activeElement).toBe(firstItem);
+    });
+
+    it('display:none の祖先を持つ項目はキャッシュ導入後も除外される', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      // フォルダを折りたたむ (ul を display:none)。中の項目は不可視になる
+      const list = document.querySelector('.bookmark-list') as HTMLElement;
+      list.style.display = 'none';
+
+      const folderHeader = document.querySelector(
+        '.folder-header'
+      ) as HTMLElement;
+      folderHeader.focus();
+      fireKey('ArrowDown');
+
+      // 可視な項目はフォルダヘッダのみ。↓ でも移動先が無く留まる
+      expect(document.activeElement).toBe(folderHeader);
+    });
+  });
 });
