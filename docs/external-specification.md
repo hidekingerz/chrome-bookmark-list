@@ -41,7 +41,7 @@ Chrome Bookmark Listは、Chromeブラウザの新しいタブでブックマー
 - **目的**: ブックマークの視覚的な識別性向上
 - **動作**: 
   - Chrome の `_favicon` API（`chrome.runtime.getURL('/_favicon/...')`）によるローカル取得
-  - 取得できない場合は🔗アイコンを表示
+  - favicon が未保有の場合は Chrome の標準アイコン（地球儀）を表示
 - **セキュリティ重視**: 外部APIサービスを使用せず、ホスト名の流出を防止
 
 ### 6. タブナビゲーション機能

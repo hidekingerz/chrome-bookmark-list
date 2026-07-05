@@ -48,7 +48,7 @@ Chrome Extension (Manifest V3)
 - **テストフレームワーク**: Vitest 1.6.0
 - **DOM環境**: Happy DOM / JSDOM
 - **CSS**: Vanilla CSS (Grid + Flexbox)
-- **Chrome API**: Bookmarks API, History API
+- **Chrome API**: Bookmarks API, History API, _favicon API
 - **コード品質**: Biome (lint & format)
 
 ### ディレクトリ構造
@@ -599,6 +599,7 @@ try {
 - **CSS Grid & Flexbox** - モダンなレイアウト
 - **Chrome Bookmarks API** - ブックマークデータへのアクセス
 - **Chrome History API** - 履歴データへのアクセス
+- **Chrome _favicon API** - favicon 取得（`chrome.runtime.getURL('/_favicon/...')`、外部通信なし）
 - **Happy DOM** - テスト環境でのDOM操作
 - **JSDOM** - 統合テスト用のDOM環境
 - **Biome** - 高速なlint & format
