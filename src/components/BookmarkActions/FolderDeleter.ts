@@ -1,5 +1,6 @@
 import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
+import { Toast } from '../Toast/index.js';
 import { UndoManager } from '../UndoManager/index.js';
 
 /**
@@ -44,7 +45,10 @@ export class FolderDeleter {
         });
       }
     } catch (error) {
+      // 確認ダイアログは削除実行前に閉じているため、失敗は Toast で通知する
+      // (console のみで握りつぶさない)
       console.error('❌ フォルダの削除に失敗しました:', error);
+      Toast.show({ message: 'フォルダの削除に失敗しました。' });
     }
   }
 
