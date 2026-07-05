@@ -171,4 +171,28 @@ describe('ErrorHandler', () => {
       expect(console.timeEnd).not.toHaveBeenCalled();
     });
   });
+
+  // #105-2: ErrorHandler は process.env.NODE_ENV を参照するが、この拡張は
+  // バンドラ（define）を通さず tsc のみでビルドされるため、ブラウザ実行時に
+  // グローバル `process` が存在せず debug/startTimer/endTimer が ReferenceError を
+  // 投げる潜在バグがある。process 未定義でも例外を投げないことを検証する。
+  describe('ブラウザ環境（process 未定義）でも例外を投げない (#105)', () => {
+    it('process が未定義でも debug は例外を投げずログも出さない', () => {
+      vi.stubGlobal('process', undefined);
+
+      expect(() => ErrorHandler.debug('メッセージ', { foo: 1 })).not.toThrow();
+      expect(console.log).not.toHaveBeenCalled();
+    });
+
+    it('process が未定義でも startTimer/endTimer は例外を投げない', () => {
+      vi.stubGlobal('process', undefined);
+
+      expect(() => {
+        ErrorHandler.startTimer('label');
+        ErrorHandler.endTimer('label');
+      }).not.toThrow();
+      expect(console.time).not.toHaveBeenCalled();
+      expect(console.timeEnd).not.toHaveBeenCalled();
+    });
+  });
 });

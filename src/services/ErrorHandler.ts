@@ -76,10 +76,22 @@ export class ErrorHandler {
   }
 
   /**
+   * 開発環境かどうかを安全に判定する。
+   * この拡張はバンドラの define を通さず tsc のみでビルドされるため、
+   * ブラウザ実行時にグローバル `process` が存在しない。`typeof` ガードで
+   * ReferenceError を防いだうえで NODE_ENV を参照する。
+   */
+  private static isDevelopment(): boolean {
+    return (
+      typeof process !== 'undefined' && process.env?.NODE_ENV === 'development'
+    );
+  }
+
+  /**
    * 開発用のデバッグ情報を表示する
    */
   static debug(message: string, data?: unknown): void {
-    if (process.env.NODE_ENV === 'development') {
+    if (ErrorHandler.isDevelopment()) {
       console.log(`🐛 DEBUG: ${message}`, data);
     }
   }
@@ -88,7 +100,7 @@ export class ErrorHandler {
    * パフォーマンス測定用のタイマーを開始する
    */
   static startTimer(label: string): void {
-    if (process.env.NODE_ENV === 'development') {
+    if (ErrorHandler.isDevelopment()) {
       console.time(label);
     }
   }
@@ -97,7 +109,7 @@ export class ErrorHandler {
    * パフォーマンス測定用のタイマーを終了する
    */
   static endTimer(label: string): void {
-    if (process.env.NODE_ENV === 'development') {
+    if (ErrorHandler.isDevelopment()) {
       console.timeEnd(label);
     }
   }
