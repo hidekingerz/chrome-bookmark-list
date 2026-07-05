@@ -10,7 +10,6 @@ export type {
   BookmarkMoveData,
   BookmarkUpdateData,
   ChromeBookmarkNode,
-  FaviconCacheData,
 } from './bookmark.js';
 // イベント関連の型
 export type {

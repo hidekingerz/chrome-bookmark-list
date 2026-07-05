@@ -6,8 +6,8 @@
   "permissions": [
     "bookmarks",
     "history",
-    "storage",
-    "tabGroups"
+    "tabGroups",
+    "favicon"
   ],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
