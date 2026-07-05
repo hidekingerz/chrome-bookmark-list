@@ -9,6 +9,11 @@ export interface ToastOptions {
   message: string;
   durationMs?: number;
   action?: ToastAction;
+  /**
+   * Toast が閉じられた (自動クローズ・閉じるボタン・置換・アクション実行) ときに
+   * 一度だけ呼ばれる。Undo の有効期限を Toast の表示時間に一致させるために使う。
+   */
+  onDismiss?: () => void;
 }
 
 const TOAST_CONTAINER_ID = 'app-toast-container';
@@ -24,9 +29,12 @@ export class Toast {
   private element: HTMLElement;
   private timerId: number | null = null;
   private action: ToastAction | null;
+  private onDismiss: (() => void) | null;
+  private dismissed = false;
 
   private constructor(options: ToastOptions) {
     this.action = options.action ?? null;
+    this.onDismiss = options.onDismiss ?? null;
     this.element = this.render(options);
     this.attachHandlers();
     this.scheduleAutoClose(options.durationMs ?? DEFAULT_DURATION_MS);
@@ -73,6 +81,10 @@ export class Toast {
    * Toast を閉じる。
    */
   dismiss(): void {
+    if (this.dismissed) {
+      return;
+    }
+    this.dismissed = true;
     if (this.timerId !== null) {
       window.clearTimeout(this.timerId);
       this.timerId = null;
@@ -81,6 +93,7 @@ export class Toast {
     if (Toast.currentInstance === this) {
       Toast.currentInstance = null;
     }
+    this.onDismiss?.();
   }
 
   /**

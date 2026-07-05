@@ -58,6 +58,15 @@ export class UndoManager {
     this.currentUndo = undoFn;
     Toast.show({
       message: operation.message,
+      // Toast が閉じたら Undo も失効させ、有効期限を Toast の表示時間に一致させる
+      // (自動クローズ後も Cmd/Ctrl+Z が無期限に効いていた #105 の不整合を解消)。
+      // 新しい register で置き換わった場合は currentUndo が別の undoFn を指すため、
+      // 自分が登録した undoFn のときだけクリアする。
+      onDismiss: () => {
+        if (this.currentUndo === undoFn) {
+          this.currentUndo = null;
+        }
+      },
       action: {
         label: '元に戻す',
         onActivate: async () => {
