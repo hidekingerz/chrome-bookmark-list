@@ -3,7 +3,6 @@
  */
 
 // ブックマーク関連の型
-// Faviconキャッシュ関連の型
 export type {
   BookmarkFolder,
   BookmarkItem,
