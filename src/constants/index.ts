@@ -2,11 +2,6 @@
  * アプリケーション全体で使用する定数
  */
 
-// Favicon関連
-export const FAVICON_CACHE_KEY = 'bookmark_favicon_cache';
-export const FAVICON_CACHE_EXPIRY_DAYS = 7;
-export const FAVICON_TIMEOUT_MS = 1000;
-
 // UI関連
 export const BOOKMARK_ANIMATION_DURATION_MS = 200;
 export const SEARCH_DEBOUNCE_MS = 300;
