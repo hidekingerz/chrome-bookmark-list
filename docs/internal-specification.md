@@ -84,7 +84,7 @@ chrome-bookmark-list/
 │   │   └── index.ts             # 統合エクスポート
 │   ├── services/                # サービス層（ビジネスロジック）
 │   │   ├── BookmarkService.ts   # ブックマーク処理とAPI操作
-│   │   ├── FaviconService.ts    # Favicon取得とキャッシュ管理
+│   │   ├── FaviconService.ts    # Favicon取得（Chrome _favicon API）
 │   │   └── ErrorHandler.ts      # エラーハンドリングと通知
 │   ├── utils/                   # ユーティリティクラス
 │   │   └── HtmlUtils.ts         # HTML操作とDOM関連ユーティリティ
@@ -213,15 +213,14 @@ interface BookmarkDataAttributes {
 // 主要な処理フロー
 document.addEventListener('DOMContentLoaded', async () => {
   1. DOM要素の取得・検証
-  2. Faviconキャッシュの初期化
-  3. 履歴パネル・カレンダーパネルの初期化（各タブパネル内に構築）
-  4. タブコントローラーの初期化（タブ選択時に各パネルのデータを遅延読み込み）
-  5. ドラッグ&ドロップ機能の初期化
-  6. ブックマーク変更イベントリスナー設定
-  7. Chrome Bookmarks APIからデータ取得
-  8. ブックマークツリーの処理
-  9. ブックマーク表示
-  10. 検索イベントリスナーの設定
+  2. 履歴パネル・カレンダーパネルの初期化（各タブパネル内に構築）
+  3. タブコントローラーの初期化（タブ選択時に各パネルのデータを遅延読み込み）
+  4. ドラッグ&ドロップ機能の初期化
+  5. ブックマーク変更イベントリスナー設定
+  6. Chrome Bookmarks APIからデータ取得
+  7. ブックマークツリーの処理
+  8. ブックマーク表示
+  9. 検索イベントリスナーの設定
 });
 ```
 
@@ -346,13 +345,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 - `deleteBookmark()`: ブックマーク削除
 
 #### 4.2 FaviconService
-**責務**: Faviconの取得とキャッシュ管理
-- `initCache()`: キャッシュの初期化とChrome Storage連携
-- `getFavicon()`: Favicon取得（キャッシュ優先）
-- `fetchFavicon()`: 複数戦略による実際の取得
-  1. 標準パス（/favicon.ico）
-  2. デフォルトSVGプレースホルダー
-- キャッシュ機能（7日間有効期限）
+**責務**: Chrome _favicon API を用いた Favicon URL の生成（同期処理）
+- `getFavicon(url: string): string`: Chrome _favicon API によるローカル favicon URL を返す
+- Chrome がローカルに favicon を保有していれば実 favicon、未保有の場合は Chrome のデフォルトアイコンを返す
+- chrome.runtime が利用できない場合は SVG プレースホルダーを返す
 - プライバシー重視（外部APIサービス不使用・ホスト名の外部流出防止）
 
 #### 4.3 ErrorHandler
@@ -379,7 +375,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 ### 6. 定数管理 (Constants/)
 **責務**: アプリケーション全体で使用する定数の一元管理
-- Favicon関連定数（キャッシュキー、有効期限、タイムアウト）
+- Favicon関連定数（タイムアウト等、レガシー定数含む）
 - UI関連定数（アニメーション時間、検索デバウンス）
 - Chrome API関連定数（除外フォルダ、スキーム）
 - エラーメッセージ定数
@@ -394,7 +390,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 - `getBookmarkService()`: BookmarkServiceのシングルトンインスタンス取得
 
 #### レガシー互換関数（@deprecatedマーク付き）
-- `initFaviconCache()`: FaviconService.initCache()への委譲
 - `getFavicon()`: FaviconService.getFavicon()への委譲
 - `processBookmarkTree()`: BookmarkService.processBookmarkTree()への委譲
 - `filterBookmarks()`: BookmarkService.filterBookmarks()への委譲
@@ -432,24 +427,21 @@ function buildFolderStructure(node: ChromeBookmarkNode, level: number = 0): Book
 - `escapeHtml()`: XSS対策
 - `getDomain()`: URL正規化
 
-#### Faviconキャッシュシステム
-```typescript
-// キャッシュ設計
-const faviconCache = new Map<string, string>();
-const CACHE_EXPIRY_DAYS = 7;
+#### Favicon取得
 
-// 非同期取得とキャッシュ保存（セキュリティ重視）
-export async function getFavicon(url: string): Promise<string>
+**Favicon URL 生成**:
+```typescript
+// Chrome _favicon API によるローカル取得（同期処理）
+export function getFavicon(url: string): string
 ```
 
-**Favicon取得戦略**:
-1. **キャッシュ確認**: 既存のキャッシュから高速取得
-2. **標準パス試行**: `/favicon.ico`
-3. **デフォルト表示**: SVGプレースホルダーアイコン
+**取得方針**:
+1. **Chrome _favicon API**: `chrome.runtime.getURL('/_favicon/?pageUrl=<url>&size=32')` によるローカル取得
+2. **フォールバック**: chrome.runtime が利用できない場合は SVG プレースホルダーアイコン
 
 **セキュリティ方針**:
 - 外部APIサービス（Google Favicon API等）は使用しない
-- ホスト名の外部流出を防止
+- ホスト名の外部流出を防止（Chrome ローカル取得のため）
 - 内部ネットワークの情報保護を優先
 
 ---
@@ -512,7 +504,6 @@ DOM再描画
 
 #### グローバル状態
 - `allBookmarks: BookmarkFolder[]`: 全ブックマークデータ
-- `faviconCache: Map<string, string>`: Faviconキャッシュ
 
 #### ローカル状態
 - `folder.expanded: boolean`: 各フォルダの展開状態
@@ -532,8 +523,7 @@ DOM再描画
 - **遅延Favicon読み込み**: 初期表示速度の向上
 
 ### 2. メモリ最適化
-- **Faviconキャッシュ**: 重複取得の防止
-- **localStorage活用**: ブラウザ再起動時のキャッシュ持続
+- **Chrome内部キャッシュ活用**: Chrome が favicon をローカルにキャッシュするため、拡張側での重複取得防止処理は不要
 - **適切なスコープ管理**: メモリリーク防止
 
 ### 3. 検索最適化
@@ -577,9 +567,7 @@ try {
 - グレースフルデグラデーション
 
 **Favicon取得エラー**:
-- プレースホルダーアイコン表示
-- キャッシュ無効データの処理
-- ネットワークエラー対応
+- chrome.runtime が利用できない場合は SVG プレースホルダーアイコン表示
 - 外部APIサービスを使用しないことによる堅牢性向上
 
 ---
@@ -700,13 +688,11 @@ npm run build:extension
 
 ### パフォーマンス制限
 1. **大量データ**: 数千のブックマークでの性能劣化
-2. **Favicon取得**: ネットワーク依存の遅延
-3. **DOM更新コスト**: 大規模データでの再描画負荷
+2. **DOM更新コスト**: 大規模データでの再描画負荷
 
 ### 今後の改善予定
 1. **仮想スクロール**: 大量データ対応
-2. **バックグラウンド処理**: Favicon事前取得
-3. **インクリメンタル更新**: 差分更新による高速化
+2. **インクリメンタル更新**: 差分更新による高速化
 
 ---
 
