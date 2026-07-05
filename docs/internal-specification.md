@@ -444,7 +444,7 @@ export async function getFavicon(url: string): Promise<string>
 
 **Favicon取得戦略**:
 1. **キャッシュ確認**: 既存のキャッシュから高速取得
-2. **標準パス試行**: `/favicon.ico`, `/favicon.png`, `/favicon.svg`
+2. **標準パス試行**: `/favicon.ico`
 3. **デフォルト表示**: SVGプレースホルダーアイコン
 
 **セキュリティ方針**:
