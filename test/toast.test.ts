@@ -108,4 +108,46 @@ describe('Toast', () => {
     const handled = await Toast.triggerCurrentAction();
     expect(handled).toBe(false);
   });
+
+  it('アクション実行が失敗したら失敗通知 Toast を表示する (#105)', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    Toast.show({
+      message: '削除しました',
+      action: {
+        label: '元に戻す',
+        onActivate: () => {
+          throw new Error('undo failed');
+        },
+        failureMessage: '操作の取り消しに失敗しました。',
+      },
+    });
+
+    await Toast.triggerCurrentAction();
+
+    const toast = document.querySelector('.app-toast');
+    expect(toast).not.toBeNull();
+    expect(toast?.textContent).toContain('操作の取り消しに失敗しました。');
+    // 失敗通知にはアクション (元に戻す) が無い
+    expect(document.querySelector('.app-toast-action')).toBeNull();
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('failureMessage 未指定なら既定の失敗メッセージを表示する (#105)', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    Toast.show({
+      message: '削除しました',
+      action: {
+        label: '元に戻す',
+        onActivate: () => Promise.reject(new Error('boom')),
+      },
+    });
+
+    await Toast.triggerCurrentAction();
+
+    const toast = document.querySelector('.app-toast');
+    expect(toast).not.toBeNull();
+    expect(toast?.textContent).toContain('アクションの実行に失敗しました。');
+    consoleSpy.mockRestore();
+  });
 });
