@@ -12,7 +12,6 @@ import {
   applyExpandedState,
   filterBookmarks,
   getFavicon,
-  initFaviconCache,
   processBookmarkTree,
 } from './utils.js';
 
@@ -41,9 +40,6 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
     console.error('❌ searchInput element not found!');
     return;
   }
-
-  // Favicon キャッシュの初期化
-  await initFaviconCache();
 
   // 履歴パネル・カレンダーパネルの初期化（各タブパネル内に構築）
   const historyPanelContainer = document.querySelector(
