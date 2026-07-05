@@ -52,6 +52,7 @@ export class BookmarkService {
                 } else if (grandChild.url && grandChild.title) {
                   // ルートブックマーク
                   rootBookmarks.push({
+                    id: grandChild.id,
                     title: grandChild.title,
                     url: grandChild.url,
                     favicon: null,
@@ -108,6 +109,7 @@ export class BookmarkService {
       } else if (child.url && child.title) {
         // ブックマークアイテム
         bookmarks.push({
+          id: child.id,
           title: child.title,
           url: child.url,
           favicon: null, // 後でFaviconServiceが設定

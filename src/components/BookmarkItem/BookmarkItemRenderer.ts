@@ -11,8 +11,9 @@ export class BookmarkItemRenderer {
   renderBookmarkItem(bookmark: BookmarkItem): string {
     const safeTitle = escapeHtml(bookmark.title);
     const safeUrl = escapeHtml(bookmark.url);
+    const safeId = bookmark.id ? escapeHtml(bookmark.id) : '';
     return `
-      <li class="bookmark-item" tabindex="0" role="treeitem" aria-label="${safeTitle}" data-bookmark-url="${safeUrl}" data-bookmark-title="${safeTitle}">
+      <li class="bookmark-item" tabindex="0" role="treeitem" aria-label="${safeTitle}" data-bookmark-url="${safeUrl}" data-bookmark-title="${safeTitle}" data-bookmark-id="${safeId}">
         <a href="#" class="bookmark-link" data-url="${safeUrl}" tabindex="-1">
           <div class="bookmark-favicon-container" aria-hidden="true">
             <div class="favicon-placeholder">🔗</div>
@@ -31,12 +32,14 @@ export class BookmarkItemRenderer {
   renderBookmarkActions(bookmark: BookmarkItem): string {
     const safeTitle = escapeHtml(bookmark.title);
     const safeUrl = escapeHtml(bookmark.url);
+    const safeId = bookmark.id ? escapeHtml(bookmark.id) : '';
     return `
       <div class="bookmark-actions">
         <button class="bookmark-edit-btn"
                 type="button"
                 data-bookmark-url="${safeUrl}"
                 data-bookmark-title="${safeTitle}"
+                data-bookmark-id="${safeId}"
                 title="編集"
                 aria-label="「${safeTitle}」を編集">
           <span aria-hidden="true">✏️</span>
@@ -45,6 +48,7 @@ export class BookmarkItemRenderer {
                 type="button"
                 data-bookmark-url="${safeUrl}"
                 data-bookmark-title="${safeTitle}"
+                data-bookmark-id="${safeId}"
                 title="削除"
                 aria-label="「${safeTitle}」を削除">
           <span aria-hidden="true">🗑️</span>

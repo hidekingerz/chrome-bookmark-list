@@ -2,6 +2,11 @@
  * ブックマークアイテムの型定義
  */
 export interface BookmarkItem {
+  /**
+   * Chrome ブックマークノードの ID。
+   * 同一 URL が複数フォルダに存在しても一意に同定するために使う (#97)。
+   */
+  id: string;
   /** ブックマークのタイトル */
   title: string;
   /** ブックマークのURL */

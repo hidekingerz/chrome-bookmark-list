@@ -1,4 +1,5 @@
 import { escapeHtml } from '../../scripts/utils.js';
+import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
 import { UndoManager } from '../UndoManager/index.js';
 
 /**
@@ -11,6 +12,7 @@ export class BookmarkDeleter {
   async handleBookmarkDelete(deleteBtn: HTMLElement): Promise<void> {
     const url = deleteBtn.getAttribute('data-bookmark-url');
     const title = deleteBtn.getAttribute('data-bookmark-title');
+    const bookmarkId = deleteBtn.getAttribute('data-bookmark-id');
 
     if (!url || !title) {
       console.error('❌ ブックマークのURLまたはタイトルが取得できませんでした');
@@ -25,12 +27,12 @@ export class BookmarkDeleter {
     }
 
     try {
-      // Undo に必要な情報を削除前に取得
-      const bookmarks = await chrome.bookmarks.search({ url });
-      if (bookmarks.length === 0) {
+      // Undo に必要な情報を削除前に取得。data-bookmark-id で一意に同定し、
+      // 同一 URL が複数フォルダにある場合の誤削除を防ぐ (#97)。
+      const target = await resolveBookmarkNode(bookmarkId, url);
+      if (!target) {
         throw new Error('削除対象のブックマークが見つかりませんでした');
       }
-      const target = bookmarks[0];
       const restoreInfo = {
         parentId: target.parentId,
         index: target.index,

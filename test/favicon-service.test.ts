@@ -258,8 +258,9 @@ describe('FaviconService フォールバック戦略', () => {
     expect(favicon).toBe('https://noslash.test/rel.png');
   });
 
-  it('権限が無い場合 HTML 解析はスキップされ Google ファビコンにフォールバックする', async () => {
-    // 標準パスは失敗、Google のみ成功
+  it('標準パス・HTML 解析が失敗してもデフォルトを返し、外部 Google API へ流出しない', async () => {
+    // 標準パスは失敗、（仮に Google が有効なら）成功する条件を用意しても
+    // Google 戦略は廃止済みなので default にフォールバックする（ホスト名流出防止）
     imageLoadPredicate = (src) => src.includes('google.com/s2/favicons');
     chromeRef.permissions = {
       contains: vi.fn().mockResolvedValue(false),
@@ -268,8 +269,9 @@ describe('FaviconService フォールバック戦略', () => {
 
     const favicon = await service.getFavicon('https://no-perm.test/page');
 
-    expect(favicon).toContain('https://www.google.com/s2/favicons');
-    expect(favicon).toContain('domain=no-perm.test');
+    // #98: 内部ホスト名を Google に送信しない。default にフォールバックする
+    expect(favicon).not.toContain('google.com');
+    expect(favicon.startsWith(DEFAULT_FAVICON_PREFIX)).toBe(true);
   });
 
   it('全戦略がタイムアウトするとデフォルトファビコンを返す', async () => {
@@ -281,8 +283,8 @@ describe('FaviconService フォールバック戦略', () => {
     const service = new FaviconService();
 
     const promise = service.getFavicon('https://timeout.test/page');
-    // 標準パスと Google の 2 回分のタイムアウトを進める
-    await vi.advanceTimersByTimeAsync(2500);
+    // 標準パスのタイムアウト（1000ms）を進める（Google 戦略は廃止済み）
+    await vi.advanceTimersByTimeAsync(1500);
     const favicon = await promise;
 
     expect(favicon.startsWith(DEFAULT_FAVICON_PREFIX)).toBe(true);

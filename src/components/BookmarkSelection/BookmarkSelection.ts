@@ -1,5 +1,6 @@
 import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
+import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
 import { UndoManager } from '../UndoManager/index.js';
 
 /**
@@ -237,9 +238,12 @@ export class BookmarkSelection {
     const restoreInfos: BookmarkRestoreInfo[] = [];
     try {
       for (const item of items) {
-        const found = await chrome.bookmarks.search({ url: item.url });
-        if (found.length === 0) continue;
-        const target = found[0];
+        // 選択要素が保持する data-bookmark-id で一意に同定する (#97)
+        const target = await resolveBookmarkNode(
+          item.element?.getAttribute('data-bookmark-id') ?? null,
+          item.url
+        );
+        if (!target) continue;
         restoreInfos.push({
           parentId: target.parentId,
           index: target.index,
@@ -290,9 +294,12 @@ export class BookmarkSelection {
     }[] = [];
     try {
       for (const item of items) {
-        const found = await chrome.bookmarks.search({ url: item.url });
-        if (found.length === 0) continue;
-        const target = found[0];
+        // 選択要素が保持する data-bookmark-id で一意に同定する (#97)
+        const target = await resolveBookmarkNode(
+          item.element?.getAttribute('data-bookmark-id') ?? null,
+          item.url
+        );
+        if (!target) continue;
         moveInfos.push({
           id: target.id,
           previousParentId: target.parentId,

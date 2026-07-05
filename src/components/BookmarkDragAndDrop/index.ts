@@ -1,3 +1,4 @@
+import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
 import { UndoManager } from '../UndoManager/index.js';
 import { Autoscroller } from './Autoscroller.js';
 
@@ -6,6 +7,8 @@ import { Autoscroller } from './Autoscroller.js';
  */
 export class BookmarkDragAndDrop {
   private draggedBookmark: {
+    /** Chrome ノード ID。同一 URL の誤同定を防ぐ (#97)。空文字なら URL 検索へフォールバック。 */
+    id: string;
     url: string;
     title: string;
     originalFolderId: string;
@@ -14,6 +17,8 @@ export class BookmarkDragAndDrop {
      * 単一ドラッグなら [url] と同じになる。
      */
     additionalUrls: string[];
+    /** additionalUrls と同じ並び順の Chrome ノード ID リスト (#97)。 */
+    additionalIds: string[];
   } | null = null;
 
   private draggedFolder: {
@@ -87,24 +92,30 @@ export class BookmarkDragAndDrop {
     const sourceItem = bookmarkLink.closest(
       '.bookmark-item'
     ) as HTMLElement | null;
+    const sourceId = sourceItem?.getAttribute('data-bookmark-id') ?? '';
     let additionalUrls: string[] = [url];
+    let additionalIds: string[] = [sourceId];
     if (sourceItem?.classList.contains('selected')) {
       const selectedItems = Array.from(
         document.querySelectorAll('.bookmark-item.selected')
-      );
-      const urls = selectedItems
-        .map((el) => el.getAttribute('data-bookmark-url'))
-        .filter((u): u is string => typeof u === 'string');
-      if (urls.length > 1) {
-        additionalUrls = urls;
+      ).filter((el) => el.getAttribute('data-bookmark-url'));
+      if (selectedItems.length > 1) {
+        additionalUrls = selectedItems.map(
+          (el) => el.getAttribute('data-bookmark-url') as string
+        );
+        additionalIds = selectedItems.map(
+          (el) => el.getAttribute('data-bookmark-id') ?? ''
+        );
       }
     }
 
     this.draggedBookmark = {
+      id: sourceId,
       url,
       title,
       originalFolderId: folderId,
       additionalUrls,
+      additionalIds,
     };
 
     // ドラッグデータを設定
@@ -473,6 +484,7 @@ export class BookmarkDragAndDrop {
   ): void {
     if (!this.draggedBookmark) return;
     const targetUrl = targetItem.getAttribute('data-bookmark-url');
+    const targetId = targetItem.getAttribute('data-bookmark-id');
     if (!targetUrl || targetUrl === this.draggedBookmark.url) return;
 
     const rect = targetItem.getBoundingClientRect();
@@ -485,7 +497,11 @@ export class BookmarkDragAndDrop {
       'drop-target-invalid'
     );
 
-    this.reorderBookmark(this.draggedBookmark.url, targetUrl, zone)
+    this.reorderBookmark(
+      { id: this.draggedBookmark.id, url: this.draggedBookmark.url },
+      { id: targetId, url: targetUrl },
+      zone
+    )
       .then(() => {
         this.refreshBookmarkList();
       })
@@ -500,22 +516,19 @@ export class BookmarkDragAndDrop {
    * Undo に対応。Chrome の chrome.bookmarks.move の補正挙動 (#77 と同様) を考慮。
    */
   private async reorderBookmark(
-    sourceUrl: string,
-    targetUrl: string,
+    sourceRef: { id: string | null; url: string },
+    targetRef: { id: string | null; url: string },
     zone: 'before' | 'after'
   ): Promise<void> {
     try {
-      const [sources, targets] = await Promise.all([
-        chrome.bookmarks.search({ url: sourceUrl }),
-        chrome.bookmarks.search({ url: targetUrl }),
+      // data-bookmark-id で一意に同定し、同一 URL の別ノードを動かす誤りを防ぐ (#97)
+      const [source, target] = await Promise.all([
+        resolveBookmarkNode(sourceRef.id, sourceRef.url),
+        resolveBookmarkNode(targetRef.id, targetRef.url),
       ]);
-      if (sources.length === 0)
-        throw new Error('ソースブックマークが見つかりません');
-      if (targets.length === 0)
-        throw new Error('ターゲットブックマークが見つかりません');
+      if (!source) throw new Error('ソースブックマークが見つかりません');
+      if (!target) throw new Error('ターゲットブックマークが見つかりません');
 
-      const source = sources[0];
-      const target = targets[0];
       if (target.parentId === undefined) {
         throw new Error('ターゲットの親が取得できません');
       }
@@ -574,18 +587,22 @@ export class BookmarkDragAndDrop {
     targetFolderId: string
   ): Promise<void> {
     const urls = this.draggedBookmark?.additionalUrls ?? [bookmarkUrl];
+    const ids = this.draggedBookmark?.additionalIds ?? [
+      this.draggedBookmark?.id ?? '',
+    ];
 
     // 単一ドラッグ: 従来の挙動 (Undo: 単一)
     if (urls.length <= 1) {
       return this.moveSingleBookmark(bookmarkUrl, targetFolderId);
     }
 
-    // 複数選択ドラッグ: すべて移動 (Undo: 一括)
-    return this.moveMultipleBookmarks(urls, targetFolderId);
+    // 複数選択ドラッグ: すべて移動 (Undo: 一括)。id と url を対で渡す (#97)
+    const items = urls.map((url, i) => ({ id: ids[i] ?? '', url }));
+    return this.moveMultipleBookmarks(items, targetFolderId);
   }
 
   private async moveMultipleBookmarks(
-    urls: string[],
+    items: { id: string; url: string }[],
     targetFolderId: string
   ): Promise<void> {
     const moveInfos: {
@@ -596,10 +613,10 @@ export class BookmarkDragAndDrop {
     }[] = [];
 
     try {
-      for (const url of urls) {
-        const found = await chrome.bookmarks.search({ url });
-        if (found.length === 0) continue;
-        const target = found[0];
+      for (const item of items) {
+        // data-bookmark-id で一意に同定する (#97)
+        const target = await resolveBookmarkNode(item.id, item.url);
+        if (!target) continue;
         moveInfos.push({
           id: target.id,
           previousParentId: target.parentId,
@@ -638,13 +655,16 @@ export class BookmarkDragAndDrop {
     targetFolderId: string
   ): Promise<void> {
     try {
-      const bookmarks = await chrome.bookmarks.search({ url: bookmarkUrl });
+      // data-bookmark-id で一意に同定する (#97)
+      const bookmark = await resolveBookmarkNode(
+        this.draggedBookmark?.id ?? null,
+        bookmarkUrl
+      );
 
-      if (bookmarks.length === 0) {
+      if (!bookmark) {
         throw new Error('移動するブックマークが見つかりません');
       }
 
-      const bookmark = bookmarks[0];
       const originalParentId = bookmark.parentId;
       const originalIndex = bookmark.index;
       const bookmarkTitle = bookmark.title;
