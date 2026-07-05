@@ -120,23 +120,43 @@ describe('UndoManager', () => {
     expect(undoFn).not.toHaveBeenCalled();
   });
 
-  it('triggerUndo() は Toast 解除後も currentUndo を直接実行する', async () => {
+  it('Toast を解除すると Undo も失効する (#105)', async () => {
     const undoFn = vi.fn();
     const um = UndoManager.getInstance();
     um.register({ message: 'メッセージ', undo: undoFn });
-
-    // Toast だけを解除する。UndoManager.currentUndo は保持されたまま。
-    // この状態で triggerUndo を呼ぶと Toast.triggerCurrentAction() が false を返し、
-    // UndoManager 側のフォールバック経路 (currentUndo を直接実行) が走る。
-    Toast.dismissCurrent();
     expect(um.hasUndo()).toBe(true);
 
-    const handled = await um.triggerUndo();
-
-    expect(handled).toBe(true);
-    expect(undoFn).toHaveBeenCalledTimes(1);
-    // 実行後は currentUndo がクリアされ、再実行されない。
+    // Toast を解除すると Undo の寿命も尽きる (有効期限が Toast 表示と一致)。
+    // 以前は currentUndo が保持され Cmd+Z が無期限に効いていた (#105)。
+    Toast.dismissCurrent();
     expect(um.hasUndo()).toBe(false);
+
+    const handled = await um.triggerUndo();
+    expect(handled).toBe(false);
+    expect(undoFn).not.toHaveBeenCalled();
+  });
+
+  it('Toast の自動クローズ後は Undo が失効する (#105)', async () => {
+    vi.useFakeTimers();
+    try {
+      const undoFn = vi.fn();
+      const um = UndoManager.getInstance();
+      um.register({ message: 'メッセージ', undo: undoFn });
+      expect(um.hasUndo()).toBe(true);
+
+      // Toast の表示時間 (DEFAULT_DURATION_MS = 5000ms) が経過し自動クローズする。
+      vi.advanceTimersByTime(5000);
+      expect(document.querySelector('.app-toast')).toBeNull();
+
+      // 自動クローズ後は Undo が失効している (文言「削除後5秒以内」と一致)。
+      expect(um.hasUndo()).toBe(false);
+
+      const handled = await um.triggerUndo();
+      expect(handled).toBe(false);
+      expect(undoFn).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // UndoManager はシングルトンで initialize() は一度しかハンドラを束縛しないため、
