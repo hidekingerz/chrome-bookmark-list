@@ -30,6 +30,9 @@ const mockChrome = {
       remove: vi.fn(),
     },
   },
+  runtime: {
+    getURL: vi.fn((path: string) => `chrome-extension://test-id${path}`),
+  },
 };
 
 // グローバルオブジェクトにChromeをモック

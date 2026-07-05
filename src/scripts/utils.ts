@@ -35,13 +35,6 @@ function getBookmarkService(): BookmarkService {
 // === レガシー互換関数（既存コードとの互換性のため） ===
 
 /**
- * @deprecated FaviconService.initCache() を使用してください
- */
-export async function initFaviconCache(): Promise<void> {
-  await getFaviconService().initCache();
-}
-
-/**
  * @deprecated FaviconService.getFavicon() を使用してください
  */
 export async function getFavicon(url: string): Promise<string> {
