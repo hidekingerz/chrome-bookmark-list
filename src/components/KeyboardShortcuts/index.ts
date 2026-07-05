@@ -139,23 +139,48 @@ export class KeyboardShortcuts {
     const nodes = container.querySelectorAll<HTMLElement>(
       '.folder-header, .bookmark-item'
     );
-    return Array.from(nodes).filter((el) => this.isVisible(el));
+    // 1 回の走査で祖先の可視性判定を共有し、兄弟項目が同じ祖先を辿るたびに
+    // getComputedStyle を呼び直す O(n×depth) の強制スタイル計算を避ける (#105)。
+    const visibilityCache = new Map<HTMLElement, boolean>();
+    return Array.from(nodes).filter((el) =>
+      this.isVisible(el, visibilityCache)
+    );
   }
 
-  private isVisible(el: HTMLElement): boolean {
+  private isVisible(
+    el: HTMLElement,
+    cache?: Map<HTMLElement, boolean>
+  ): boolean {
     // 非表示要素を除外する。display:none や hidden クラスを持つ要素はスキップ
     if (el.classList.contains('hidden')) return false;
-    // 祖先まで遡って display:none を判定
+    // 祖先まで遡って display:none を判定する。判定済みの祖先はキャッシュを
+    // 再利用し、その祖先までに通過した要素へ結果をまとめて書き戻す。
+    const path: HTMLElement[] = [];
     let current: HTMLElement | null = el;
+    let chainVisible = true;
     while (current && current !== document.body) {
+      const cached = cache?.get(current);
+      if (cached !== undefined) {
+        chainVisible = cached;
+        break;
+      }
+      path.push(current);
       const style = window?.getComputedStyle
         ? window.getComputedStyle(current)
         : null;
-      if (style && style.display === 'none') return false;
-      if (current.style.display === 'none') return false;
+      if (
+        (style && style.display === 'none') ||
+        current.style.display === 'none'
+      ) {
+        chainVisible = false;
+        break;
+      }
       current = current.parentElement;
     }
-    return true;
+    for (const node of path) {
+      cache?.set(node, chainVisible);
+    }
+    return chainVisible;
   }
 
   private moveFocus(delta: number): boolean {
