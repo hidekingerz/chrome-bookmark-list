@@ -326,6 +326,173 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
     expect(chrome.bookmarks.move).not.toHaveBeenCalled();
   });
 
+  // --- 複数選択 reorder (#105 サブ項目1 bullet 2) ---
+  // 複数選択したブックマークを別アイテム間へドロップすると additionalUrls が
+  // 無視され 1 件しか動かなかった (プレビューは N 件バッジ・通知なし)。選択中の
+  // 全アイテムを reorder 位置へ連続配置する。
+
+  it('複数選択の reorder drop は選択中の全アイテムを連続位置へ move する (#105)', async () => {
+    item(A).classList.add('selected');
+    item(B).classList.add('selected');
+    document.dispatchEvent(createDragEvent('dragstart', link(A)));
+    const target = item(C);
+    stubRect(target);
+    // C(index2) の after → 起点 index 3。A→3, B→4 の連続配置。
+    document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(chrome.bookmarks.move).toHaveBeenCalledTimes(2);
+    expect(chrome.bookmarks.move).toHaveBeenNthCalledWith(1, 'a', {
+      parentId: 'f1',
+      index: 3,
+    });
+    expect(chrome.bookmarks.move).toHaveBeenNthCalledWith(2, 'b', {
+      parentId: 'f1',
+      index: 4,
+    });
+  });
+
+  it('複数選択 reorder の Undo は全アイテムを元位置へ逆順で戻す (#105)', async () => {
+    const registerSpy = vi.spyOn(UndoManager.getInstance(), 'register');
+    item(A).classList.add('selected');
+    item(B).classList.add('selected');
+    document.dispatchEvent(createDragEvent('dragstart', link(A)));
+    const target = item(C);
+    stubRect(target);
+    document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    const op = registerSpy.mock.calls[0][0];
+    (chrome.bookmarks.move as ReturnType<typeof vi.fn>).mockClear();
+    await op.undo();
+    // 逆順で復元: B(元 index1) → A(元 index0)
+    expect(chrome.bookmarks.move).toHaveBeenNthCalledWith(1, 'b', {
+      parentId: 'f1',
+      index: 1,
+    });
+    expect(chrome.bookmarks.move).toHaveBeenNthCalledWith(2, 'a', {
+      parentId: 'f1',
+      index: 0,
+    });
+  });
+
+  it('複数選択 reorder でターゲット自身が選択に含まれても move されない (#105)', async () => {
+    // A と C(ターゲット) を選択し C の before へ drop → C は skip され A のみ動く
+    item(A).classList.add('selected');
+    item(C).classList.add('selected');
+    document.dispatchEvent(createDragEvent('dragstart', link(A)));
+    const target = item(C);
+    stubRect(target);
+    document.dispatchEvent(createDragEvent('drop', target, { clientY: 10 }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(chrome.bookmarks.move).toHaveBeenCalledTimes(1);
+    // before かつ C(index2) → newIndex 2
+    expect(chrome.bookmarks.move).toHaveBeenCalledWith('a', {
+      parentId: 'f1',
+      index: 2,
+    });
+  });
+
+  it('複数選択 reorder で見つからない source は skip し残りを move する (#105)', async () => {
+    item(A).classList.add('selected');
+    item(B).classList.add('selected');
+    (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockImplementation(
+      ({ url }) => {
+        if (url === C) {
+          return Promise.resolve([
+            { id: 'c', parentId: 'f1', index: 2, title: 'C', url },
+          ]);
+        }
+        if (url === B) {
+          return Promise.resolve([
+            { id: 'b', parentId: 'f1', index: 1, title: 'B', url },
+          ]);
+        }
+        // A は見つからない → skip
+        return Promise.resolve([]);
+      }
+    );
+    document.dispatchEvent(createDragEvent('dragstart', link(A)));
+    const target = item(C);
+    stubRect(target);
+    document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    // A は skip、B のみ起点 index 3 へ
+    expect(chrome.bookmarks.move).toHaveBeenCalledTimes(1);
+    expect(chrome.bookmarks.move).toHaveBeenCalledWith('b', {
+      parentId: 'f1',
+      index: 3,
+    });
+  });
+
+  it('複数選択 reorder の Undo は previousParentId が無い項目を skip する (#105)', async () => {
+    const registerSpy = vi.spyOn(UndoManager.getInstance(), 'register');
+    item(A).classList.add('selected');
+    item(B).classList.add('selected');
+    (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockImplementation(
+      ({ url }) => {
+        if (url === C) {
+          return Promise.resolve([
+            { id: 'c', parentId: 'f1', index: 2, title: 'C', url },
+          ]);
+        }
+        if (url === A) {
+          // previousParentId 無し
+          return Promise.resolve([{ id: 'a', index: 0, title: 'A', url }]);
+        }
+        return Promise.resolve([
+          { id: 'b', parentId: 'f1', index: 1, title: 'B', url },
+        ]);
+      }
+    );
+    document.dispatchEvent(createDragEvent('dragstart', link(A)));
+    const target = item(C);
+    stubRect(target);
+    document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
+    await new Promise((r) => setTimeout(r, 30));
+
+    const op = registerSpy.mock.calls[0][0];
+    (chrome.bookmarks.move as ReturnType<typeof vi.fn>).mockClear();
+    await op.undo();
+    // A は previousParentId 無しで skip、B のみ戻す
+    expect(chrome.bookmarks.move).toHaveBeenCalledTimes(1);
+    expect(chrome.bookmarks.move).toHaveBeenCalledWith('b', {
+      parentId: 'f1',
+      index: 1,
+    });
+  });
+
+  it('複数選択 reorder でターゲットの親が取得できないと alert する (#105)', async () => {
+    item(A).classList.add('selected');
+    item(B).classList.add('selected');
+    (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockImplementation(
+      ({ url }) => {
+        if (url === C) {
+          // parentId 無し
+          return Promise.resolve([{ id: 'c', index: 2, title: 'C', url }]);
+        }
+        if (url === A) {
+          return Promise.resolve([
+            { id: 'a', parentId: 'f1', index: 0, title: 'A', url },
+          ]);
+        }
+        return Promise.resolve([
+          { id: 'b', parentId: 'f1', index: 1, title: 'B', url },
+        ]);
+      }
+    );
+    document.dispatchEvent(createDragEvent('dragstart', link(A)));
+    const target = item(C);
+    stubRect(target);
+    document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(alertSpy).toHaveBeenCalledWith(
+      'ブックマークの並び替えに失敗しました。'
+    );
+  });
+
   it('reorder の Undo は元 index へ戻す (現在位置が前方なら +1 補正)', async () => {
     const registerSpy = vi.spyOn(UndoManager.getInstance(), 'register');
     // C(index2) を A(index0) の before へ → newIndex 0

@@ -506,6 +506,32 @@ export class BookmarkDragAndDrop {
       'drop-target-invalid'
     );
 
+    const onError = (error: unknown): void => {
+      console.error('ブックマーク並び替えエラー:', error);
+      alert('ブックマークの並び替えに失敗しました。');
+    };
+
+    // 複数選択ドラッグ (プレビューに N 件バッジ) の reorder は選択中の全アイテムを
+    // 対象にする。従来は additionalUrls を無視して先頭 1 件のみ動かしており、
+    // プレビューと実挙動が乖離していた (#105)。
+    const { additionalUrls, additionalIds } = this.draggedBookmark;
+    if (additionalUrls.length > 1) {
+      const sources = additionalUrls.map((url, i) => ({
+        id: additionalIds[i] ?? '',
+        url,
+      }));
+      this.reorderMultipleBookmarks(
+        sources,
+        { id: targetId, url: targetUrl },
+        zone
+      )
+        .then(() => {
+          this.refreshBookmarkList();
+        })
+        .catch(onError);
+      return;
+    }
+
     this.reorderBookmark(
       { id: this.draggedBookmark.id, url: this.draggedBookmark.url },
       { id: targetId, url: targetUrl },
@@ -514,10 +540,80 @@ export class BookmarkDragAndDrop {
       .then(() => {
         this.refreshBookmarkList();
       })
-      .catch((error) => {
-        console.error('ブックマーク並び替えエラー:', error);
-        alert('ブックマークの並び替えに失敗しました。');
-      });
+      .catch(onError);
+  }
+
+  /**
+   * 複数選択したブックマークをまとめて reorder 位置へ移動する (#105)。
+   * 選択順 (DOM 順) を保ったまま、ドロップ位置から連続する index へ配置する。
+   * Undo は一括で登録し、逆順に元の親・index へ戻す。
+   * ※Chrome の chrome.bookmarks.move は同一フォルダ内移動で index 補正を行う
+   *   (#77 と同様)。単一 reorder と同じ起点計算を踏襲し、per-item で index を
+   *   繰り上げる。最終的な並びの体感確認は人手レビューを最終ゲートとする。
+   */
+  private async reorderMultipleBookmarks(
+    sources: { id: string; url: string }[],
+    targetRef: { id: string | null; url: string },
+    zone: 'before' | 'after'
+  ): Promise<void> {
+    try {
+      const target = await resolveBookmarkNode(targetRef.id, targetRef.url);
+      if (!target) throw new Error('ターゲットブックマークが見つかりません');
+      if (target.parentId === undefined) {
+        throw new Error('ターゲットの親が取得できません');
+      }
+
+      const parentId = target.parentId;
+      const targetIndex = target.index ?? 0;
+      let insertIndex = zone === 'before' ? targetIndex : targetIndex + 1;
+
+      const moveInfos: {
+        id: string;
+        previousParentId: string | undefined;
+        previousIndex: number | undefined;
+        title: string;
+      }[] = [];
+
+      for (const src of sources) {
+        // data-bookmark-id で一意に同定する (#97)
+        const node = await resolveBookmarkNode(src.id, src.url);
+        if (!node) continue;
+        // ターゲット自身は動かさない (自分の位置を基準に自分を挿入しない)
+        if (node.id === target.id) continue;
+        moveInfos.push({
+          id: node.id,
+          previousParentId: node.parentId,
+          previousIndex: node.index,
+          title: node.title,
+        });
+        await chrome.bookmarks.move(node.id, { parentId, index: insertIndex });
+        insertIndex++;
+      }
+
+      if (moveInfos.length > 0) {
+        UndoManager.getInstance().register({
+          message: `${moveInfos.length} 件のブックマークを並び替えました`,
+          undo: async () => {
+            // 元位置へ戻すときは後ろの項目から順に戻す (index のずれを避ける)
+            for (let i = moveInfos.length - 1; i >= 0; i--) {
+              const info = moveInfos[i];
+              if (info.previousParentId === undefined) continue;
+              await chrome.bookmarks.move(info.id, {
+                parentId: info.previousParentId,
+                index: info.previousIndex,
+              });
+            }
+            const e = new CustomEvent('bookmarks-changed', {
+              detail: { action: 'undo-bulk-reorder' },
+            });
+            document.dispatchEvent(e);
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Chrome Bookmarks API エラー (bulk reorder):', error);
+      throw error;
+    }
   }
 
   /**
