@@ -181,6 +181,70 @@ describe('BookmarkDragAndDrop — 複数選択ドラッグでの一括移動', (
     });
   });
 
+  it('移動先フォルダに既にある選択項目は再 move されない (#105)', async () => {
+    // src の A と dst の D をどちらも選択した状態で A を掴み dst ヘッダーへドロップ。
+    // D は既に dst 内にあるため move すると末尾へ並び替わる副作用が生じるので skip する。
+    document.body.innerHTML = `
+      <div class="bookmark-container">
+        <div class="bookmark-folder" data-folder-id="src">
+          <div class="folder-header"><h2>src</h2></div>
+          <ul class="bookmark-list">
+            <li class="bookmark-item selected" data-bookmark-url="https://a.example.com" data-bookmark-title="A">
+              <a class="bookmark-link" data-url="https://a.example.com"><span class="bookmark-title">A</span></a>
+            </li>
+          </ul>
+        </div>
+        <div class="bookmark-folder" data-folder-id="dst">
+          <div class="folder-header"><h2>dst</h2></div>
+          <ul class="bookmark-list">
+            <li class="bookmark-item selected" data-bookmark-url="https://d.example.com" data-bookmark-title="D">
+              <a class="bookmark-link" data-url="https://d.example.com"><span class="bookmark-title">D</span></a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    `;
+
+    const mockChrome = globalThis.chrome as unknown as {
+      bookmarks: { search: ReturnType<typeof vi.fn> };
+    };
+    mockChrome.bookmarks.search = vi.fn().mockImplementation(({ url }) => {
+      if (url === 'https://a.example.com') {
+        return Promise.resolve([
+          { id: 'a', parentId: 'src', index: 0, title: 'A', url },
+        ]);
+      }
+      if (url === 'https://d.example.com') {
+        return Promise.resolve([
+          { id: 'd', parentId: 'dst', index: 0, title: 'D', url },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+
+    const link = document.querySelector(
+      '.bookmark-link[data-url="https://a.example.com"]'
+    ) as HTMLElement;
+    document.dispatchEvent(createDragEvent('dragstart', link));
+
+    const folderHeader = document.querySelector(
+      '[data-folder-id="dst"] .folder-header'
+    ) as HTMLElement;
+    document.dispatchEvent(createDragEvent('dragover', folderHeader));
+    document.dispatchEvent(createDragEvent('drop', folderHeader));
+
+    await new Promise((r) => setTimeout(r, 30));
+
+    // A のみ move される。D は既に dst 内なので move されない。
+    expect(chrome.bookmarks.move).toHaveBeenCalledTimes(1);
+    expect(chrome.bookmarks.move).toHaveBeenCalledWith('a', {
+      parentId: 'dst',
+    });
+    expect(chrome.bookmarks.move).not.toHaveBeenCalledWith('d', {
+      parentId: 'dst',
+    });
+  });
+
   it('選択されていない項目のドラッグは単一移動 (従来挙動)', async () => {
     // C は .selected なし
     const link = document.querySelector(

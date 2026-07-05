@@ -625,6 +625,11 @@ export class BookmarkDragAndDrop {
         // data-bookmark-id で一意に同定する (#97)
         const target = await resolveBookmarkNode(item.id, item.url);
         if (!target) continue;
+        // 既に移動先フォルダにある項目を move すると末尾へ並び替わる副作用が
+        // あるため skip する (#105)。同一フォルダ判定はドラッグ本体の
+        // originalFolderId しか見ておらず、選択に移動先フォルダ内の項目が
+        // 含まれると意図しない並び替えが起きていた。
+        if (target.parentId === targetFolderId) continue;
         moveInfos.push({
           id: target.id,
           previousParentId: target.parentId,
