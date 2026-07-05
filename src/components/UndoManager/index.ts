@@ -69,6 +69,7 @@ export class UndoManager {
       },
       action: {
         label: '元に戻す',
+        failureMessage: '操作の取り消しに失敗しました。',
         onActivate: async () => {
           // クリアしてから実行 (実行中に再登録されても上書きされる)
           if (this.currentUndo === undoFn) {

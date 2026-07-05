@@ -3,7 +3,14 @@ import { escapeHtml } from '../../scripts/utils.js';
 export interface ToastAction {
   label: string;
   onActivate: () => void | Promise<void>;
+  /**
+   * onActivate が失敗 (throw / reject) したときにユーザーへ表示する通知メッセージ。
+   * 未指定なら汎用の既定メッセージを表示する。
+   */
+  failureMessage?: string;
 }
+
+const DEFAULT_ACTION_FAILURE_MESSAGE = 'アクションの実行に失敗しました。';
 
 export interface ToastOptions {
   message: string;
@@ -114,6 +121,11 @@ export class Toast {
       await action.onActivate();
     } catch (error) {
       console.error('❌ Toast アクションの実行に失敗:', error);
+      // 失敗を握りつぶさず、ユーザーへ通知する (#105)。
+      // この時点で自分は dismiss 済みなので新しい Toast が現在のインスタンスになる。
+      Toast.show({
+        message: action.failureMessage ?? DEFAULT_ACTION_FAILURE_MESSAGE,
+      });
     }
   }
 
