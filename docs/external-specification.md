@@ -170,6 +170,9 @@ Chrome Bookmark Listは、Chromeブラウザの新しいタブでブックマー
   - `history`: 履歴データへのアクセス
   - `favicon`: Chrome内部のfavicon APIへのアクセス
   - `sessions`: 最近閉じたタブの取得と復元（`chrome.sessions` API）へのアクセス
+  - `tabs`: `chrome.sessions` が返す閉じたタブの URL・タイトルの読み取りに必要
+    （この権限が無いと Chrome が URL/タイトルを除去するため一覧を表示できない。
+    開いているタブの監視には使用しない）
 
 ### パフォーマンス
 - **起動時間**: 高速な初期読み込み
@@ -179,7 +182,7 @@ Chrome Bookmark Listは、Chromeブラウザの新しいタブでブックマー
 ## 制限事項
 
 1. **Chrome専用**: Chrome拡張機能のため、他ブラウザでは使用不可
-2. **権限必須**: ブックマーク、履歴、favicon、sessionsの権限が必要
+2. **権限必須**: ブックマーク、履歴、favicon、sessions、tabsの権限が必要
 3. **表示制限**: 極めて大量のブックマーク（数千個以上）では表示速度が低下する可能性
 4. **履歴期間制限**:
    - 最近の履歴タブ: 過去7日間、最大50件

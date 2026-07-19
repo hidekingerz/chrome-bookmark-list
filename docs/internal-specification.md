@@ -631,7 +631,8 @@ try {
 - **CSS Grid & Flexbox** - モダンなレイアウト
 - **Chrome Bookmarks API** - ブックマークデータへのアクセス
 - **Chrome History API** - 履歴データへのアクセス
-- **Chrome Sessions API** - 最近閉じたタブの取得（`chrome.sessions.getRecentlyClosed()`）と復元（`chrome.sessions.restore()`）
+- **Chrome Sessions API** - 最近閉じたタブの取得（`chrome.sessions.getRecentlyClosed()`）と復元（`chrome.sessions.restore()`）。
+  返される `Session.tab` の URL/タイトルを読むには `tabs` 権限が必要（無いと Chrome がスクラブする）
 - **Chrome _favicon API** - favicon 取得（`chrome.runtime.getURL('/_favicon/...')`、外部通信なし）
 - **Happy DOM** - テスト環境でのDOM操作
 - **JSDOM** - 統合テスト用のDOM環境
