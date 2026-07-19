@@ -31,7 +31,12 @@ const mockChrome = {
     },
   },
   runtime: {
+    id: 'test-id',
     getURL: vi.fn((path: string) => `chrome-extension://test-id${path}`),
+  },
+  sessions: {
+    getRecentlyClosed: vi.fn(),
+    restore: vi.fn(),
   },
 };
 
