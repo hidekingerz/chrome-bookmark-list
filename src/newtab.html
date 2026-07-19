@@ -19,6 +19,10 @@
                         id="tab-history" aria-selected="false" aria-controls="tab-panel-history">
                     <span class="tab-icon">🕐</span><span class="tab-label">最近の履歴</span>
                 </button>
+                <button class="tab-button" data-tab="recently-closed" role="tab"
+                        id="tab-recently-closed" aria-selected="false" aria-controls="tab-panel-recently-closed">
+                    <span class="tab-icon">🗂</span><span class="tab-label">最近閉じたタブ</span>
+                </button>
                 <button class="tab-button" data-tab="calendar" role="tab"
                         id="tab-calendar" aria-selected="false" aria-controls="tab-panel-calendar">
                     <span class="tab-icon">📅</span><span class="tab-label">カレンダー</span>
@@ -36,6 +40,7 @@
                 </div>
             </section>
             <section class="tab-panel" id="tab-panel-history" role="tabpanel" aria-labelledby="tab-history" hidden></section>
+            <section class="tab-panel" id="tab-panel-recently-closed" role="tabpanel" aria-labelledby="tab-recently-closed" hidden></section>
             <section class="tab-panel" id="tab-panel-calendar" role="tabpanel" aria-labelledby="tab-calendar" hidden></section>
         </main>
     </div>

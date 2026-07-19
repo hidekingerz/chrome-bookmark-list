@@ -2,6 +2,7 @@ import { BookmarkDragAndDrop } from '../components/BookmarkDragAndDrop/index.js'
 import { CalendarHistoryPanel } from '../components/CalendarHistoryPanel/index.js';
 import { HistoryPanel } from '../components/HistoryPanel/index.js';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts/index.js';
+import { RecentlyClosedPanel } from '../components/RecentlyClosedPanel/index.js';
 import { TabController } from '../components/TabController/index.js';
 import { UndoManager } from '../components/UndoManager/index.js';
 import { SELECTORS } from '../constants/index.js';
@@ -19,6 +20,7 @@ import {
 let allBookmarks: BookmarkFolder[] = [];
 let _historyPanel: HistoryPanel;
 let _calendarHistoryPanel: CalendarHistoryPanel;
+let _recentlyClosedPanel: RecentlyClosedPanel;
 let _tabController: TabController;
 let bookmarkDragAndDrop: BookmarkDragAndDrop;
 
@@ -56,10 +58,23 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
     _calendarHistoryPanel = new CalendarHistoryPanel(calendarPanelContainer);
   }
 
+  const recentlyClosedPanelContainer = document.querySelector(
+    '#tab-panel-recently-closed'
+  ) as HTMLElement | null;
+
+  if (recentlyClosedPanelContainer) {
+    _recentlyClosedPanel = new RecentlyClosedPanel(
+      recentlyClosedPanelContainer
+    );
+  }
+
   // タブの初期化（タブがアクティブになったときに各パネルのデータを読み込む）
   _tabController = new TabController();
   _tabController.onActivate('history', async () => {
     await _historyPanel?.activate();
+  });
+  _tabController.onActivate('recently-closed', async () => {
+    await _recentlyClosedPanel?.activate();
   });
   _tabController.onActivate('calendar', async () => {
     await _calendarHistoryPanel?.activate();
