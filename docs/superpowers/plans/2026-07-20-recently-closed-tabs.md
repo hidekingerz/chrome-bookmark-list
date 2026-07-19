@@ -18,7 +18,9 @@
 - ★`test/setup.ts` は `globalThis.document` を最小スタブで上書きしている。実 DOM が要るテストは
   `import { Window } from 'happy-dom'` で `new Window()` を作り beforeEach で差し替え、afterEach で復元。
 - XSS: タイトル・URL・sessionId は `escapeHtml` を通す。
-- 検索フィルタ・ウィンドウ復元・件数設定はスコープ外（YAGNI）。
+- 検索フィルタ・ウィンドウ復元・件数設定・visibilitychange 再読込・version bump はスコープ外（YAGNI）。
+- グリル確定事項: 自拡張 New Tab（`chrome-extension://<chrome.runtime.id>/` 始まり）は除外 /
+  同一 URL は最新のみ（dedupe） / 閉じた時刻（`lastModified` 秒→ms）をメタ行に表示。
 
 ---
 
@@ -42,6 +44,15 @@
   sessions: {
     getRecentlyClosed: vi.fn(),
     restore: vi.fn(),
+  },
+```
+
+さらに `runtime:` ブロックに `id` を追加（自拡張 New Tab 除外の判定に使用）:
+
+```typescript
+  runtime: {
+    id: 'test-id',
+    getURL: vi.fn((path: string) => `chrome-extension://test-id${path}`),
   },
 ```
 
@@ -109,6 +120,58 @@ describe('RecentlyClosedPanel', () => {
     expect(items[0].getAttribute('data-session-id')).toBe('s1');
   });
 
+  it('自拡張の New Tab ページを除外する', async () => {
+    getRecentlyClosed().mockResolvedValue([
+      {
+        tab: {
+          sessionId: 's1',
+          title: 'Bookmarks',
+          url: 'chrome-extension://test-id/newtab.html',
+        },
+      },
+      { tab: { sessionId: 's2', title: 'Kept', url: 'https://kept.example/' } },
+    ]);
+
+    const panel = new RecentlyClosedPanel(container);
+    await panel.activate();
+
+    const items = container.querySelectorAll('.history-item');
+    expect(items.length).toBe(1);
+    expect(items[0].getAttribute('data-session-id')).toBe('s2');
+  });
+
+  it('同一 URL は最新のみ表示する（dedupe）', async () => {
+    getRecentlyClosed().mockResolvedValue([
+      { tab: { sessionId: 's1', title: 'Newest', url: 'https://dup.example/' } },
+      { tab: { sessionId: 's2', title: 'Older', url: 'https://dup.example/' } },
+      { tab: { sessionId: 's3', title: 'Other', url: 'https://other.example/' } },
+    ]);
+
+    const panel = new RecentlyClosedPanel(container);
+    await panel.activate();
+
+    const items = container.querySelectorAll('.history-item');
+    expect(items.length).toBe(2);
+    expect(items[0].getAttribute('data-session-id')).toBe('s1');
+    expect(items[1].getAttribute('data-session-id')).toBe('s3');
+  });
+
+  it('閉じた時刻（lastModified）をメタ行に表示する', async () => {
+    getRecentlyClosed().mockResolvedValue([
+      {
+        lastModified: 1752989400, // epoch 秒
+        tab: { sessionId: 's1', title: 'Timed', url: 'https://t.example/' },
+      },
+    ]);
+
+    const panel = new RecentlyClosedPanel(container);
+    await panel.activate();
+
+    const date = container.querySelector('.history-item-date');
+    expect(date).not.toBeNull();
+    expect(date?.textContent?.trim()).not.toBe('');
+  });
+
   it('0件時に空メッセージを表示する', async () => {
     getRecentlyClosed().mockResolvedValue([]);
 
@@ -173,6 +236,8 @@ interface RecentlyClosedTab {
   sessionId: string;
   title: string;
   url: string;
+  /** 閉じた時刻（ms）。lastModified が無ければ null */
+  closedAt: number | null;
 }
 
 /**
@@ -230,15 +295,23 @@ export class RecentlyClosedPanel {
   private async load(): Promise<void> {
     try {
       const sessions = await chrome.sessions.getRecentlyClosed();
+      // 自拡張の New Tab ページはノイズなので除外する
+      const ownPagePrefix = `chrome-extension://${chrome.runtime.id}/`;
+      const seenUrls = new Set<string>();
       const tabs: RecentlyClosedTab[] = [];
       for (const session of sessions) {
         const tab = session.tab;
         // window エントリ、および sessionId/url の無いタブは表示しない
         if (!tab?.sessionId || !tab.url) continue;
+        if (tab.url.startsWith(ownPagePrefix)) continue;
+        // 同一 URL は最新（先頭側）のみ表示
+        if (seenUrls.has(tab.url)) continue;
+        seenUrls.add(tab.url);
         tabs.push({
           sessionId: tab.sessionId,
           title: tab.title || tab.url,
           url: tab.url,
+          closedAt: session.lastModified ? session.lastModified * 1000 : null,
         });
       }
       this.render(tabs);
@@ -286,6 +359,20 @@ export class RecentlyClosedPanel {
       domain = tab.url;
     }
 
+    // 閉じた時刻（履歴パネルと同じ体裁）
+    let metaHtml = '';
+    if (tab.closedAt) {
+      const date = new Date(tab.closedAt).toLocaleDateString('ja-JP');
+      const time = new Date(tab.closedAt).toLocaleTimeString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      metaHtml = `
+          <div class="history-item-meta">
+            <span class="history-item-date">${date} ${time}</span>
+          </div>`;
+    }
+
     return `
       <div class="history-item" data-session-id="${safeSessionId}">
         <div class="history-item-icon">
@@ -294,7 +381,7 @@ export class RecentlyClosedPanel {
         </div>
         <div class="history-item-content">
           <a href="#" class="history-item-title">${safeTitle}</a>
-          <div class="history-item-url">${escapeHtml(domain)}</div>
+          <div class="history-item-url">${escapeHtml(domain)}</div>${metaHtml}
         </div>
       </div>
     `;
@@ -353,7 +440,7 @@ export { RecentlyClosedPanel } from './RecentlyClosedPanel.js';
 - [ ] **Step 6: テストを実行して成功を確認**
 
 Run: `npx vitest run test/recently-closed-panel.test.ts`
-Expected: PASS（5 tests）
+Expected: PASS（8 tests）
 
 - [ ] **Step 7: VERIFY**
 
