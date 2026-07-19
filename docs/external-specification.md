@@ -199,7 +199,7 @@ Chrome Bookmark Listは、Chromeブラウザの新しいタブでブックマー
 
 ## バージョン情報
 
-- **現在のバージョン**: 3.0.0
+- **現在のバージョン**: `src/manifest.json` の `version` を正とする（本書には記載しない）
 - **Manifest**: V3準拠
 - **実装言語**: TypeScript
 - **テスト**: 包括的なユニットテスト・統合テスト完備
