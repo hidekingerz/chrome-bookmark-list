@@ -1,6 +1,6 @@
 {
   "name": "chrome-bookmark-list",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "description": "Chrome extension for displaying bookmarks in a folder-based list with history search",
   "scripts": {
     "build": "tsc",
