@@ -29,6 +29,7 @@ Chrome Extension (Manifest V3)
 │   ├── BookmarkActions/ (編集・削除機能)
 │   ├── TabController/ (タブ切り替え制御)
 │   ├── HistoryPanel/ (最近の履歴タブ・検索機能)
+│   ├── RecentlyClosedPanel/ (最近閉じたタブ・復元機能)
 │   └── CalendarHistoryPanel/ (カレンダー履歴タブ・検索機能)
 ├── Types (強化された型定義)
 │   ├── bookmark.ts (ブックマーク関連)
@@ -48,7 +49,7 @@ Chrome Extension (Manifest V3)
 - **テストフレームワーク**: Vitest 1.6.0
 - **DOM環境**: Happy DOM / JSDOM
 - **CSS**: Vanilla CSS (Grid + Flexbox)
-- **Chrome API**: Bookmarks API, History API, _favicon API
+- **Chrome API**: Bookmarks API, History API, Sessions API, _favicon API
 - **コード品質**: Biome (lint & format)
 
 ### ディレクトリ構造
@@ -74,6 +75,9 @@ chrome-bookmark-list/
 │   │   │   └── index.ts                     # エクスポート
 │   │   ├── HistoryPanel/        # 最近の履歴タブ
 │   │   │   ├── HistoryPanel.ts              # 履歴パネル本体
+│   │   │   └── index.ts                     # エクスポート
+│   │   ├── RecentlyClosedPanel/ # 最近閉じたタブ
+│   │   │   ├── RecentlyClosedPanel.ts       # 最近閉じたタブパネル本体
 │   │   │   └── index.ts                     # エクスポート
 │   │   └── CalendarHistoryPanel/ # カレンダー履歴タブ
 │   │       ├── CalendarHistoryPanel.ts      # カレンダーパネル本体
@@ -213,8 +217,11 @@ interface BookmarkDataAttributes {
 // 主要な処理フロー
 document.addEventListener('DOMContentLoaded', async () => {
   1. DOM要素の取得・検証
-  2. 履歴パネル・カレンダーパネルの初期化（各タブパネル内に構築）
+  2. 履歴パネル・最近閉じたタブパネル・カレンダーパネルの初期化（各タブパネル内に構築）
   3. タブコントローラーの初期化（タブ選択時に各パネルのデータを遅延読み込み）
+     - 'history' → HistoryPanel.activate()
+     - 'recently-closed' → RecentlyClosedPanel.activate()
+     - 'calendar' → CalendarHistoryPanel.activate()
   4. ドラッグ&ドロップ機能の初期化
   5. ブックマーク変更イベントリスナー設定
   6. Chrome Bookmarks APIからデータ取得
@@ -228,6 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 - `allBookmarks: BookmarkFolder[]`: 全ブックマークデータ
 - `_tabController: TabController`: タブ切り替え制御インスタンス
 - `_historyPanel: HistoryPanel`: 最近の履歴パネル インスタンス
+- `_recentlyClosedPanel: RecentlyClosedPanel`: 最近閉じたタブパネル インスタンス
 - `_calendarHistoryPanel: CalendarHistoryPanel`: カレンダー履歴パネル インスタンス
 - `bookmarkDragAndDrop: BookmarkDragAndDrop`: D&D機能インスタンス
 
@@ -318,6 +326,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 - 日付選択で当日のタイムラインを時間帯ごとに表示、ドメイン統計を集計
 - `activate()`: タブ選択時に当月の履歴を読み込んでカレンダーを描画
 - タイトル・URL・ドメインは `escapeHtml` でエスケープし、リンクは `data-url` + `chrome.tabs.create` で開く（XSS対策）
+
+#### 2.8 RecentlyClosedPanel コンポーネント
+
+**RecentlyClosedPanel.ts** - 最近閉じたタブ:
+- 与えられたコンテナ要素内にUIを構築
+- `chrome.sessions.getRecentlyClosed()` による最大約25件の一覧表示
+- 単体タブのみ対象（`session.tab` が存在するエントリのみ。windowエントリは除外）
+- 自拡張の New Tab ページ（`chrome-extension://<id>/` で始まるURL）は除外
+- 同一 URL は最新のもののみ表示（`Set` による重複排除）
+- 各タブのタイトル、ドメイン、favicon、閉じた時刻（`lastModified * 1000` ms変換）をメタ行表示
+- `activate()`: タブ選択時に一覧を読み込んで描画（毎回再取得）
+- 行クリックでイベント委譲により `chrome.sessions.restore(sessionId)` を呼び出し、復元後に一覧を再読み込み
+- タイトル・URL・sessionId は `escapeHtml` でエスケープ（XSS対策）
+- 検索フィルタは提供しない
 
 ### 3. リファクタリング後のコア機能 (newtab-core.ts)
 **責務**: 新コンポーネントアーキテクチャへの統合インターフェース
@@ -469,6 +491,16 @@ HistoryItem[]
 DOM表示
     ↓ イベント委譲（タイトルクリック → chrome.tabs.create）
 イベントリスナー設定完了
+
+Chrome Sessions API
+    ↓ getRecentlyClosed()
+Session[] （tab エントリのみ抽出・除外・重複排除）
+    ↓ RecentlyClosedPanel.render()
+HTML文字列（escapeHtmlでエスケープ済み）
+    ↓ innerHTML
+DOM表示
+    ↓ イベント委譲（行クリック → chrome.sessions.restore() → 再読み込み）
+イベントリスナー設定完了
 ```
 
 ### インタラクションフロー
@@ -599,6 +631,7 @@ try {
 - **CSS Grid & Flexbox** - モダンなレイアウト
 - **Chrome Bookmarks API** - ブックマークデータへのアクセス
 - **Chrome History API** - 履歴データへのアクセス
+- **Chrome Sessions API** - 最近閉じたタブの取得（`chrome.sessions.getRecentlyClosed()`）と復元（`chrome.sessions.restore()`）
 - **Chrome _favicon API** - favicon 取得（`chrome.runtime.getURL('/_favicon/...')`、外部通信なし）
 - **Happy DOM** - テスト環境でのDOM操作
 - **JSDOM** - 統合テスト用のDOM環境
