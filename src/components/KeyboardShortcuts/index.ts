@@ -263,6 +263,7 @@ export class KeyboardShortcuts {
   /**
    * 現在表示中のタブパネル内の検索入力欄を取得する。
    * ブックマーク・履歴・カレンダーいずれのタブでも動作するよう、active なパネルを優先する。
+   * 検索欄を持たないタブ（最近閉じたタブ等）ではブラウザ標準の検索に委ねるため null を返す。
    */
   private getActiveSearchInput(): HTMLInputElement | null {
     const activePanel =
@@ -272,9 +273,16 @@ export class KeyboardShortcuts {
         'input[type="text"], input[type="search"]'
       );
       if (input) return input;
+      // アクティブパネルに検索入力欄が無い場合はブラウザ標準の検索に委ねる
+      return null;
     }
-    // フォールバック: ブックマークの検索入力欄
-    return document.querySelector<HTMLInputElement>('#searchInput');
+    // フォールバック: ブックマークの検索入力欄（非表示パネル内なら null）
+    const fallback = document.querySelector<HTMLInputElement>('#searchInput');
+    if (!fallback) return null;
+    // 祖先の .tab-panel が active でなければ非表示とみなす
+    const panel = fallback.closest<HTMLElement>('.tab-panel');
+    if (panel && !panel.classList.contains('active')) return null;
+    return fallback;
   }
 
   private isEditableElement(el: HTMLElement | null): boolean {

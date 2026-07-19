@@ -262,10 +262,10 @@ describe('KeyboardShortcuts', () => {
       expect(document.activeElement).toBe(folderHeader);
     });
 
-    it('アクティブなタブパネルが無くても #searchInput にフォールバックする', () => {
+    it('アクティブなタブパネルが無い場合は非表示の #searchInput にフォーカスしない', () => {
       KeyboardShortcuts.getInstance().initialize();
 
-      // .tab-panel.active を消すと getActiveSearchInput はフォールバックする
+      // .tab-panel.active を消す（#searchInput は非アクティブパネル内になる）
       const panel = document.querySelector('.tab-panel') as HTMLElement;
       panel.classList.remove('active');
 
@@ -274,10 +274,50 @@ describe('KeyboardShortcuts', () => {
       ) as HTMLElement;
       folderHeader.focus();
 
-      fireKey('f', { ctrlKey: true });
+      const event = new dom.window.KeyboardEvent('keydown', {
+        key: 'f',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
 
-      const searchInput = document.querySelector('#searchInput');
-      expect(document.activeElement).toBe(searchInput);
+      // 非アクティブパネル内の #searchInput にはフォーカスせず preventDefault もしない
+      expect(event.defaultPrevented).toBe(false);
+      expect(document.activeElement).toBe(folderHeader);
+    });
+
+    it('検索欄の無いアクティブパネル（最近閉じたタブ等）では Cmd/Ctrl+F が preventDefault しない', () => {
+      KeyboardShortcuts.getInstance().initialize();
+
+      // 既存パネルの active を外し、検索欄を持たない新しいパネルをアクティブにする
+      const existingPanel = document.querySelector('.tab-panel') as HTMLElement;
+      existingPanel.classList.remove('active');
+
+      const noSearchPanel = dom.window.document.createElement('section');
+      noSearchPanel.className = 'tab-panel active';
+      noSearchPanel.id = 'tab-panel-recently-closed';
+      // 検索欄を持たない（最近閉じたタブパネルと同等）
+      noSearchPanel.innerHTML = '<div class="recently-closed-content"></div>';
+      document.body.appendChild(noSearchPanel);
+
+      const folderHeader = document.querySelector(
+        '.folder-header'
+      ) as HTMLElement;
+      folderHeader.focus();
+
+      const event = new dom.window.KeyboardEvent('keydown', {
+        key: 'f',
+        metaKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(event);
+
+      // 検索欄が無いため preventDefault は呼ばれない（ブラウザ標準の Find に委ねる）
+      expect(event.defaultPrevented).toBe(false);
+      // フォーカスはパネル内に無いため変化しない
+      expect(document.activeElement).toBe(folderHeader);
     });
 
     it('contentEditable 要素にフォーカスがあるとショートカットは抑制される', () => {

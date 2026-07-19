@@ -145,7 +145,7 @@ export class RecentlyClosedPanel {
     return `
       <div class="history-item" data-session-id="${safeSessionId}">
         <div class="history-item-icon">
-          <img class="recently-closed-favicon hidden" data-tab-url="${safeUrl}" alt="favicon">
+          <img class="history-favicon hidden" data-tab-url="${safeUrl}" alt="favicon">
           <span class="favicon-placeholder">🌐</span>
         </div>
         <div class="history-item-content">
@@ -164,7 +164,7 @@ export class RecentlyClosedPanel {
 
   private async loadFavicons(): Promise<void> {
     const faviconImages = this.container.querySelectorAll(
-      '.recently-closed-favicon'
+      '.history-favicon'
     ) as NodeListOf<HTMLImageElement>;
     const faviconPlaceholders = this.container.querySelectorAll(
       '.favicon-placeholder'
