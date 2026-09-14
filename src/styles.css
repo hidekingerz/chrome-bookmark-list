@@ -1297,8 +1297,7 @@ body.dragging-folder {
   display: none;
 }
 
-.timeline-domain-stats .favicon-placeholder,
-.timeline-item-icon .favicon-placeholder {
+.timeline-domain-stats .favicon-placeholder {
   display: inline-flex;
   width: 16px;
   height: 16px;
@@ -1314,88 +1313,53 @@ body.dragging-folder {
   gap: 8px;
 }
 
-.timeline-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+/* タイムライン内の履歴アイテムはコンパクト表示（.history-item の共通マークアップにスコープ付きで上書き） */
+.history-timeline .history-item {
   padding: 12px;
   background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  box-shadow: none;
   transition: background-color var(--transition);
 }
 
-.timeline-item:hover {
-  background: var(--surface-hover);
+.history-timeline .history-item:hover {
+  transform: none;
+  box-shadow: none;
 }
 
-.timeline-item-icon {
-  position: relative;
+.history-timeline .history-item-icon,
+.history-timeline .history-favicon {
   width: 16px;
   height: 16px;
-  margin-top: 2px;
+}
+
+.history-timeline .history-item-icon .favicon-placeholder {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
   flex-shrink: 0;
 }
 
-.timeline-item-content {
-  flex: 1;
-  min-width: 0;
+.history-timeline .history-favicon {
+  border-radius: 3px;
 }
 
-.timeline-item-title {
-  display: block;
+.history-timeline .history-item-title {
   font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  text-decoration: none;
-  margin-bottom: 4px;
-  word-break: break-word;
-  line-height: 1.3;
-  cursor: pointer;
 }
 
-.timeline-item-title:hover {
-  color: var(--accent);
-}
-
-.timeline-item-url {
+.history-timeline .history-item-url {
   font-size: 11px;
-  color: var(--text-muted);
   margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.2;
 }
 
-.timeline-item-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.history-timeline .history-item-meta {
   font-size: 10px;
-  color: var(--text-subtle);
-}
-
-.timeline-item-time {
-  font-weight: 500;
-}
-
-.timeline-item-count {
-  background: var(--accent-soft);
-  color: var(--accent);
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  font-weight: 600;
-}
-
-.timeline-favicon {
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-}
-
-.timeline-favicon.hidden {
-  display: none;
 }
 
 /* =========================================================================

@@ -1,6 +1,11 @@
 import { loadFavicons } from '../../scripts/favicon.js';
 import type { HistoryItem } from '../../scripts/history.js';
 import { escapeHtml } from '../../scripts/utils.js';
+import {
+  formatTimeWithSeconds,
+  matchesSearchTerm,
+  renderHistoryListItem,
+} from '../HistoryList/index.js';
 
 interface DayHistory {
   date: Date;
@@ -108,7 +113,7 @@ export class CalendarHistoryPanel {
       .querySelector('.history-timeline')
       ?.addEventListener('click', (e) => {
         const link = (e.target as HTMLElement).closest(
-          '.timeline-item-title'
+          '.history-item-title'
         ) as HTMLElement | null;
         if (!link) return;
 
@@ -331,15 +336,9 @@ export class CalendarHistoryPanel {
     }
 
     // 検索フィルタリング
-    let items = dayHistory.items;
-    if (this.searchTerm.trim()) {
-      const lowercaseSearchTerm = this.searchTerm.toLowerCase();
-      items = items.filter(
-        (item) =>
-          item.title.toLowerCase().includes(lowercaseSearchTerm) ||
-          item.url.toLowerCase().includes(lowercaseSearchTerm)
-      );
-    }
+    const items = dayHistory.items.filter((item) =>
+      matchesSearchTerm(item, this.searchTerm)
+    );
 
     if (items.length === 0) {
       timelineElement.innerHTML =
@@ -372,7 +371,7 @@ export class CalendarHistoryPanel {
     this.setupHourNavigation();
 
     // Faviconの非同期読み込み
-    void loadFavicons(this.container, '.timeline-favicon');
+    void loadFavicons(this.container, '.history-favicon');
     void loadFavicons(this.container, '.domain-favicon');
   }
 
@@ -456,31 +455,21 @@ export class CalendarHistoryPanel {
   }
 
   private renderTimelineItem(item: HistoryItem): string {
-    const time = new Date(item.lastVisitTime).toLocaleTimeString('ja-JP', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
+    return renderHistoryListItem({
+      url: item.url,
+      title: item.title,
+      subtitle: item.url,
+      meta: [
+        {
+          className: 'history-item-date',
+          text: formatTimeWithSeconds(item.lastVisitTime),
+        },
+        {
+          className: 'history-item-count',
+          text: `訪問回数: ${item.visitCount}`,
+        },
+      ],
     });
-
-    const safeUrl = escapeHtml(item.url);
-    const safeTitle = escapeHtml(item.title);
-
-    return `
-      <div class="timeline-item">
-        <div class="timeline-item-icon">
-          <img class="timeline-favicon hidden" data-favicon-url="${safeUrl}" alt="favicon">
-          <span class="favicon-placeholder">🌐</span>
-        </div>
-        <div class="timeline-item-content">
-          <a href="#" class="timeline-item-title" data-url="${safeUrl}">${safeTitle}</a>
-          <div class="timeline-item-url">${safeUrl}</div>
-          <div class="timeline-item-meta">
-            <span class="timeline-item-time">${time}</span>
-            <span class="timeline-item-count">訪問回数: ${item.visitCount}</span>
-          </div>
-        </div>
-      </div>
-    `;
   }
 
   private setupHourNavigation(): void {
