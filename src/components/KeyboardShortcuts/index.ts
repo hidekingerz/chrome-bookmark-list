@@ -1,3 +1,4 @@
+import { isEditableElement } from '../../scripts/dom.js';
 import { ShortcutHelp } from '../ShortcutHelp/index.js';
 
 /**
@@ -65,7 +66,7 @@ export class KeyboardShortcuts {
 
   private handleKeydown(e: KeyboardEvent): void {
     const active = document.activeElement as HTMLElement | null;
-    const isEditable = this.isEditableElement(active);
+    const isEditable = isEditableElement(active);
 
     // Cmd/Ctrl+F : 検索フォーカス (入力欄でも有効にしてブラウザ標準を上書き)
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key === 'f') {
@@ -283,17 +284,5 @@ export class KeyboardShortcuts {
     const panel = fallback.closest<HTMLElement>('.tab-panel');
     if (panel && !panel.classList.contains('active')) return null;
     return fallback;
-  }
-
-  private isEditableElement(el: HTMLElement | null): boolean {
-    if (!el) return false;
-    const tag = el.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
-      return true;
-    }
-    if (el.isContentEditable) {
-      return true;
-    }
-    return false;
   }
 }

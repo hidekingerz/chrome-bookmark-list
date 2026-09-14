@@ -1,3 +1,4 @@
+import { isEditableElement } from '../../scripts/dom.js';
 import { Toast } from '../Toast/index.js';
 
 export interface UndoableOperation {
@@ -40,7 +41,7 @@ export class UndoManager {
 
       // 入力欄にフォーカスがある場合は標準動作を優先
       const active = document.activeElement as HTMLElement | null;
-      if (this.isEditableElement(active)) return;
+      if (isEditableElement(active)) return;
 
       if (!this.currentUndo) return;
 
@@ -107,17 +108,5 @@ export class UndoManager {
    */
   hasUndo(): boolean {
     return this.currentUndo !== null;
-  }
-
-  private isEditableElement(el: HTMLElement | null): boolean {
-    if (!el) return false;
-    const tag = el.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
-      return true;
-    }
-    if (el.isContentEditable) {
-      return true;
-    }
-    return false;
   }
 }
