@@ -158,7 +158,7 @@ describe('#97 data-bookmark-id によるブックマーク同定', () => {
     document.body.appendChild(container);
 
     const selection = new BookmarkSelection();
-    selection.initialize(container);
+    selection.refresh(container);
     const item = container.querySelector('.bookmark-item') as HTMLElement;
     selection.toggle(DUP, 'Dup B', item);
 

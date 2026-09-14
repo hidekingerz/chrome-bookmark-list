@@ -7,6 +7,7 @@ import { BookmarkActions } from '../src/components/BookmarkActions/index';
 import { TabGroupOpener } from '../src/components/BookmarkActions/TabGroupOpener';
 import { BookmarkFolderEvents } from '../src/components/BookmarkFolder/BookmarkFolderEvents';
 import { BookmarkFolderRenderer } from '../src/components/BookmarkFolder/BookmarkFolderRenderer';
+import { BookmarkSelection } from '../src/components/BookmarkSelection/BookmarkSelection';
 import type { BookmarkFolder } from '../src/types/bookmark';
 
 /**
@@ -24,6 +25,7 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
   let dom: JSDOM;
   let container: HTMLElement;
   let events: BookmarkFolderEvents;
+  let selection: BookmarkSelection;
   let allBookmarks: BookmarkFolder[];
   let pendingLongPress: (() => void) | null;
   let setTimeoutSpy: ReturnType<typeof vi.fn>;
@@ -148,7 +150,8 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
     const renderer = new BookmarkFolderRenderer();
     container.innerHTML = renderer.renderFolders(allBookmarks);
 
-    events = new BookmarkFolderEvents();
+    selection = new BookmarkSelection();
+    events = new BookmarkFolderEvents(selection);
     events.setupFolderClickHandler(container, allBookmarks);
   });
 
@@ -188,13 +191,6 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
     const btn = menuButtons().find((b) => b.textContent?.includes(label));
     btn?.click();
   }
-
-  // === getSelection ===
-  it('getSelection() は BookmarkSelection を返す', () => {
-    const selection = events.getSelection();
-    expect(selection).toBeDefined();
-    expect(typeof selection.handleClick).toBe('function');
-  });
 
   // === クリックによる編集・削除ボタン ===
   it('編集ボタンクリックで handleEdit が呼ばれ既定動作が抑制される', () => {
@@ -545,7 +541,7 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
   });
 
   it('選択処理がクリックを消費した場合はタブを開かない', () => {
-    vi.spyOn(events.getSelection(), 'handleClick').mockReturnValue(true);
+    vi.spyOn(selection, 'handleClick').mockReturnValue(true);
     const link = bookmarkItem().querySelector('.bookmark-link') as HTMLElement;
     link.dispatchEvent(
       new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })

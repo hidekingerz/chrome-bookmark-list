@@ -98,7 +98,7 @@ describe('BookmarkSelection', () => {
 
     container = buildContainer();
     selection = new BookmarkSelection();
-    selection.initialize(container);
+    selection.refresh(container);
 
     // Chrome API モック
     const mockChrome = globalThis.chrome as any;
