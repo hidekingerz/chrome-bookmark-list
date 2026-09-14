@@ -3,11 +3,8 @@
  */
 
 // UI関連
-export const BOOKMARK_ANIMATION_DURATION_MS = 200;
 export const SEARCH_DEBOUNCE_MS = 300;
 
-// Chrome API関連
-export const CHROME_EXTENSION_SCHEME = 'chrome-extension://';
 // Chrome のパーマネントルートフォルダ ID は固定でロケール非依存。
 // タイトル文字列比較は多言語で壊れるため ID で判定する (#103)。
 export const BOOKMARK_ROOT_IDS = {
@@ -17,27 +14,6 @@ export const BOOKMARK_ROOT_IDS = {
   OTHER: '2',
   /** モバイルのブックマーク */
   MOBILE: '3',
-} as const;
-
-// エラーメッセージ
-export const ERROR_MESSAGES = {
-  BOOKMARK_NOT_FOUND: 'ブックマークが見つかりません',
-  PERMISSION_DENIED: '必要な権限がありません',
-  NETWORK_ERROR: 'ネットワークエラーが発生しました',
-  GENERIC_ERROR: '予期しないエラーが発生しました',
-  FAVICON_LOAD_FAILED: 'ファビコンの読み込みに失敗しました',
-  BOOKMARK_LOAD_FAILED: 'ブックマークの読み込みに失敗しました',
-} as const;
-
-// CSS クラス名
-export const CSS_CLASSES = {
-  HIDDEN: 'hidden',
-  EXPANDED: 'expanded',
-  COLLAPSED: 'collapsed',
-  DRAGGING: 'dragging',
-  DROP_TARGET_HIGHLIGHT: 'drop-target-highlight',
-  LOADING: 'loading',
-  ERROR: 'error',
 } as const;
 
 // DOM セレクター

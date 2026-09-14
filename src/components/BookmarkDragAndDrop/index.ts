@@ -1,5 +1,5 @@
+import { escapeHtml } from '../../scripts/utils.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
-import { HtmlUtils } from '../../utils/HtmlUtils.js';
 import { UndoManager } from '../UndoManager/index.js';
 import { Autoscroller } from './Autoscroller.js';
 
@@ -175,7 +175,7 @@ export class BookmarkDragAndDrop {
     const faviconSrc = faviconImg?.src;
     const faviconHtml =
       faviconSrc && !faviconImg?.classList.contains('hidden')
-        ? `<img src="${HtmlUtils.escapeHtml(faviconSrc)}" alt="" class="bookmark-drag-preview-icon" />`
+        ? `<img src="${escapeHtml(faviconSrc)}" alt="" class="bookmark-drag-preview-icon" />`
         : `<span class="bookmark-drag-preview-icon-placeholder">🔗</span>`;
 
     const badgeHtml =
