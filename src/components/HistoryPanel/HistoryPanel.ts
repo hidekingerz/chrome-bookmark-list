@@ -1,5 +1,6 @@
+import { loadFavicons } from '../../scripts/favicon.js';
 import { getRecentHistory, type HistoryItem } from '../../scripts/history.js';
-import { escapeHtml, getFavicon } from '../../scripts/utils.js';
+import { escapeHtml } from '../../scripts/utils.js';
 
 /**
  * 「最近の履歴」タブパネル
@@ -93,7 +94,7 @@ export class HistoryPanel {
     this.contentElement.innerHTML = `<div class="history-list">${html}</div>`;
 
     // Faviconの非同期読み込み
-    this.loadFavicons();
+    void loadFavicons(this.container, '.history-favicon');
   }
 
   private renderHistoryItem(item: HistoryItem): string {
@@ -109,7 +110,7 @@ export class HistoryPanel {
     return `
       <div class="history-item">
         <div class="history-item-icon">
-          <img class="history-favicon hidden" data-history-url="${safeUrl}" alt="favicon">
+          <img class="history-favicon hidden" data-favicon-url="${safeUrl}" alt="favicon">
           <span class="favicon-placeholder">🌐</span>
         </div>
         <div class="history-item-content">
@@ -128,49 +129,6 @@ export class HistoryPanel {
     if (!this.contentElement) return;
     this.contentElement.innerHTML =
       '<div class="history-error">履歴の読み込みに失敗しました</div>';
-  }
-
-  private async loadFavicons(): Promise<void> {
-    const faviconImages = this.container.querySelectorAll(
-      '.history-favicon'
-    ) as NodeListOf<HTMLImageElement>;
-    const faviconPlaceholders = this.container.querySelectorAll(
-      '.favicon-placeholder'
-    ) as NodeListOf<HTMLElement>;
-
-    if (!faviconImages || !faviconPlaceholders) return;
-
-    const faviconPromises = Array.from(faviconImages).map(
-      async (img, index) => {
-        const url = img.getAttribute('data-history-url');
-        const placeholder = faviconPlaceholders[index];
-
-        if (url) {
-          try {
-            const faviconUrl = await getFavicon(url);
-            img.src = faviconUrl;
-            img.onload = () => {
-              img.classList.remove('hidden');
-              if (placeholder) placeholder.style.display = 'none';
-            };
-            img.onerror = () => {
-              if (placeholder) {
-                placeholder.textContent = '🌐';
-                placeholder.style.display = 'block';
-              }
-            };
-          } catch (error) {
-            console.warn('Favicon 読み込みエラー:', url, error);
-            if (placeholder) {
-              placeholder.textContent = '🌐';
-              placeholder.style.display = 'block';
-            }
-          }
-        }
-      }
-    );
-
-    await Promise.allSettled(faviconPromises);
   }
 
   private filterHistory(searchTerm: string): void {

@@ -17,7 +17,7 @@ export class BookmarkItemRenderer {
         <a href="#" class="bookmark-link" data-url="${safeUrl}" tabindex="-1">
           <div class="bookmark-favicon-container" aria-hidden="true">
             <div class="favicon-placeholder">🔗</div>
-            <img class="bookmark-favicon hidden" alt="" data-bookmark-url="${safeUrl}">
+            <img class="bookmark-favicon hidden" alt="" data-favicon-url="${safeUrl}">
           </div>
           <span class="bookmark-title">${safeTitle}</span>
         </a>
