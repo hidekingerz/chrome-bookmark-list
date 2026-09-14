@@ -1,3 +1,4 @@
+import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import { Toast } from '../Toast/index.js';
@@ -32,7 +33,7 @@ export class FolderDeleter {
       const originalIndex = subtree.index;
 
       await chrome.bookmarks.removeTree(subtree.id);
-      this.dispatchBookmarksChanged('folder-delete');
+      dispatchBookmarksChanged('folder-delete');
 
       // Undo: サブツリーを再帰的に再作成
       if (parentId) {
@@ -40,7 +41,7 @@ export class FolderDeleter {
           message: `フォルダ「${subtree.title}」を削除しました`,
           undo: async () => {
             await this.restoreSubtree(snapshot, parentId, originalIndex);
-            this.dispatchBookmarksChanged('undo-folder-delete');
+            dispatchBookmarksChanged('undo-folder-delete');
           },
         });
       }
@@ -187,11 +188,6 @@ export class FolderDeleter {
 
     // 開いた直後にキャンセルへフォーカス (誤操作防止 + a11y)
     (cancelBtn as HTMLElement | null)?.focus();
-  }
-
-  private dispatchBookmarksChanged(action: string): void {
-    const event = new CustomEvent('bookmarks-changed', { detail: { action } });
-    document.dispatchEvent(event);
   }
 }
 

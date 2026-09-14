@@ -1,3 +1,4 @@
+import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import type {
   BookmarkMoveData,
@@ -229,7 +230,7 @@ export class BookmarkEditor {
       }
 
       this.closeEditDialog();
-      this.dispatchBookmarksChanged('edit');
+      dispatchBookmarksChanged('edit');
 
       // 何か変更があれば Undo を登録
       if (titleChanged || urlChanged || moved) {
@@ -248,7 +249,7 @@ export class BookmarkEditor {
                 index: original.index,
               });
             }
-            this.dispatchBookmarksChanged('undo-edit');
+            dispatchBookmarksChanged('undo-edit');
           },
         });
       }
@@ -256,11 +257,6 @@ export class BookmarkEditor {
       console.error('❌ ブックマークの更新に失敗しました:', error);
       alert('ブックマークの更新に失敗しました。');
     }
-  }
-
-  private dispatchBookmarksChanged(action: string): void {
-    const event = new CustomEvent('bookmarks-changed', { detail: { action } });
-    document.dispatchEvent(event);
   }
 
   /**
