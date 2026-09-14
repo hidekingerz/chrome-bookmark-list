@@ -35,10 +35,9 @@ Chrome Extension (Manifest V3)
 │   ├── bookmark.ts (ブックマーク関連)
 │   ├── events.ts (イベント関連)
 │   └── index.ts (統合エクスポート)
-├── Core Logic (newtab-core.ts - リファクタリング済み)
+├── Core Logic (newtab-core.ts - 薄い関数 API)
 ├── History API (history.ts - 履歴データ取得)
 ├── Utility Functions (utils.ts)
-├── Legacy Types (types.ts - 後方互換性)
 └── Styling (styles.css)
 ```
 
@@ -79,26 +78,31 @@ chrome-bookmark-list/
 │   │   ├── RecentlyClosedPanel/ # 最近閉じたタブ
 │   │   │   ├── RecentlyClosedPanel.ts       # 最近閉じたタブパネル本体
 │   │   │   └── index.ts                     # エクスポート
-│   │   └── CalendarHistoryPanel/ # カレンダー履歴タブ
-│   │       ├── CalendarHistoryPanel.ts      # カレンダーパネル本体
-│   │       └── index.ts                     # エクスポート
+│   │   ├── CalendarHistoryPanel/ # カレンダー履歴タブ
+│   │   │   ├── CalendarHistoryPanel.ts      # カレンダーパネル本体
+│   │   │   └── index.ts                     # エクスポート
+│   │   ├── Dialog/              # モーダルダイアログ共通基盤
+│   │   │   └── index.ts                     # openDialog / confirmDialog / alertDialog
+│   │   ├── HistoryList/         # 履歴系パネル共通の行描画
+│   │   │   └── index.ts                     # renderHistoryListItem / formatDateTime / matchesSearchTerm
+│   │   └── UndoManager/         # Undo 機能
+│   │       ├── index.ts                     # Undo本体
+│   │       └── moveBack.ts                  # Undo の move index 補正
 │   ├── types/                   # 強化された型定義
-│   │   ├── bookmark.ts          # ブックマーク関連型
-│   │   ├── events.ts            # イベント関連型
-│   │   └── index.ts             # 統合エクスポート
+│   │   └── bookmark.ts          # ブックマーク関連型
 │   ├── services/                # サービス層（ビジネスロジック）
 │   │   ├── BookmarkService.ts   # ブックマーク処理とAPI操作
-│   │   ├── FaviconService.ts    # Favicon取得（Chrome _favicon API）
-│   │   └── ErrorHandler.ts      # エラーハンドリングと通知
-│   ├── utils/                   # ユーティリティクラス
-│   │   └── HtmlUtils.ts         # HTML操作とDOM関連ユーティリティ
+│   │   └── FaviconService.ts    # Favicon取得（Chrome _favicon API）
 │   ├── constants/               # アプリケーション定数
 │   │   └── index.ts             # 定数定義（エラーメッセージ、CSS、セレクター等）
 │   ├── scripts/                 # スクリプトファイル
 │   │   ├── newtab.ts            # メインエントリーポイント
-│   │   ├── newtab-core.ts       # リファクタリング済みコア機能
+│   │   ├── newtab-core.ts       # コア関数 API
 │   │   ├── history.ts           # 履歴取得API
-│   │   └── utils.ts             # レガシー互換ユーティリティ関数
+│   │   ├── favicon.ts           # favicon 遅延読み込み (loadFavicons)
+│   │   ├── bookmarkEvents.ts    # bookmarks-changed イベント発火
+│   │   ├── dom.ts               # DOM ヘルパー (isEditableElement)
+│   │   └── utils.ts             # ブックマーク処理・favicon・エスケープの関数 API
 │   ├── manifest.json            # 拡張機能マニフェスト
 │   ├── newtab.html              # 新しいタブページHTML
 │   ├── styles.css               # スタイルシート
@@ -260,7 +264,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 **BookmarkFolderEvents.ts** - フォルダーのイベント処理:
 - `setupFolderClickHandler()`: イベント委譲による一元管理
 - `handleFolderClick()`: フォルダクリック処理
-- `updateFolderUI()` / `updateBookmarkListUI()`: UI状態同期
 - 処理分岐:
   1. 編集ボタン → 編集ダイアログ表示
   2. 削除ボタン → 削除確認・実行
@@ -291,6 +294,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 - Editor と Deleter の統合インターフェース
 - 統一されたAPIの提供
 
+**ダイアログ**: 編集・削除確認・エラー通知・フォルダ作成/リネーム/削除・大量タブ確認・一括削除/移動の各モーダルは `components/Dialog` の `openDialog` / `confirmDialog` / `alertDialog` で生成する（overlay 生成・ESC・close 時の keydown 解除を一元管理。同時に開くのは 1 つ）。
+
 #### 2.4 BookmarkDragAndDrop コンポーネント
 
 **BookmarkDragAndDrop.ts** - ドラッグ&ドロップ機能:
@@ -317,6 +322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 - 履歴の検索・フィルタリング
 - `activate()`: タブ選択時に履歴を読み込んで描画
 - タイトル・URLは `escapeHtml` でエスケープし、リンクは `data-url` + `chrome.tabs.create` で開く（XSS対策）
+- 行のマークアップは `components/HistoryList` の `renderHistoryListItem()` で生成（`.history-item` 系クラスに統一）。favicon は `scripts/favicon.ts` の `loadFavicons()` で読み込む
 
 #### 2.7 CalendarHistoryPanel コンポーネント
 
@@ -326,6 +332,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 - 日付選択で当日のタイムラインを時間帯ごとに表示、ドメイン統計を集計
 - `activate()`: タブ選択時に当月の履歴を読み込んでカレンダーを描画
 - タイトル・URL・ドメインは `escapeHtml` でエスケープし、リンクは `data-url` + `chrome.tabs.create` で開く（XSS対策）
+- 行のマークアップは `components/HistoryList` の `renderHistoryListItem()` で生成（`.history-item` 系クラスに統一）。favicon は `scripts/favicon.ts` の `loadFavicons()` で読み込む
+- タイムライン内は `.history-timeline .history-item` のスコープ付き CSS でコンパクト表示
 
 #### 2.8 RecentlyClosedPanel コンポーネント
 
@@ -340,18 +348,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 - 行クリックでイベント委譲により `chrome.sessions.restore(sessionId)` を呼び出し、復元後に一覧を再読み込み
 - タイトル・URL・sessionId は `escapeHtml` でエスケープ（XSS対策）
 - 検索フィルタは提供しない
+- 行のマークアップは `components/HistoryList` の `renderHistoryListItem()` で生成（`.history-item` 系クラスに統一）。favicon は `scripts/favicon.ts` の `loadFavicons()` で読み込む
 
-### 3. リファクタリング後のコア機能 (newtab-core.ts)
-**責務**: 新コンポーネントアーキテクチャへの統合インターフェース
+#### 2.9 Dialog コンポーネント
 
-#### 主要クラスの統合
-- `BookmarkFolderRenderer`: フォルダのHTML生成
-- `BookmarkFolderEvents`: フォルダクリックイベント処理
+**Dialog/index.ts** - モーダルダイアログ共通基盤:
+- `openDialog({ id, title, bodyHtml, buttons, onClose })`: overlay を生成し、×・ESC・各ボタンを配線。戻り値 `{ element, close }`
+- `confirmDialog(...)`: キャンセル / 確定の 2 ボタン。確定で `true`
+- `alertDialog(...)`: OK ボタンのみ
+- `showDialogError(handle, message)`: ダイアログ内 `.dialog-error` にエラー表示
+- 開く前に既存 overlay をすべて除去し、`close()` は冪等。document の keydown リスナーは `close()` で必ず解除（#100）
 
-#### 後方互換性API
+#### 2.10 HistoryList コンポーネント
+
+**HistoryList/index.ts** - 履歴系 3 パネル共通の行描画:
+- `renderHistoryListItem(view)`: `.history-item` 1 件の HTML（title / url / meta / attributes をエスケープ）
+- `formatDateTime()` / `formatTimeWithSeconds()`: ja-JP ロケールの日時整形
+- `matchesSearchTerm(item, term)`: title / url の大文字小文字を無視した部分一致
+
+### 3. コア関数 API (newtab-core.ts)
+**責務**: newtab.ts とテストから使う薄い関数 API
 - `renderFolder()`: BookmarkFolderRenderer への委譲
 - `setupFolderClickHandler()`: BookmarkFolderEvents への委譲
 - `displayBookmarksTestable()`: テスト用の表示関数
+- `handleBookmarkEdit()` / `handleBookmarkDelete()`: BookmarkActions への委譲
 
 ### 4. サービス層 (Services/)
 **責務**: ビジネスロジックとChrome API操作の抽象化
@@ -365,6 +385,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 - `moveBookmark()`: ブックマーク移動
 - `updateBookmark()`: ブックマーク更新
 - `deleteBookmark()`: ブックマーク削除
+- `getAllFolders()`: 仮想ルート id=0 を除くすべてのフォルダ（フォルダ選択 UI 用）
 
 #### 4.2 FaviconService
 **責務**: Chrome _favicon API を用いた Favicon URL の生成（同期処理）
@@ -373,53 +394,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 - chrome.runtime が利用できない場合は SVG プレースホルダーを返す
 - プライバシー重視（外部APIサービス不使用・ホスト名の外部流出防止）
 
-#### 4.3 ErrorHandler
-**責務**: エラーハンドリングとユーザー通知の統一管理
-- `handleBookmarkOperation()`: ブックマーク操作エラー処理
-- `handleFaviconError()`: Favicon取得エラー処理（軽微扱い）
-- `handleGenericError()`: 一般的なエラー処理
-- ユーザーフレンドリーなエラーメッセージ生成
-- 開発用デバッグ機能
-
-### 5. ユーティリティ層 (Utils/)
-**責務**: DOM操作とHTML関連のヘルパー機能
-
-#### 5.1 HtmlUtils
-**責務**: 安全なHTML操作とDOM関連ユーティリティ
-- `escapeHtml()`: XSS対策のHTML エスケープ
-- `getDomain()`: URL正規化
-- `createSafeHtml()`: 安全なHTML生成
-- `toggleVisibility()`: 要素表示制御
-- `addEventListenerSafely()`: 安全なイベントリスナー追加
-- `getDataAttribute()`: データ属性の安全な取得
-- `truncateText()`: テキスト省略
-- `isValidUrl()`: URL有効性チェック
+### 5. スクリプト層のヘルパー (scripts/)
+- `favicon.ts` `loadFavicons(container, imgSelector, urlAttr = 'data-favicon-url')`: img と同じ親要素内の `.favicon-placeholder` を切り替える favicon 遅延読み込み
+- `bookmarkEvents.ts` `dispatchBookmarksChanged(action)`: `bookmarks-changed` イベントの発火（action は `BookmarksChangedAction` の union 型）
+- `dom.ts` `isEditableElement(el)`: 入力欄 / contenteditable にフォーカスがあるか
 
 ### 6. 定数管理 (Constants/)
 **責務**: アプリケーション全体で使用する定数の一元管理
-- UI関連定数（アニメーション時間、検索デバウンス）
-- Chrome API関連定数（除外フォルダ、スキーム）
-- エラーメッセージ定数
-- CSSクラス名定数
-- DOMセレクター定数
+- 検索デバウンス時間 (SEARCH_DEBOUNCE_MS)
+- Chrome のパーマネントルート ID (BOOKMARK_ROOT_IDS)
+- DOM セレクター (SELECTORS)
 
-### 7. レガシーユーティリティ (utils.ts)
-**責務**: レガシー互換性のためのユーティリティ関数（新コードではServiceクラス使用推奨）
+### 7. 関数 API (utils.ts)
+**責務**: コンポーネントとテストが使うブックマーク処理・favicon・HTML エスケープの関数 API。BookmarkService / FaviconService を遅延生成して共有する
+- `getFavicon()` / `processBookmarkTree()` / `filterBookmarks()` / `applyExpandedState()` / `findFolderById()` / `getTotalBookmarks()` / `getAllFolders()`: Service への委譲
+- `escapeHtml()`: & < > " ' をすべてエスケープ (#96)
+- `getDomain()`: URL からホスト名（不正 URL は 'localhost'）
 
-#### サービスインスタンス管理
-- `getFaviconService()`: FaviconServiceのシングルトンインスタンス取得
-- `getBookmarkService()`: BookmarkServiceのシングルトンインスタンス取得
-
-#### レガシー互換関数（@deprecatedマーク付き）
-- `getFavicon()`: FaviconService.getFavicon()への委譲
-- `processBookmarkTree()`: BookmarkService.processBookmarkTree()への委譲
-- `filterBookmarks()`: BookmarkService.filterBookmarks()への委譲
-- `findFolderById()`: BookmarkService.findFolderById()への委譲
-- `getTotalBookmarks()`: BookmarkService.getTotalBookmarks()への委譲
-- `escapeHtml()`: HtmlUtils.escapeHtml()への委譲
-- `getDomain()`: HtmlUtils.getDomain()への委譲
-
-### 8. 既存ユーティリティ関数（後方互換性維持）
+### 8. 主要関数の処理概要
 
 #### データ処理
 **processBookmarkTree(tree: ChromeBookmarkNode[]): BookmarkFolder[]**:
@@ -516,7 +508,7 @@ setupFolderClickHandler()
 findFolderById()
     ↓ folder.expanded = !folder.expanded
 状態更新
-    ↓ updateFolderUI() / updateBookmarkListUI()
+    ↓ updateExpandIcon() / updateBookmarkListElement()
 DOM更新
 ```
 
@@ -606,7 +598,7 @@ try {
 ## テスト概要
 
 ### テスト構成
-- **総計116テスト**: ユニットテスト・コンポーネントテスト・統合テストで構成
+- **総計576テスト**（テストファイル48件）: ユニットテスト・コンポーネントテスト・統合テストで構成
 - **カバレッジ**: 主要ロジック100%
 - **テストツール**: Vitest + Happy DOM/JSDOM
 - **CI/CD**: GitHub Actions での自動実行
