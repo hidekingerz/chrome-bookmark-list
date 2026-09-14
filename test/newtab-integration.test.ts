@@ -6,8 +6,8 @@ import {
   renderFolder,
   setupFolderClickHandler,
 } from '../src/scripts/newtab-core';
-import type { BookmarkFolder, ChromeBookmarkNode } from '../src/types/bookmark';
 import { findFolderById, processBookmarkTree } from '../src/scripts/utils';
+import type { BookmarkFolder, ChromeBookmarkNode } from '../src/types/bookmark';
 
 // モック
 vi.mock('../src/scripts/history');

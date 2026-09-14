@@ -426,7 +426,7 @@ export class CalendarHistoryPanel {
       .map(([domain, count]) => {
         const safeDomain = escapeHtml(domain);
         return `<span class="domain-stat">
-            <img class="domain-favicon hidden" data-favicon-url="https://${safeDomain}" alt="favicon">
+            <img class="domain-favicon hidden" data-favicon-url="${safeDomain ? `https://${safeDomain}` : ''}" alt="favicon">
             <span class="favicon-placeholder">🌐</span>
             <span class="domain-name">${safeDomain}</span>
             <span class="domain-count">${count}</span>
