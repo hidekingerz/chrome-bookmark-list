@@ -1,5 +1,5 @@
 import { loadFavicons } from '../../scripts/favicon.js';
-import { escapeHtml } from '../../scripts/utils.js';
+import { formatDateTime, renderHistoryListItem } from '../HistoryList/index.js';
 
 /** 最近閉じたタブの表示用データ */
 interface RecentlyClosedTab {
@@ -118,43 +118,27 @@ export class RecentlyClosedPanel {
   }
 
   private renderItem(tab: RecentlyClosedTab): string {
-    const safeUrl = escapeHtml(tab.url);
-    const safeTitle = escapeHtml(tab.title);
-    const safeSessionId = escapeHtml(tab.sessionId);
-
     let domain: string;
     try {
       domain = new URL(tab.url).hostname;
     } catch {
       domain = tab.url;
     }
-
-    // 閉じた時刻（履歴パネルと同じ体裁）
-    let metaHtml = '';
-    if (tab.closedAt) {
-      const date = new Date(tab.closedAt).toLocaleDateString('ja-JP');
-      const time = new Date(tab.closedAt).toLocaleTimeString('ja-JP', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-      metaHtml = `
-          <div class="history-item-meta">
-            <span class="history-item-date">${date} ${time}</span>
-          </div>`;
-    }
-
-    return `
-      <div class="history-item" data-session-id="${safeSessionId}">
-        <div class="history-item-icon">
-          <img class="history-favicon hidden" data-favicon-url="${safeUrl}" alt="favicon">
-          <span class="favicon-placeholder">🌐</span>
-        </div>
-        <div class="history-item-content">
-          <a href="#" class="history-item-title">${safeTitle}</a>
-          <div class="history-item-url">${escapeHtml(domain)}</div>${metaHtml}
-        </div>
-      </div>
-    `;
+    return renderHistoryListItem({
+      url: tab.url,
+      title: tab.title,
+      subtitle: domain,
+      // 閉じた時刻（履歴パネルと同じ体裁）。無ければメタ行なし
+      meta: tab.closedAt
+        ? [
+            {
+              className: 'history-item-date',
+              text: formatDateTime(tab.closedAt),
+            },
+          ]
+        : [],
+      attributes: { 'data-session-id': tab.sessionId },
+    });
   }
 
   private renderError(): void {

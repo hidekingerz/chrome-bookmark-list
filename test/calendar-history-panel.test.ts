@@ -241,10 +241,10 @@ describe('CalendarHistoryPanel', () => {
       if (!todayElement) return;
       (todayElement as HTMLElement).click();
 
-      const injectedImg = container.querySelector('.timeline-item-title img');
+      const injectedImg = container.querySelector('.history-item-title img');
       expect(injectedImg).toBeNull();
 
-      const title = container.querySelector('.timeline-item-title');
+      const title = container.querySelector('.history-item-title');
       expect(title?.textContent).toBe('<img src=x onerror=alert(1)>');
     });
   });
@@ -276,7 +276,7 @@ describe('CalendarHistoryPanel', () => {
       (todayElement as HTMLElement).click();
 
       const title = container.querySelector(
-        '.timeline-item-title'
+        '.history-item-title'
       ) as HTMLElement;
       title.dispatchEvent(
         new dom.window.MouseEvent('click', { bubbles: true })
@@ -327,16 +327,16 @@ describe('CalendarHistoryPanel', () => {
       ) as HTMLInputElement;
 
       expect(
-        container.querySelectorAll('.timeline-item').length
+        container.querySelectorAll('.history-item').length
       ).toBeGreaterThan(0);
 
       searchInput.value = 'GitHub';
       searchInput.dispatchEvent(new Event('input', { bubbles: true }));
 
-      const timelineItems = container.querySelectorAll('.timeline-item');
+      const timelineItems = container.querySelectorAll('.history-item');
       expect(timelineItems).toHaveLength(1);
       expect(
-        timelineItems[0].querySelector('.timeline-item-title')?.textContent
+        timelineItems[0].querySelector('.history-item-title')?.textContent
       ).toBe('GitHub');
     });
   });
@@ -414,13 +414,13 @@ describe('CalendarHistoryPanel', () => {
       if (!todayElement) return;
       (todayElement as HTMLElement).click();
 
-      const timelineItems = container.querySelectorAll('.timeline-item');
+      const timelineItems = container.querySelectorAll('.history-item');
       expect(timelineItems).toHaveLength(3);
       expect(
-        timelineItems[0].querySelector('.timeline-item-title')?.textContent
+        timelineItems[0].querySelector('.history-item-title')?.textContent
       ).toBe('Example 3');
       expect(
-        timelineItems[2].querySelector('.timeline-item-title')?.textContent
+        timelineItems[2].querySelector('.history-item-title')?.textContent
       ).toBe('Example 1');
     });
   });
@@ -592,10 +592,10 @@ describe('CalendarHistoryPanel', () => {
       (todayElement as HTMLElement).click();
 
       expect(
-        container.querySelectorAll('.timeline-favicon').length
+        container.querySelectorAll('.history-favicon').length
       ).toBeGreaterThan(0);
       expect(
-        container.querySelectorAll('.timeline-item-icon .favicon-placeholder')
+        container.querySelectorAll('.history-item-icon .favicon-placeholder')
           .length
       ).toBeGreaterThan(0);
     });
@@ -896,10 +896,10 @@ describe('CalendarHistoryPanel', () => {
       await flush();
 
       const img = container.querySelector(
-        '.timeline-favicon'
+        '.history-favicon'
       ) as HTMLImageElement & { onload: () => void; onerror: () => void };
       const placeholder = container.querySelector(
-        '.timeline-item-icon .favicon-placeholder'
+        '.history-item-icon .favicon-placeholder'
       ) as HTMLElement;
 
       expect(img.getAttribute('src')).toContain('data:image');
@@ -945,7 +945,7 @@ describe('CalendarHistoryPanel', () => {
       expect(warnSpy).toHaveBeenCalled();
 
       const timelinePlaceholder = container.querySelector(
-        '.timeline-item-icon .favicon-placeholder'
+        '.history-item-icon .favicon-placeholder'
       ) as HTMLElement;
       expect(timelinePlaceholder.textContent).toBe('🌐');
       expect(timelinePlaceholder.style.display).toBe('');

@@ -1,6 +1,10 @@
 import { loadFavicons } from '../../scripts/favicon.js';
 import { getRecentHistory, type HistoryItem } from '../../scripts/history.js';
-import { escapeHtml } from '../../scripts/utils.js';
+import {
+  formatDateTime,
+  matchesSearchTerm,
+  renderHistoryListItem,
+} from '../HistoryList/index.js';
 
 /**
  * 「最近の履歴」タブパネル
@@ -98,31 +102,21 @@ export class HistoryPanel {
   }
 
   private renderHistoryItem(item: HistoryItem): string {
-    const date = new Date(item.lastVisitTime).toLocaleDateString('ja-JP');
-    const time = new Date(item.lastVisitTime).toLocaleTimeString('ja-JP', {
-      hour: '2-digit',
-      minute: '2-digit',
+    return renderHistoryListItem({
+      url: item.url,
+      title: item.title,
+      subtitle: item.url,
+      meta: [
+        {
+          className: 'history-item-date',
+          text: formatDateTime(item.lastVisitTime),
+        },
+        {
+          className: 'history-item-count',
+          text: `訪問回数: ${item.visitCount}`,
+        },
+      ],
     });
-
-    const safeUrl = escapeHtml(item.url);
-    const safeTitle = escapeHtml(item.title);
-
-    return `
-      <div class="history-item">
-        <div class="history-item-icon">
-          <img class="history-favicon hidden" data-favicon-url="${safeUrl}" alt="favicon">
-          <span class="favicon-placeholder">🌐</span>
-        </div>
-        <div class="history-item-content">
-          <a href="#" class="history-item-title" data-url="${safeUrl}">${safeTitle}</a>
-          <div class="history-item-url">${safeUrl}</div>
-          <div class="history-item-meta">
-            <span class="history-item-date">${date} ${time}</span>
-            <span class="history-item-count">訪問回数: ${item.visitCount}</span>
-          </div>
-        </div>
-      </div>
-    `;
   }
 
   private renderError(): void {
@@ -132,16 +126,9 @@ export class HistoryPanel {
   }
 
   private filterHistory(searchTerm: string): void {
-    if (!searchTerm.trim()) {
-      this.filteredHistoryItems = this.historyItems;
-    } else {
-      const lowercaseSearchTerm = searchTerm.toLowerCase();
-      this.filteredHistoryItems = this.historyItems.filter(
-        (item) =>
-          item.title.toLowerCase().includes(lowercaseSearchTerm) ||
-          item.url.toLowerCase().includes(lowercaseSearchTerm)
-      );
-    }
+    this.filteredHistoryItems = this.historyItems.filter((item) =>
+      matchesSearchTerm(item, searchTerm)
+    );
     this.renderHistory();
   }
 }
