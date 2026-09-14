@@ -34,7 +34,13 @@ export interface DialogHandle {
   close: () => void;
 }
 
+let currentDialog: DialogHandle | null = null;
+
 export function openDialog(options: DialogOptions): DialogHandle {
+  // 同時に開くのは 1 つ。前のダイアログは close() 経由で閉じ、keydown 解除と onClose を保証する
+  currentDialog?.close();
+  currentDialog = null;
+  // close() を経ずに DOM に残った overlay（テストが直接挿入したもの等）も除去する
   for (const existing of document.querySelectorAll('.edit-dialog-overlay')) {
     existing.remove();
   }
@@ -74,8 +80,11 @@ export function openDialog(options: DialogOptions): DialogHandle {
     closed = true;
     document.removeEventListener('keydown', onKeydown);
     element.remove();
+    if (currentDialog === handle) currentDialog = null;
     options.onClose?.();
   };
+
+  const handle: DialogHandle = { element, close };
 
   document.addEventListener('keydown', onKeydown);
   element
@@ -90,7 +99,8 @@ export function openDialog(options: DialogOptions): DialogHandle {
     if (button.autofocus) el?.focus();
   });
 
-  return { element, close };
+  currentDialog = handle;
+  return handle;
 }
 
 /**
