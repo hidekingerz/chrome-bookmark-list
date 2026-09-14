@@ -1,6 +1,6 @@
 import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { isEditableElement } from '../../scripts/dom.js';
-import { escapeHtml } from '../../scripts/utils.js';
+import { escapeHtml, getAllFolders } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
 import { Toast } from '../Toast/index.js';
@@ -298,7 +298,7 @@ export class BookmarkSelection {
     if (this.selected.size === 0) return;
     const items = Array.from(this.selected.values());
 
-    const folders = await this.getAllFolders();
+    const folders = await getAllFolders();
     const parentId = await this.showMoveDialog(folders, items.length);
     if (!parentId) return;
 
@@ -605,24 +605,5 @@ export class BookmarkSelection {
       };
       document.addEventListener('keydown', handleKey);
     });
-  }
-
-  private async getAllFolders(): Promise<ChromeBookmarkNode[]> {
-    const tree = await chrome.bookmarks.getTree();
-    const folders: ChromeBookmarkNode[] = [];
-    const collect = (nodes: ChromeBookmarkNode[]) => {
-      for (const node of nodes) {
-        if (node.children && !node.url) {
-          // id='0' はツリーの仮想ルートで、ここへの move は Chrome API で
-          // 必ず失敗するため移動先候補から除外する
-          if (node.id !== '0') {
-            folders.push(node);
-          }
-          collect(node.children);
-        }
-      }
-    };
-    collect(tree as ChromeBookmarkNode[]);
-    return folders;
   }
 }

@@ -159,6 +159,28 @@ export class BookmarkService {
   }
 
   /**
+   * ブックマークツリー内のすべてのフォルダを深さ優先で返す。
+   * id='0' はツリーの仮想ルートで、ここを親に指定した create / move は
+   * Chrome API で必ず失敗するため候補から除外する。
+   */
+  async getAllFolders(): Promise<ChromeBookmarkNode[]> {
+    const tree = (await chrome.bookmarks.getTree()) as ChromeBookmarkNode[];
+    const folders: ChromeBookmarkNode[] = [];
+    const collect = (nodes: ChromeBookmarkNode[]) => {
+      for (const node of nodes) {
+        if (node.children && !node.url) {
+          if (node.id !== '0') {
+            folders.push(node);
+          }
+          collect(node.children);
+        }
+      }
+    };
+    collect(tree);
+    return folders;
+  }
+
+  /**
    * IDでフォルダを検索する
    */
   findFolderById(folders: BookmarkFolder[], id: string): BookmarkFolder | null {

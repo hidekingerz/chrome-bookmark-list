@@ -228,4 +228,14 @@ describe('BookmarkEditor の保存と Undo', () => {
     );
     expect(document.getElementById('edit-dialog')).toBeFalsy();
   });
+
+  it('フォルダ選択に仮想ルート id=0 の選択肢が含まれない', async () => {
+    await editor.handleBookmarkEdit(makeEditBtn());
+
+    const options = Array.from(
+      document.querySelectorAll('#edit-folder option')
+    ).map((o) => (o as HTMLOptionElement).value);
+    expect(options).not.toContain('0');
+    expect(options.length).toBeGreaterThan(0);
+  });
 });
