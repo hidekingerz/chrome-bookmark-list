@@ -6,7 +6,7 @@ import {
   renderFolder,
   setupFolderClickHandler,
 } from '../src/scripts/newtab-core';
-import type { BookmarkFolder, ChromeBookmarkNode } from '../src/scripts/types';
+import type { BookmarkFolder, ChromeBookmarkNode } from '../src/types/bookmark';
 import { findFolderById, processBookmarkTree } from '../src/scripts/utils';
 
 // モック
