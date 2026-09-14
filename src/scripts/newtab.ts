@@ -7,12 +7,12 @@ import { TabController } from '../components/TabController/index.js';
 import { UndoManager } from '../components/UndoManager/index.js';
 import { SELECTORS } from '../constants/index.js';
 import type { BookmarkFolder, ChromeBookmarkNode } from '../types/bookmark.js';
+import { loadFavicons } from './favicon.js';
 import { renderFolder, setupFolderClickHandler } from './newtab-core.js';
 import { setupBookmarkSearch } from './searchInput.js';
 import {
   applyExpandedState,
   filterBookmarks,
-  getFavicon,
   processBookmarkTree,
 } from './utils.js';
 
@@ -141,55 +141,7 @@ async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
   }
 
   // Favicon を非同期で読み込み
-  await loadFavicons(bookmarkContainer);
-}
-
-// Favicon を非同期で読み込む
-async function loadFavicons(container?: HTMLElement): Promise<void> {
-  const targetContainer = container || document;
-  const faviconImages = targetContainer.querySelectorAll(
-    '.bookmark-favicon'
-  ) as NodeListOf<HTMLImageElement>;
-  const faviconPlaceholders = targetContainer.querySelectorAll(
-    '.favicon-placeholder'
-  ) as NodeListOf<HTMLElement>;
-
-  // プロミスの配列を作成（並列処理のため）
-  const faviconPromises = Array.from(faviconImages).map(async (img, index) => {
-    const url = img.getAttribute('data-bookmark-url');
-    const placeholder = faviconPlaceholders[index];
-
-    if (url) {
-      try {
-        const faviconUrl = await getFavicon(url);
-        img.src = faviconUrl;
-        img.onload = () => {
-          img.classList.remove('hidden');
-          if (placeholder) placeholder.style.display = 'none';
-        };
-        img.onerror = () => {
-          // エラーの場合はプレースホルダーを表示
-          if (placeholder) {
-            placeholder.textContent = '🌐';
-            placeholder.style.display = 'block';
-          }
-        };
-      } catch (error) {
-        console.warn('Favicon 読み込みエラー:', url, error);
-        if (placeholder) {
-          placeholder.textContent = '🌐';
-          placeholder.style.display = 'block';
-        }
-      }
-    }
-  });
-
-  // すべてのfavicon読み込みが完了するのを待つ（最大5秒）
-  try {
-    await Promise.allSettled(faviconPromises);
-  } catch (error) {
-    console.warn('一部のfaviconの読み込みに失敗しました:', error);
-  }
+  await loadFavicons(bookmarkContainer, '.bookmark-favicon');
 }
 
 // ブックマークを再読み込みする関数

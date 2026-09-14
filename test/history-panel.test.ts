@@ -188,7 +188,7 @@ describe('HistoryPanel', () => {
       expect(visitCount?.textContent).toBe('訪問回数: 5');
 
       const favicon = historyItem?.querySelector('.history-favicon');
-      expect(favicon?.getAttribute('data-history-url')).toBe(
+      expect(favicon?.getAttribute('data-favicon-url')).toBe(
         'https://example.com'
       );
     });
@@ -484,7 +484,7 @@ describe('HistoryPanel', () => {
         '.favicon-placeholder'
       ) as HTMLElement;
       expect(placeholder?.textContent).toBe('🌐');
-      expect(placeholder?.style.display).toBe('block');
+      expect(placeholder?.style.display).toBe('');
 
       consoleSpy.mockRestore();
     });
@@ -518,10 +518,10 @@ describe('HistoryPanel', () => {
       favicon.onerror?.({} as Event);
 
       expect(placeholder.textContent).toBe('🌐');
-      expect(placeholder.style.display).toBe('block');
+      expect(placeholder.style.display).toBe('');
     });
 
-    it('data-history-url が空のアイテムは Favicon を読み込まない', async () => {
+    it('data-favicon-url が空のアイテムは Favicon を読み込まない', async () => {
       mockGetRecentHistory.mockResolvedValue([
         {
           id: '1',
@@ -538,8 +538,8 @@ describe('HistoryPanel', () => {
       const favicon = container.querySelector(
         '.history-favicon'
       ) as HTMLImageElement;
-      // data-history-url が空のため getFavicon は呼ばれず、画像は hidden のまま
-      expect(favicon.getAttribute('data-history-url')).toBe('');
+      // data-favicon-url が空のため getFavicon は呼ばれず、画像は hidden のまま
+      expect(favicon.getAttribute('data-favicon-url')).toBe('');
       expect(mockGetFavicon).not.toHaveBeenCalled();
       expect(favicon.classList.contains('hidden')).toBe(true);
     });

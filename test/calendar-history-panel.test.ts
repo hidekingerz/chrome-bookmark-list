@@ -910,7 +910,7 @@ describe('CalendarHistoryPanel', () => {
 
       img.onerror();
       expect(placeholder.textContent).toBe('🌐');
-      expect(placeholder.style.display).toBe('block');
+      expect(placeholder.style.display).toBe('');
     });
 
     it('ドメイン favicon の onload / onerror が表示を切り替える', async () => {
@@ -932,7 +932,7 @@ describe('CalendarHistoryPanel', () => {
 
       img.onerror();
       expect(placeholder.textContent).toBe('🌐');
-      expect(placeholder.style.display).toBe('inline-block');
+      expect(placeholder.style.display).toBe('');
     });
 
     it('favicon 取得失敗時に placeholder が表示される', async () => {
@@ -948,13 +948,13 @@ describe('CalendarHistoryPanel', () => {
         '.timeline-item-icon .favicon-placeholder'
       ) as HTMLElement;
       expect(timelinePlaceholder.textContent).toBe('🌐');
-      expect(timelinePlaceholder.style.display).toBe('block');
+      expect(timelinePlaceholder.style.display).toBe('');
 
       const domainPlaceholder = container.querySelector(
         '.timeline-domain-stats .favicon-placeholder'
       ) as HTMLElement;
       expect(domainPlaceholder.textContent).toBe('🌐');
-      expect(domainPlaceholder.style.display).toBe('inline-block');
+      expect(domainPlaceholder.style.display).toBe('');
 
       warnSpy.mockRestore();
     });

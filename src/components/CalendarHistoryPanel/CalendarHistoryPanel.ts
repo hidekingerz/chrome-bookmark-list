@@ -1,5 +1,6 @@
+import { loadFavicons } from '../../scripts/favicon.js';
 import type { HistoryItem } from '../../scripts/history.js';
-import { escapeHtml, getFavicon } from '../../scripts/utils.js';
+import { escapeHtml } from '../../scripts/utils.js';
 
 interface DayHistory {
   date: Date;
@@ -371,8 +372,8 @@ export class CalendarHistoryPanel {
     this.setupHourNavigation();
 
     // Faviconの非同期読み込み
-    this.loadTimelineFavicons();
-    this.loadDomainFavicons();
+    void loadFavicons(this.container, '.timeline-favicon');
+    void loadFavicons(this.container, '.domain-favicon');
   }
 
   private groupByHour(items: HistoryItem[]): HourGroup[] {
@@ -426,7 +427,7 @@ export class CalendarHistoryPanel {
       .map(([domain, count]) => {
         const safeDomain = escapeHtml(domain);
         return `<span class="domain-stat">
-            <img class="domain-favicon hidden" data-domain="${safeDomain}" alt="favicon">
+            <img class="domain-favicon hidden" data-favicon-url="https://${safeDomain}" alt="favicon">
             <span class="favicon-placeholder">🌐</span>
             <span class="domain-name">${safeDomain}</span>
             <span class="domain-count">${count}</span>
@@ -467,7 +468,7 @@ export class CalendarHistoryPanel {
     return `
       <div class="timeline-item">
         <div class="timeline-item-icon">
-          <img class="timeline-favicon hidden" data-timeline-url="${safeUrl}" alt="favicon">
+          <img class="timeline-favicon hidden" data-favicon-url="${safeUrl}" alt="favicon">
           <span class="favicon-placeholder">🌐</span>
         </div>
         <div class="timeline-item-content">
@@ -480,94 +481,6 @@ export class CalendarHistoryPanel {
         </div>
       </div>
     `;
-  }
-
-  private async loadTimelineFavicons(): Promise<void> {
-    const faviconImages = this.container.querySelectorAll(
-      '.timeline-favicon'
-    ) as NodeListOf<HTMLImageElement>;
-    const faviconPlaceholders = this.container.querySelectorAll(
-      '.timeline-item-icon .favicon-placeholder'
-    ) as NodeListOf<HTMLElement>;
-
-    if (!faviconImages || !faviconPlaceholders) return;
-
-    const faviconPromises = Array.from(faviconImages).map(
-      async (img, index) => {
-        const url = img.getAttribute('data-timeline-url');
-        const placeholder = faviconPlaceholders[index];
-
-        if (url) {
-          try {
-            const faviconUrl = await getFavicon(url);
-            img.src = faviconUrl;
-            img.onload = () => {
-              img.classList.remove('hidden');
-              if (placeholder) placeholder.style.display = 'none';
-            };
-            img.onerror = () => {
-              if (placeholder) {
-                placeholder.textContent = '🌐';
-                placeholder.style.display = 'block';
-              }
-            };
-          } catch (error) {
-            console.warn('Favicon 読み込みエラー:', url, error);
-            if (placeholder) {
-              placeholder.textContent = '🌐';
-              placeholder.style.display = 'block';
-            }
-          }
-        }
-      }
-    );
-
-    await Promise.allSettled(faviconPromises);
-  }
-
-  private async loadDomainFavicons(): Promise<void> {
-    const domainFaviconImages = this.container.querySelectorAll(
-      '.domain-favicon'
-    ) as NodeListOf<HTMLImageElement>;
-    const domainPlaceholders = this.container.querySelectorAll(
-      '.timeline-domain-stats .favicon-placeholder'
-    ) as NodeListOf<HTMLElement>;
-
-    if (!domainFaviconImages || !domainPlaceholders) return;
-
-    const faviconPromises = Array.from(domainFaviconImages).map(
-      async (img, index) => {
-        const domain = img.getAttribute('data-domain');
-        const placeholder = domainPlaceholders[index];
-
-        if (domain) {
-          try {
-            // ドメインからURLを構築
-            const url = `https://${domain}`;
-            const faviconUrl = await getFavicon(url);
-            img.src = faviconUrl;
-            img.onload = () => {
-              img.classList.remove('hidden');
-              if (placeholder) placeholder.style.display = 'none';
-            };
-            img.onerror = () => {
-              if (placeholder) {
-                placeholder.textContent = '🌐';
-                placeholder.style.display = 'inline-block';
-              }
-            };
-          } catch (error) {
-            console.warn('Domain favicon 読み込みエラー:', domain, error);
-            if (placeholder) {
-              placeholder.textContent = '🌐';
-              placeholder.style.display = 'inline-block';
-            }
-          }
-        }
-      }
-    );
-
-    await Promise.allSettled(faviconPromises);
   }
 
   private setupHourNavigation(): void {
