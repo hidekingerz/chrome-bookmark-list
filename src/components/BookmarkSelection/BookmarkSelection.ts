@@ -1,3 +1,4 @@
+import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
@@ -262,7 +263,7 @@ export class BookmarkSelection {
 
     const count = restoreInfos.length;
     if (count > 0) {
-      this.dispatchBookmarksChanged('bulk-delete');
+      dispatchBookmarksChanged('bulk-delete');
       const message =
         failureCount > 0
           ? `${count} 件を削除しました（${failureCount} 件は失敗）`
@@ -278,7 +279,7 @@ export class BookmarkSelection {
               url: info.url,
             });
           }
-          this.dispatchBookmarksChanged('undo-bulk-delete');
+          dispatchBookmarksChanged('undo-bulk-delete');
         },
       });
     } else if (failureCount > 0) {
@@ -337,7 +338,7 @@ export class BookmarkSelection {
 
     const count = moveInfos.length;
     if (count > 0) {
-      this.dispatchBookmarksChanged('bulk-move');
+      dispatchBookmarksChanged('bulk-move');
       const message =
         failureCount > 0
           ? `${count} 件を移動しました（${failureCount} 件は失敗）`
@@ -352,7 +353,7 @@ export class BookmarkSelection {
               index: info.previousIndex,
             });
           }
-          this.dispatchBookmarksChanged('undo-bulk-move');
+          dispatchBookmarksChanged('undo-bulk-move');
         },
       });
     } else if (failureCount > 0) {
@@ -484,11 +485,6 @@ export class BookmarkSelection {
       });
 
     return toolbar;
-  }
-
-  private dispatchBookmarksChanged(action: string): void {
-    const event = new CustomEvent('bookmarks-changed', { detail: { action } });
-    document.dispatchEvent(event);
   }
 
   // ---------------------------------------------------------------------

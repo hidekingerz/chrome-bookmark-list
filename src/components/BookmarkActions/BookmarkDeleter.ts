@@ -1,3 +1,4 @@
+import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
 import { UndoManager } from '../UndoManager/index.js';
@@ -44,7 +45,7 @@ export class BookmarkDeleter {
       await chrome.bookmarks.remove(target.id);
 
       // UI を更新するイベントを発火
-      this.dispatchBookmarksChanged('delete');
+      dispatchBookmarksChanged('delete');
 
       // Undo 可能な操作として登録
       UndoManager.getInstance().register({
@@ -56,21 +57,13 @@ export class BookmarkDeleter {
             title: restoreInfo.title,
             url: restoreInfo.url,
           });
-          this.dispatchBookmarksChanged('undo-delete');
+          dispatchBookmarksChanged('undo-delete');
         },
       });
     } catch (error) {
       console.error('❌ ブックマークの削除に失敗しました:', error);
       this.showErrorDialog('ブックマークの削除に失敗しました。');
     }
-  }
-
-  /**
-   * ブックマーク変更通知イベントを発火する
-   */
-  private dispatchBookmarksChanged(action: string): void {
-    const event = new CustomEvent('bookmarks-changed', { detail: { action } });
-    document.dispatchEvent(event);
   }
 
   /**

@@ -1,3 +1,4 @@
+import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
 import { UndoManager } from '../UndoManager/index.js';
@@ -603,10 +604,7 @@ export class BookmarkDragAndDrop {
                 index: info.previousIndex,
               });
             }
-            const e = new CustomEvent('bookmarks-changed', {
-              detail: { action: 'undo-bulk-reorder' },
-            });
-            document.dispatchEvent(e);
+            dispatchBookmarksChanged('undo-bulk-reorder');
           },
         });
       }
@@ -670,10 +668,7 @@ export class BookmarkDragAndDrop {
               parentId: originalParentId,
               index: undoIndex,
             });
-            const e = new CustomEvent('bookmarks-changed', {
-              detail: { action: 'undo-bookmark-reorder' },
-            });
-            document.dispatchEvent(e);
+            dispatchBookmarksChanged('undo-bookmark-reorder');
           },
         });
       }
@@ -747,10 +742,7 @@ export class BookmarkDragAndDrop {
                 index: info.previousIndex,
               });
             }
-            const e = new CustomEvent('bookmarks-changed', {
-              detail: { action: 'undo-bulk-move' },
-            });
-            document.dispatchEvent(e);
+            dispatchBookmarksChanged('undo-bulk-move');
           },
         });
       }
@@ -792,10 +784,7 @@ export class BookmarkDragAndDrop {
               parentId: originalParentId,
               index: originalIndex,
             });
-            const event = new CustomEvent('bookmarks-changed', {
-              detail: { action: 'undo-move' },
-            });
-            document.dispatchEvent(event);
+            dispatchBookmarksChanged('undo-move');
           },
         });
       }
@@ -809,15 +798,7 @@ export class BookmarkDragAndDrop {
    * ブックマークリストを再読み込みする
    */
   private async refreshBookmarkList(): Promise<void> {
-    try {
-      // カスタムイベントを発火してメインのブックマーク表示を更新
-      const refreshEvent = new CustomEvent('bookmarks-changed', {
-        detail: { action: 'move' },
-      });
-      document.dispatchEvent(refreshEvent);
-    } catch (error) {
-      console.error('ブックマークリスト更新エラー:', error);
-    }
+    dispatchBookmarksChanged('move');
   }
 
   /**
@@ -1076,7 +1057,7 @@ export class BookmarkDragAndDrop {
 
     operation
       .then(() => {
-        this.dispatchBookmarksChanged('folder-move');
+        dispatchBookmarksChanged('folder-move');
       })
       .catch((error) => {
         console.error('フォルダ移動エラー:', error);
@@ -1110,7 +1091,7 @@ export class BookmarkDragAndDrop {
               parentId: originalParentId,
               index: originalIndex,
             });
-            this.dispatchBookmarksChanged('undo-folder-move');
+            dispatchBookmarksChanged('undo-folder-move');
           },
         });
       }
@@ -1181,7 +1162,7 @@ export class BookmarkDragAndDrop {
               parentId: originalParentId,
               index: undoIndex,
             });
-            this.dispatchBookmarksChanged('undo-folder-reorder');
+            dispatchBookmarksChanged('undo-folder-reorder');
           },
         });
       }
@@ -1189,11 +1170,6 @@ export class BookmarkDragAndDrop {
       console.error('Chrome Bookmarks API エラー (reorder):', error);
       throw error;
     }
-  }
-
-  private dispatchBookmarksChanged(action: string): void {
-    const event = new CustomEvent('bookmarks-changed', { detail: { action } });
-    document.dispatchEvent(event);
   }
 
   /**

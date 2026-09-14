@@ -1,3 +1,4 @@
+import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import { UndoManager } from '../UndoManager/index.js';
@@ -145,13 +146,13 @@ export class FolderRenamer {
     try {
       await chrome.bookmarks.update(target.id, { title: newTitle });
       this.closeDialog();
-      this.dispatchBookmarksChanged('folder-rename');
+      dispatchBookmarksChanged('folder-rename');
 
       UndoManager.getInstance().register({
         message: `フォルダ名を「${newTitle}」に変更しました`,
         undo: async () => {
           await chrome.bookmarks.update(target.id, { title: oldTitle });
-          this.dispatchBookmarksChanged('undo-folder-rename');
+          dispatchBookmarksChanged('undo-folder-rename');
         },
       });
     } catch (error) {
@@ -164,11 +165,6 @@ export class FolderRenamer {
     if (!el) return;
     el.textContent = message;
     el.style.display = 'block';
-  }
-
-  private dispatchBookmarksChanged(action: string): void {
-    const event = new CustomEvent('bookmarks-changed', { detail: { action } });
-    document.dispatchEvent(event);
   }
 
   private closeDialog(): void {

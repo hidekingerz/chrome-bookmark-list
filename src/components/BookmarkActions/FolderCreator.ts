@@ -1,3 +1,4 @@
+import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import { UndoManager } from '../UndoManager/index.js';
@@ -160,7 +161,7 @@ export class FolderCreator {
       const created = await chrome.bookmarks.create({ parentId, title });
 
       this.closeDialog();
-      this.dispatchBookmarksChanged('folder-create');
+      dispatchBookmarksChanged('folder-create');
 
       // Undo: 作成したフォルダを削除
       if (created.id) {
@@ -168,7 +169,7 @@ export class FolderCreator {
           message: `フォルダ「${title}」を作成しました`,
           undo: async () => {
             await chrome.bookmarks.removeTree(created.id);
-            this.dispatchBookmarksChanged('undo-folder-create');
+            dispatchBookmarksChanged('undo-folder-create');
           },
         });
       }
@@ -184,11 +185,6 @@ export class FolderCreator {
     if (!el) return;
     el.textContent = message;
     el.style.display = 'block';
-  }
-
-  private dispatchBookmarksChanged(action: string): void {
-    const event = new CustomEvent('bookmarks-changed', { detail: { action } });
-    document.dispatchEvent(event);
   }
 
   private closeDialog(): void {
