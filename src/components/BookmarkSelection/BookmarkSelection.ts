@@ -7,7 +7,7 @@ import { UndoManager } from '../UndoManager/index.js';
 /**
  * 選択中のブックマークを表現する情報
  */
-export interface SelectedBookmark {
+interface SelectedBookmark {
   url: string;
   title: string;
   /** ブックマーク要素のDOM参照 (DOM更新用) */
@@ -44,16 +44,6 @@ export class BookmarkSelection {
   private toolbarElement: HTMLElement | null = null;
   private orderedUrls: string[] = [];
   private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
-
-  /**
-   * 選択モードを初期化する。
-   * container にはブックマーク表示領域を渡す (DOM 走査・更新用)。
-   */
-  initialize(container: HTMLElement): void {
-    this.container = container;
-    this.refreshOrderedUrls();
-    this.ensureKeydownHandler();
-  }
 
   /**
    * コンテナを再設定し、表示順を更新する。
@@ -217,7 +207,7 @@ export class BookmarkSelection {
   }
 
   /**
-   * 選択中の URL 一覧 (テスト用)
+   * 選択中の URL 一覧
    */
   getSelectedUrls(): string[] {
     return Array.from(this.selected.keys());

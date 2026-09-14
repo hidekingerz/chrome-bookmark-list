@@ -1,25 +1,26 @@
 /**
- * リファクタリング後のnewtab-coreモジュール
- * 新しいコンポーネントアーキテクチャを使用
+ * newtab.ts とテストから使う薄い関数 API。
+ * BookmarkFolderRenderer / BookmarkFolderEvents / BookmarkActions への委譲のみを行う。
  */
 
+import { BookmarkActions } from '../components/BookmarkActions/index.js';
 import { BookmarkFolderEvents } from '../components/BookmarkFolder/BookmarkFolderEvents.js';
 import { BookmarkFolderRenderer } from '../components/BookmarkFolder/BookmarkFolderRenderer.js';
 import type { BookmarkFolder } from '../types/bookmark.js';
 
-// 新しいコンポーネントのインスタンス
 const folderRenderer = new BookmarkFolderRenderer();
 const folderEvents = new BookmarkFolderEvents();
+const bookmarkActions = new BookmarkActions();
 
 /**
- * フォルダをHTMLに変換する関数（後方互換性のため）
+ * フォルダを HTML に変換する
  */
 export function renderFolder(folder: BookmarkFolder, level = 0): string {
   return folderRenderer.renderFolder(folder, level);
 }
 
 /**
- * フォルダクリックのイベントハンドラーを設定する関数（後方互換性のため）
+ * フォルダクリックのイベントハンドラーを設定する
  */
 export function setupFolderClickHandler(
   container: HTMLElement,
@@ -29,7 +30,7 @@ export function setupFolderClickHandler(
 }
 
 /**
- * ブックマークを表示する関数（テスト可能版）
+ * ブックマークを指定コンテナに表示する（テストから使う）
  */
 export async function displayBookmarksTestable(
   folders: BookmarkFolder[],
@@ -41,27 +42,12 @@ export async function displayBookmarksTestable(
     return;
   }
 
-  const html = folderRenderer.renderFolders(folders);
-  container.innerHTML = html;
-
-  // イベントリスナーを設定
+  container.innerHTML = folderRenderer.renderFolders(folders);
   folderEvents.setupFolderClickHandler(container, folders);
 }
 
-export { BookmarkDeleter } from '../components/BookmarkActions/BookmarkDeleter.js';
-export { BookmarkEditor } from '../components/BookmarkActions/BookmarkEditor.js';
-export { BookmarkActions } from '../components/BookmarkActions/index.js';
-export { BookmarkFolderEvents } from '../components/BookmarkFolder/BookmarkFolderEvents.js';
-// 個別のコンポーネントエクスポート（新しいAPI）
-export { BookmarkFolderRenderer } from '../components/BookmarkFolder/BookmarkFolderRenderer.js';
-
-// 後方互換性のための関数エクスポート（既存のテストが動作するよう）
-import { BookmarkActions } from '../components/BookmarkActions/index.js';
-
-const bookmarkActions = new BookmarkActions();
-
 /**
- * ブックマーク削除の処理を行う関数（後方互換性のため）
+ * ブックマーク削除の処理を行う
  */
 export async function handleBookmarkDelete(
   deleteBtn: HTMLElement
@@ -70,46 +56,8 @@ export async function handleBookmarkDelete(
 }
 
 /**
- * ブックマーク編集の処理を行う関数（後方互換性のため）
+ * ブックマーク編集の処理を行う
  */
 export async function handleBookmarkEdit(editBtn: HTMLElement): Promise<void> {
   return bookmarkActions.handleEdit(editBtn);
-}
-
-// 以下の関数は廃止予定ですが、段階的移行のため残しています
-// TODO: 将来のバージョンで削除予定
-
-/**
- * @deprecated BookmarkFolderEvents.updateFolderUI を使用してください
- */
-export function updateFolderUI(
-  _folderHeader: HTMLElement,
-  _folderElement: HTMLElement,
-  _folder: BookmarkFolder,
-  _allBookmarks: BookmarkFolder[]
-): void {
-  console.warn(
-    'updateFolderUI is deprecated. Use BookmarkFolderEvents instead.'
-  );
-  // 実装は新しいイベントクラスに委譲
-  const _events = new BookmarkFolderEvents();
-  // 注意: この関数は内部メソッドなので直接呼び出せません
-  // 代わりにsetupFolderClickHandlerを使用してください
-}
-
-/**
- * @deprecated BookmarkFolderEvents.updateBookmarkListUI を使用してください
- */
-export function updateBookmarkListUI(
-  _folderHeader: HTMLElement,
-  _folderElement: HTMLElement,
-  _folder: BookmarkFolder
-): void {
-  console.warn(
-    'updateBookmarkListUI is deprecated. Use BookmarkFolderEvents instead.'
-  );
-  // 実装は新しいイベントクラスに委譲
-  const _events = new BookmarkFolderEvents();
-  // 注意: この関数は内部メソッドなので直接呼び出せません
-  // 代わりにsetupFolderClickHandlerを使用してください
 }

@@ -1,10 +1,6 @@
 import { Window } from 'happy-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  displayBookmarksTestable,
-  updateBookmarkListUI,
-  updateFolderUI,
-} from '../src/scripts/newtab-core';
+import { displayBookmarksTestable } from '../src/scripts/newtab-core';
 import type { BookmarkFolder } from '../src/types/bookmark';
 
 // test/setup.ts はグローバル document を最小スタブで上書きしている。
@@ -95,32 +91,6 @@ describe('newtab-core', () => {
         url: 'https://github.com',
         active: true,
       });
-    });
-  });
-
-  describe('非推奨関数', () => {
-    it('updateFolderUI は非推奨警告を出力する', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const header = realDocument.createElement('div');
-      const element = realDocument.createElement('div');
-
-      updateFolderUI(header, element, makeFolder(), [makeFolder()]);
-
-      expect(warnSpy).toHaveBeenCalledWith(
-        'updateFolderUI is deprecated. Use BookmarkFolderEvents instead.'
-      );
-    });
-
-    it('updateBookmarkListUI は非推奨警告を出力する', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const header = realDocument.createElement('div');
-      const element = realDocument.createElement('div');
-
-      updateBookmarkListUI(header, element, makeFolder());
-
-      expect(warnSpy).toHaveBeenCalledWith(
-        'updateBookmarkListUI is deprecated. Use BookmarkFolderEvents instead.'
-      );
     });
   });
 });

@@ -3,8 +3,8 @@ import type { BookmarkFolder, BookmarkItem } from '../../types/bookmark.js';
 import { FolderCreator } from '../BookmarkActions/FolderCreator.js';
 import { FolderDeleter } from '../BookmarkActions/FolderDeleter.js';
 import { FolderRenamer } from '../BookmarkActions/FolderRenamer.js';
-import { TabGroupOpener } from '../BookmarkActions/TabGroupOpener.js';
 import { BookmarkActions } from '../BookmarkActions/index.js';
+import { TabGroupOpener } from '../BookmarkActions/TabGroupOpener.js';
 import { BookmarkSelection } from '../BookmarkSelection/index.js';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index.js';
 
@@ -41,13 +41,6 @@ export class BookmarkFolderEvents {
     this.folderDeleter = new FolderDeleter();
     this.tabGroupOpener = new TabGroupOpener();
     this.selection = selection ?? new BookmarkSelection();
-  }
-
-  /**
-   * 現在の選択管理オブジェクトを返す。
-   */
-  getSelection(): BookmarkSelection {
-    return this.selection;
   }
 
   /**
@@ -338,10 +331,6 @@ export class BookmarkFolderEvents {
     ) as HTMLElement | null;
 
     const url = link?.getAttribute('data-url') ?? '';
-    const title =
-      editBtn?.getAttribute('data-bookmark-title') ??
-      bookmarkItem.querySelector('.bookmark-title')?.textContent?.trim() ??
-      '';
 
     if (!url) {
       return;
@@ -374,7 +363,7 @@ export class BookmarkFolderEvents {
         icon: '📋',
         separatorBefore: true,
         onSelect: async () => {
-          await this.copyToClipboard(url, title);
+          await this.copyToClipboard(url);
         },
       },
       {
@@ -527,7 +516,7 @@ export class BookmarkFolderEvents {
   /**
    * クリップボードにテキストをコピーする
    */
-  private async copyToClipboard(url: string, _title: string): Promise<void> {
+  private async copyToClipboard(url: string): Promise<void> {
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url);
@@ -889,27 +878,12 @@ export class BookmarkFolderEvents {
   }
 
   /**
-   * フォルダを検索する（フォールバック付き）
+   * フォルダを ID で検索する
    */
   private findFolder(
     allBookmarks: BookmarkFolder[],
     folderId: string
   ): BookmarkFolder | null {
-    let folder = findFolderById(allBookmarks, folderId);
-
-    // フォルダが見つからない場合のフォールバック検索
-    if (!folder) {
-      const deepSearch = (folders: BookmarkFolder[]): BookmarkFolder | null => {
-        for (const f of folders) {
-          if (f.id === folderId) return f;
-          const found = deepSearch(f.subfolders);
-          if (found) return found;
-        }
-        return null;
-      };
-      folder = deepSearch(allBookmarks);
-    }
-
-    return folder;
+    return findFolderById(allBookmarks, folderId);
   }
 }
