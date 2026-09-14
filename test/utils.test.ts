@@ -389,11 +389,55 @@ describe('ユーティリティ関数', () => {
     it('空文字はそのまま返す', () => {
       expect(escapeHtml('')).toBe('');
     });
+
+    it('HTMLの特殊文字をエスケープする', () => {
+      // #96: " も &quot; にエスケープされることを検証するよう assert を更新
+      // (旧挙動は " を残していたが属性インジェクションの原因のため意図的に変更)。
+      expect(escapeHtml('<script>alert("x")</script>')).toBe(
+        '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;'
+      );
+    });
+
+    it('アンパサンドをエスケープする', () => {
+      expect(escapeHtml('Tom & Jerry')).toBe('Tom &amp; Jerry');
+    });
+
+    // #96 再現テスト: 属性値に埋め込む文字 " ' がエスケープされないと
+    // 属性インジェクション/属性値破壊が起きる。修正前はこれらが落ちる。
+    it('ダブルクォートを &quot; にエスケープする (#96)', () => {
+      expect(escapeHtml('Vue "Composition API" 入門')).toBe(
+        'Vue &quot;Composition API&quot; 入門'
+      );
+    });
+
+    it('シングルクォートを &#39; にエスケープする (#96)', () => {
+      expect(escapeHtml("it's a test")).toBe('it&#39;s a test');
+    });
+
+    it('属性インジェクションを狙う URL をエスケープする (#96)', () => {
+      expect(escapeHtml('https://a/"><img src="https://attacker/x')).toBe(
+        'https://a/&quot;&gt;&lt;img src=&quot;https://attacker/x'
+      );
+    });
+
+    it('& を二重エスケープしない (順序保証)', () => {
+      expect(escapeHtml('&quot;')).toBe('&amp;quot;');
+    });
+
+    it('特殊文字を含まない文字列はそのまま返す', () => {
+      expect(escapeHtml('plain text')).toBe('plain text');
+    });
   });
 
   describe('getDomain (HtmlUtils から移管)', () => {
     it('URL からホスト名を返す', () => {
       expect(getDomain('https://example.com/path?q=1')).toBe('example.com');
+    });
+
+    it('サブドメインを含むホスト名を抽出する', () => {
+      expect(getDomain('https://www.sub.example.com/')).toBe(
+        'www.sub.example.com'
+      );
     });
 
     it('不正な URL は localhost を返す', () => {
