@@ -115,10 +115,36 @@ describe('Dialog', () => {
   });
 
   it('開くときに既存の overlay をすべて除去する', () => {
-    openDialog({ id: 'a', title: 't', bodyHtml: '', buttons: [] });
+    const tracker = keydownCount();
+    const onCloseA = vi.fn();
+
+    openDialog({
+      id: 'a',
+      title: 't',
+      bodyHtml: '',
+      buttons: [],
+      onClose: onCloseA,
+    });
     openDialog({ id: 'b', title: 't', bodyHtml: '', buttons: [] });
+
     expect(doc.querySelectorAll('.edit-dialog-overlay')).toHaveLength(1);
     expect(doc.getElementById('a')).toBeNull();
+    expect(tracker.active()).toBe(1);
+    expect(onCloseA).toHaveBeenCalledTimes(1);
+
+    tracker.restore();
+  });
+
+  it('confirmDialog を開いたまま次のダイアログを開くと前の Promise は false で解決する', async () => {
+    const p = confirmDialog({
+      id: 'c1',
+      title: 't',
+      bodyHtml: '',
+      confirmLabel: '削除',
+      confirmClassName: 'go',
+    });
+    openDialog({ id: 'c2', title: 't', bodyHtml: '', buttons: [] });
+    await expect(p).resolves.toBe(false);
   });
 
   it('ボタンの onClick は close を受け取り、呼ばなければ開いたまま', () => {
