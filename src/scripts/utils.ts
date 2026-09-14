@@ -1,20 +1,16 @@
 /**
- * レガシー互換性のためのユーティリティ関数
- * 新しいコードでは、各種Serviceクラスを使用することを推奨
+ * ブックマーク処理・favicon・HTML エスケープの関数 API。
+ * コンポーネントとテストはこのモジュールから import する。
+ * BookmarkService / FaviconService はここで遅延生成したインスタンスを共有する。
  */
 
 import { BookmarkService } from '../services/BookmarkService.js';
 import { FaviconService } from '../services/FaviconService.js';
 import type { BookmarkFolder, ChromeBookmarkNode } from '../types/bookmark.js';
-import { HtmlUtils } from '../utils/HtmlUtils.js';
 
-// サービスインスタンス（シングルトン）
 let faviconService: FaviconService | null = null;
 let bookmarkService: BookmarkService | null = null;
 
-/**
- * FaviconServiceのインスタンスを取得
- */
 function getFaviconService(): FaviconService {
   if (!faviconService) {
     faviconService = new FaviconService();
@@ -22,9 +18,6 @@ function getFaviconService(): FaviconService {
   return faviconService;
 }
 
-/**
- * BookmarkServiceのインスタンスを取得
- */
 function getBookmarkService(): BookmarkService {
   if (!bookmarkService) {
     bookmarkService = new BookmarkService();
@@ -32,27 +25,21 @@ function getBookmarkService(): BookmarkService {
   return bookmarkService;
 }
 
-// === レガシー互換関数（既存コードとの互換性のため） ===
-
 /**
- * @deprecated FaviconService.getFavicon() を使用してください
+ * ページ URL に対応する favicon URL を返す。
+ * FaviconService 自体は同期だが、呼び出し側（およびテストの mock）が
+ * Promise を前提にしているため async のまま公開する。
  */
 export async function getFavicon(url: string): Promise<string> {
   return getFaviconService().getFavicon(url);
 }
 
-/**
- * @deprecated BookmarkService.processBookmarkTree() を使用してください
- */
 export function processBookmarkTree(
   tree: ChromeBookmarkNode[]
 ): BookmarkFolder[] {
   return getBookmarkService().processBookmarkTree(tree);
 }
 
-/**
- * @deprecated BookmarkService.filterBookmarks() を使用してください
- */
 export function filterBookmarks(
   folders: BookmarkFolder[],
   searchTerm: string
@@ -60,9 +47,6 @@ export function filterBookmarks(
   return getBookmarkService().filterBookmarks(folders, searchTerm);
 }
 
-/**
- * @deprecated BookmarkService.applyExpandedState() を使用してください
- */
 export function applyExpandedState(
   folders: BookmarkFolder[],
   previous: BookmarkFolder[]
@@ -70,9 +54,6 @@ export function applyExpandedState(
   getBookmarkService().applyExpandedState(folders, previous);
 }
 
-/**
- * @deprecated BookmarkService.findFolderById() を使用してください
- */
 export function findFolderById(
   folders: BookmarkFolder[],
   id: string
@@ -80,30 +61,35 @@ export function findFolderById(
   return getBookmarkService().findFolderById(folders, id);
 }
 
-/**
- * @deprecated BookmarkService.getTotalBookmarks() を使用してください
- */
 export function getTotalBookmarks(folder: BookmarkFolder): number {
   return getBookmarkService().getTotalBookmarks(folder);
 }
 
 /**
- * @deprecated HtmlUtils.escapeHtml() を使用してください
+ * HTML の特殊文字をエスケープする。
+ * textContent→innerHTML 方式は & < > のみをエスケープし " ' を残すため、
+ * 属性値に埋め込むと属性インジェクション/属性値破壊が起きる (#96)。
+ * & < > " ' をすべて明示的に置換する。
  */
 export function escapeHtml(text: string): string {
-  return HtmlUtils.escapeHtml(text);
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
- * @deprecated HtmlUtils.getDomain() を使用してください
+ * URL からホスト名を取り出す。不正な URL は 'localhost' を返す。
  */
 export function getDomain(url: string): string {
-  return HtmlUtils.getDomain(url);
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return 'localhost';
+  }
 }
 
-// === 新しいサービスクラスへのエクスポート ===
-
 export { BookmarkService } from '../services/BookmarkService.js';
-export { ErrorHandler } from '../services/ErrorHandler.js';
 export { FaviconService } from '../services/FaviconService.js';
-export { HtmlUtils } from '../utils/HtmlUtils.js';

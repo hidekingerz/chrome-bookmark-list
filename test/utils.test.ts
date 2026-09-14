@@ -378,4 +378,26 @@ describe('ユーティリティ関数', () => {
       expect(result1).not.toBe(result2);
     });
   });
+
+  describe('escapeHtml (HtmlUtils から移管)', () => {
+    it('& < > " \' をすべてエスケープする', () => {
+      expect(escapeHtml(`<a href="x" title='y'>&</a>`)).toBe(
+        '&lt;a href=&quot;x&quot; title=&#39;y&#39;&gt;&amp;&lt;/a&gt;'
+      );
+    });
+
+    it('空文字はそのまま返す', () => {
+      expect(escapeHtml('')).toBe('');
+    });
+  });
+
+  describe('getDomain (HtmlUtils から移管)', () => {
+    it('URL からホスト名を返す', () => {
+      expect(getDomain('https://example.com/path?q=1')).toBe('example.com');
+    });
+
+    it('不正な URL は localhost を返す', () => {
+      expect(getDomain('not a url')).toBe('localhost');
+    });
+  });
 });
