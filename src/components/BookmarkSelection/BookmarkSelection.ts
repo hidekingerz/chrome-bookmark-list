@@ -1,4 +1,5 @@
 import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
+import { isEditableElement } from '../../scripts/dom.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
@@ -414,18 +415,7 @@ export class BookmarkSelection {
       if (e.key !== 'Escape') return;
       if (this.selected.size === 0) return;
       // 入力欄にフォーカスがあるときはスキップ
-      const active = document.activeElement as HTMLElement | null;
-      if (active) {
-        const tag = active.tagName;
-        if (
-          tag === 'INPUT' ||
-          tag === 'TEXTAREA' ||
-          tag === 'SELECT' ||
-          active.isContentEditable
-        ) {
-          return;
-        }
-      }
+      if (isEditableElement(document.activeElement)) return;
       // モーダル表示中は ESC をモーダル側に任せる
       if (document.querySelector('.edit-dialog-overlay')) return;
       e.preventDefault();
