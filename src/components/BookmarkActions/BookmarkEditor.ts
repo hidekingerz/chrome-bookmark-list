@@ -6,15 +6,14 @@ import type {
   ChromeBookmarkNode,
 } from '../../types/bookmark.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
+import { type DialogHandle, openDialog } from '../Dialog/index.js';
 import { UndoManager } from '../UndoManager/index.js';
 
 /**
  * ブックマーク編集機能を担当するクラス
  */
 export class BookmarkEditor {
-  // ESC 用 keydown ハンドラ。closeEditDialog で確実に解除するため参照を保持する
-  // (#100: ボタンで閉じた場合に document へ残留するリークを防ぐ)。
-  private editKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
+  private dialog: DialogHandle | null = null;
 
   /**
    * ブックマーク編集の処理を行う
@@ -60,29 +59,6 @@ export class BookmarkEditor {
     bookmark: ChromeBookmarkNode,
     folders: ChromeBookmarkNode[]
   ): void {
-    // 既存のダイアログがあれば削除
-    const existingDialog = document.getElementById('edit-dialog');
-    if (existingDialog) {
-      existingDialog.remove();
-    }
-
-    // ダイアログのHTML作成
-    const dialogHTML = this.createDialogHTML(bookmark, folders);
-
-    // ダイアログをDOMに追加
-    document.body.insertAdjacentHTML('beforeend', dialogHTML);
-
-    // イベントリスナーを設定
-    this.setupEditDialogEvents(bookmark);
-  }
-
-  /**
-   * ダイアログのHTMLを生成する
-   */
-  private createDialogHTML(
-    bookmark: ChromeBookmarkNode,
-    folders: ChromeBookmarkNode[]
-  ): string {
     const folderOptions = folders
       .map(
         (folder) => `
@@ -93,14 +69,10 @@ export class BookmarkEditor {
       )
       .join('');
 
-    return `
-      <div id="edit-dialog" class="edit-dialog-overlay">
-        <div class="edit-dialog" role="dialog" aria-modal="true">
-          <div class="edit-dialog-header">
-            <h3>ブックマークを編集</h3>
-            <button class="edit-dialog-close" type="button">×</button>
-          </div>
-          <div class="edit-dialog-content">
+    this.dialog = openDialog({
+      id: 'edit-dialog',
+      title: 'ブックマークを編集',
+      bodyHtml: `
             <div class="edit-form-group">
               <label for="edit-title">名前:</label>
               <input type="text" id="edit-title" value="${escapeHtml(bookmark.title)}" />
@@ -115,44 +87,29 @@ export class BookmarkEditor {
                 ${folderOptions}
               </select>
             </div>
-          </div>
-          <div class="edit-dialog-actions">
-            <button type="button" class="edit-dialog-cancel">キャンセル</button>
-            <button type="button" class="edit-dialog-save">保存</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * 編集ダイアログのイベントを設定する
-   */
-  private setupEditDialogEvents(bookmark: ChromeBookmarkNode): void {
-    const dialog = document.getElementById('edit-dialog');
-    const closeBtn = dialog?.querySelector('.edit-dialog-close');
-    const cancelBtn = dialog?.querySelector('.edit-dialog-cancel');
-    const saveBtn = dialog?.querySelector('.edit-dialog-save');
-
-    // 閉じるボタン
-    closeBtn?.addEventListener('click', () => this.closeEditDialog());
-    cancelBtn?.addEventListener('click', () => this.closeEditDialog());
-
-    // 保存ボタン
-    saveBtn?.addEventListener('click', () => this.handleSave(bookmark));
-
-    // ESCキーで閉じる。解除は closeEditDialog に集約し、どの経路で閉じても外れるようにする
-    this.editKeydownHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        this.closeEditDialog();
-      }
-    };
-    document.addEventListener('keydown', this.editKeydownHandler);
+      `,
+      buttons: [
+        {
+          label: 'キャンセル',
+          className: 'edit-dialog-cancel',
+          onClick: (close) => close(),
+        },
+        {
+          label: '保存',
+          className: 'edit-dialog-save',
+          onClick: () => {
+            void this.handleSave(bookmark);
+          },
+        },
+      ],
+      onClose: () => {
+        this.dialog = null;
+      },
+    });
 
     // 開いた直後にタイトル入力欄へフォーカス (a11y)
-    const titleInput = document.getElementById(
-      'edit-title'
-    ) as HTMLInputElement | null;
+    const titleInput =
+      this.dialog.element.querySelector<HTMLInputElement>('#edit-title');
     titleInput?.focus();
     titleInput?.select();
   }
@@ -208,7 +165,7 @@ export class BookmarkEditor {
         await this.moveBookmark(bookmark.id, { parentId: newParentId });
       }
 
-      this.closeEditDialog();
+      this.dialog?.close();
       dispatchBookmarksChanged('edit');
 
       // 何か変更があれば Undo を登録
@@ -256,19 +213,5 @@ export class BookmarkEditor {
     data: BookmarkMoveData
   ): Promise<void> {
     await chrome.bookmarks.move(bookmarkId, data);
-  }
-
-  /**
-   * 編集ダイアログを閉じる
-   */
-  private closeEditDialog(): void {
-    if (this.editKeydownHandler) {
-      document.removeEventListener('keydown', this.editKeydownHandler);
-      this.editKeydownHandler = null;
-    }
-    const dialog = document.getElementById('edit-dialog');
-    if (dialog) {
-      dialog.remove();
-    }
   }
 }

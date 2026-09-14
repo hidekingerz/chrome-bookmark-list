@@ -1,6 +1,11 @@
 import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
+import {
+  type DialogHandle,
+  openDialog,
+  showDialogError,
+} from '../Dialog/index.js';
 import { UndoManager } from '../UndoManager/index.js';
 
 /**
@@ -8,9 +13,7 @@ import { UndoManager } from '../UndoManager/index.js';
  * 名前入力ダイアログを表示し、Chrome API でフォルダ名を更新する。
  */
 export class FolderRenamer {
-  // ESC 用 keydown ハンドラ。closeDialog で確実に解除するため参照を保持する
-  // (#100: ボタンで閉じた場合に document へ残留するリークを防ぐ)。
-  private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+  private dialog: DialogHandle | null = null;
 
   /**
    * リネームダイアログを開く。
@@ -36,76 +39,46 @@ export class FolderRenamer {
     target: ChromeBookmarkNode,
     siblings: ChromeBookmarkNode[]
   ): void {
-    document.getElementById('folder-rename-dialog')?.remove();
-    document.body.insertAdjacentHTML(
-      'beforeend',
-      this.createDialogHTML(target)
-    );
-    this.setupDialogEvents(target, siblings);
-
-    const input = document.getElementById(
-      'folder-rename-name'
-    ) as HTMLInputElement | null;
-    input?.focus();
-    input?.select();
-  }
-
-  private createDialogHTML(target: ChromeBookmarkNode): string {
-    return `
-      <div id="folder-rename-dialog" class="edit-dialog-overlay">
-        <div class="edit-dialog" role="dialog" aria-modal="true">
-          <div class="edit-dialog-header">
-            <h3>フォルダ名を変更</h3>
-            <button class="edit-dialog-close" type="button">×</button>
-          </div>
-          <div class="edit-dialog-content">
+    this.dialog = openDialog({
+      id: 'folder-rename-dialog',
+      title: 'フォルダ名を変更',
+      bodyHtml: `
             <div class="edit-form-group">
               <label for="folder-rename-name">新しいフォルダ名:</label>
               <input type="text" id="folder-rename-name" value="${escapeHtml(target.title)}" />
             </div>
-            <div class="folder-rename-error" style="display:none; color: var(--danger); margin-top: 8px;"></div>
-          </div>
-          <div class="edit-dialog-actions">
-            <button type="button" class="edit-dialog-cancel">キャンセル</button>
-            <button type="button" class="edit-dialog-save folder-rename-confirm">保存</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  private setupDialogEvents(
-    target: ChromeBookmarkNode,
-    siblings: ChromeBookmarkNode[]
-  ): void {
-    const dialog = document.getElementById('folder-rename-dialog');
-    const closeBtn = dialog?.querySelector('.edit-dialog-close');
-    const cancelBtn = dialog?.querySelector('.edit-dialog-cancel');
-    const confirmBtn = dialog?.querySelector('.folder-rename-confirm');
-    const input = document.getElementById(
-      'folder-rename-name'
-    ) as HTMLInputElement | null;
-
-    closeBtn?.addEventListener('click', () => this.closeDialog());
-    cancelBtn?.addEventListener('click', () => this.closeDialog());
-    confirmBtn?.addEventListener('click', () => {
-      void this.handleConfirm(target, siblings);
+            <div class="dialog-error folder-rename-error" style="display:none; color: var(--danger); margin-top: 8px;"></div>
+      `,
+      buttons: [
+        {
+          label: 'キャンセル',
+          className: 'edit-dialog-cancel',
+          onClick: (close) => close(),
+        },
+        {
+          label: '保存',
+          className: 'edit-dialog-save folder-rename-confirm',
+          onClick: () => {
+            void this.handleConfirm(target, siblings);
+          },
+        },
+      ],
+      onClose: () => {
+        this.dialog = null;
+      },
     });
 
+    const input = this.dialog.element.querySelector<HTMLInputElement>(
+      '#folder-rename-name'
+    );
     input?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         void this.handleConfirm(target, siblings);
       }
     });
-
-    // ESCキーで閉じる。解除は closeDialog に集約し、どの経路で閉じても外れるようにする
-    this.keydownHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        this.closeDialog();
-      }
-    };
-    document.addEventListener('keydown', this.keydownHandler);
+    input?.focus();
+    input?.select();
   }
 
   private async handleConfirm(
@@ -115,19 +88,16 @@ export class FolderRenamer {
     const input = document.getElementById(
       'folder-rename-name'
     ) as HTMLInputElement | null;
-    const errorEl = document.querySelector(
-      '.folder-rename-error'
-    ) as HTMLElement | null;
     if (!input) return;
 
     const newTitle = input.value.trim();
 
     if (!newTitle) {
-      this.showError(errorEl, 'フォルダ名を入力してください。');
+      showDialogError(this.dialog, 'フォルダ名を入力してください。');
       return;
     }
     if (newTitle === target.title) {
-      this.closeDialog();
+      this.dialog?.close();
       return;
     }
     // 同階層の他フォルダと同名（自分自身は除く）
@@ -138,14 +108,14 @@ export class FolderRenamer {
         s.title === newTitle
     );
     if (duplicate) {
-      this.showError(errorEl, '同じ名前のフォルダが既に存在します。');
+      showDialogError(this.dialog, '同じ名前のフォルダが既に存在します。');
       return;
     }
 
     const oldTitle = target.title;
     try {
       await chrome.bookmarks.update(target.id, { title: newTitle });
-      this.closeDialog();
+      this.dialog?.close();
       dispatchBookmarksChanged('folder-rename');
 
       UndoManager.getInstance().register({
@@ -157,21 +127,7 @@ export class FolderRenamer {
       });
     } catch (error) {
       console.error('❌ フォルダ名の変更に失敗しました:', error);
-      this.showError(errorEl, 'フォルダ名の変更に失敗しました。');
+      showDialogError(this.dialog, 'フォルダ名の変更に失敗しました。');
     }
-  }
-
-  private showError(el: HTMLElement | null, message: string): void {
-    if (!el) return;
-    el.textContent = message;
-    el.style.display = 'block';
-  }
-
-  private closeDialog(): void {
-    if (this.keydownHandler) {
-      document.removeEventListener('keydown', this.keydownHandler);
-      this.keydownHandler = null;
-    }
-    document.getElementById('folder-rename-dialog')?.remove();
   }
 }
