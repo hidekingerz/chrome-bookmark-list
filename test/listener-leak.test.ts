@@ -129,39 +129,30 @@ describe('#100 イベントリスナーのリーク', () => {
     ).toBe(false);
   });
 
-  it('BookmarkDeleter: 削除確認をキャンセルで閉じても keydown が残らない', () => {
-    insertDialog(
-      'delete-dialog',
-      `<button class="edit-dialog-close" type="button">×</button>
-       <button class="edit-dialog-cancel" type="button">キャンセル</button>
-       <button class="delete-dialog-confirm" type="button">削除</button>`
-    );
+  it('BookmarkDeleter: 削除確認をキャンセルで閉じても keydown が残らない', async () => {
     const deleter = new BookmarkDeleter();
     const tracker = trackDocumentKeydown();
-    (
+    const p = (
       deleter as unknown as {
-        setupDeleteDialogEvents: (r: (v: boolean) => void) => void;
+        showDeleteConfirmation: (t: string) => Promise<boolean>;
       }
-    ).setupDeleteDialogEvents(() => {});
+    ).showDeleteConfirmation('t');
     expect(tracker.activeCount()).toBe(1);
-    click('.edit-dialog-cancel');
+    click('#delete-dialog .edit-dialog-cancel');
+    await expect(p).resolves.toBe(false);
     expect(tracker.activeCount()).toBe(0);
     tracker.restore();
   });
 
-  it('BookmarkDeleter: エラーダイアログを OK で閉じても keydown が残らない', () => {
-    insertDialog(
-      'error-dialog',
-      `<button class="edit-dialog-close" type="button">×</button>
-       <button class="edit-dialog-cancel" type="button">OK</button>`
-    );
+  it('BookmarkDeleter: エラーダイアログを OK で閉じても keydown が残らない', async () => {
     const deleter = new BookmarkDeleter();
     const tracker = trackDocumentKeydown();
-    (
-      deleter as unknown as { setupErrorDialogEvents: (r: () => void) => void }
-    ).setupErrorDialogEvents(() => {});
+    const p = (
+      deleter as unknown as { showErrorDialog: (m: string) => Promise<void> }
+    ).showErrorDialog('失敗');
     expect(tracker.activeCount()).toBe(1);
-    click('.edit-dialog-cancel');
+    click('#error-dialog .edit-dialog-cancel');
+    await p;
     expect(tracker.activeCount()).toBe(0);
     tracker.restore();
   });
@@ -235,22 +226,17 @@ describe('#100 イベントリスナーのリーク', () => {
     tracker.restore();
   });
 
-  it('FolderDeleter: 削除確認をキャンセルで閉じても keydown が残らない', () => {
-    insertDialog(
-      'folder-delete-dialog',
-      `<button class="edit-dialog-close" type="button">×</button>
-       <button class="edit-dialog-cancel" type="button">キャンセル</button>
-       <button class="folder-delete-confirm" type="button">削除</button>`
-    );
+  it('FolderDeleter: 削除確認をキャンセルで閉じても keydown が残らない', async () => {
     const deleter = new FolderDeleter();
     const tracker = trackDocumentKeydown();
-    (
+    const p = (
       deleter as unknown as {
-        setupDialogEvents: (r: (v: boolean) => void) => void;
+        showConfirmation: (t: string, b: number, f: number) => Promise<boolean>;
       }
-    ).setupDialogEvents(() => {});
+    ).showConfirmation('t', 1, 0);
     expect(tracker.activeCount()).toBe(1);
-    click('.edit-dialog-cancel');
+    click('#folder-delete-dialog .edit-dialog-cancel');
+    await expect(p).resolves.toBe(false);
     expect(tracker.activeCount()).toBe(0);
     tracker.restore();
   });
