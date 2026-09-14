@@ -2,6 +2,7 @@ import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
 import { UndoManager } from '../UndoManager/index.js';
+import { moveBackForUndo } from '../UndoManager/moveBack.js';
 import { Autoscroller } from './Autoscroller.js';
 
 /**
@@ -648,26 +649,11 @@ export class BookmarkDragAndDrop {
       });
 
       if (originalParentId !== undefined) {
+        const undoParentId = originalParentId;
         UndoManager.getInstance().register({
           message: `「${sourceTitle}」を並び替えました`,
           undo: async () => {
-            let undoIndex = originalIndex ?? 0;
-            try {
-              const [now] = await chrome.bookmarks.get(source.id);
-              if (
-                now?.parentId === originalParentId &&
-                now.index !== undefined &&
-                now.index < undoIndex
-              ) {
-                undoIndex = undoIndex + 1;
-              }
-            } catch {
-              // フォールバック
-            }
-            await chrome.bookmarks.move(source.id, {
-              parentId: originalParentId,
-              index: undoIndex,
-            });
+            await moveBackForUndo(source.id, undoParentId, originalIndex ?? 0);
             dispatchBookmarksChanged('undo-bookmark-reorder');
           },
         });
@@ -1137,31 +1123,11 @@ export class BookmarkDragAndDrop {
       });
 
       if (originalParentId !== undefined) {
+        const undoParentId = originalParentId;
         UndoManager.getInstance().register({
           message: `フォルダ「${title}」を並び替えました`,
           undo: async () => {
-            // Undo 時、source の現在位置によって Chrome の補正方向が変わる。
-            // 元の位置 originalIndex に確実に戻すため、現在の index を取得して
-            // 補正を相殺する。
-            let undoIndex = originalIndex ?? 0;
-            try {
-              const [now] = await chrome.bookmarks.get(folderId);
-              if (
-                now?.parentId === originalParentId &&
-                now.index !== undefined &&
-                now.index < undoIndex
-              ) {
-                // Chrome は source.idx < index のとき index - 1 に補正するので
-                // 戻り先 = originalIndex を保証するため index = originalIndex + 1
-                undoIndex = undoIndex + 1;
-              }
-            } catch {
-              // 取得失敗時は originalIndex のまま (フォールバック)
-            }
-            await chrome.bookmarks.move(folderId, {
-              parentId: originalParentId,
-              index: undoIndex,
-            });
+            await moveBackForUndo(folderId, undoParentId, originalIndex ?? 0);
             dispatchBookmarksChanged('undo-folder-reorder');
           },
         });
