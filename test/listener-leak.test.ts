@@ -91,13 +91,6 @@ describe('#100 イベントリスナーのリーク', () => {
     el.click();
   }
 
-  function insertDialog(id: string, buttonsHtml: string): void {
-    dom.window.document.body.insertAdjacentHTML(
-      'beforeend',
-      `<div id="${id}" class="edit-dialog-overlay"><div class="edit-dialog">${buttonsHtml}</div></div>`
-    );
-  }
-
   it('DnD: destroy() 後は document の dragstart リスナーが解除される', () => {
     dom.window.document.body.innerHTML = `
       <div class="bookmark-folder" data-folder-id="f1">
@@ -158,70 +151,53 @@ describe('#100 イベントリスナーのリーク', () => {
   });
 
   it('BookmarkEditor: 編集ダイアログをキャンセルで閉じても keydown が残らない', () => {
-    insertDialog(
-      'edit-dialog',
-      `<button class="edit-dialog-close" type="button">×</button>
-       <button class="edit-dialog-cancel" type="button">キャンセル</button>
-       <button class="edit-dialog-save" type="button">保存</button>`
-    );
     const editor = new BookmarkEditor();
     const bookmark: ChromeBookmarkNode = {
       id: 'b1',
       title: 't',
       url: 'https://ex.com',
+      parentId: '1',
     };
     const tracker = trackDocumentKeydown();
     (
       editor as unknown as {
-        setupEditDialogEvents: (b: ChromeBookmarkNode) => void;
+        showEditDialog: (
+          b: ChromeBookmarkNode,
+          f: ChromeBookmarkNode[]
+        ) => void;
       }
-    ).setupEditDialogEvents(bookmark);
+    ).showEditDialog(bookmark, [{ id: '1', title: 'bar' }]);
     expect(tracker.activeCount()).toBe(1);
-    click('.edit-dialog-cancel');
+    click('#edit-dialog .edit-dialog-cancel');
     expect(tracker.activeCount()).toBe(0);
     tracker.restore();
   });
 
   it('FolderCreator: 作成ダイアログをキャンセルで閉じても keydown が残らない', () => {
-    insertDialog(
-      'folder-create-dialog',
-      `<button class="edit-dialog-close" type="button">×</button>
-       <button class="edit-dialog-cancel" type="button">キャンセル</button>
-       <button class="folder-create-confirm" type="button">作成</button>
-       <input id="folder-create-name" />`
-    );
     const creator = new FolderCreator();
     const tracker = trackDocumentKeydown();
     (
-      creator as unknown as { setupDialogEvents: () => void }
-    ).setupDialogEvents();
+      creator as unknown as {
+        showDialog: (f: ChromeBookmarkNode[], p?: string) => void;
+      }
+    ).showDialog([{ id: '1', title: 'bar' }]);
     expect(tracker.activeCount()).toBe(1);
-    click('.edit-dialog-cancel');
+    click('#folder-create-dialog .edit-dialog-cancel');
     expect(tracker.activeCount()).toBe(0);
     tracker.restore();
   });
 
   it('FolderRenamer: 名前変更ダイアログをキャンセルで閉じても keydown が残らない', () => {
-    insertDialog(
-      'folder-rename-dialog',
-      `<button class="edit-dialog-close" type="button">×</button>
-       <button class="edit-dialog-cancel" type="button">キャンセル</button>
-       <button class="folder-rename-confirm" type="button">変更</button>
-       <input id="folder-rename-name" />`
-    );
     const renamer = new FolderRenamer();
     const target: ChromeBookmarkNode = { id: 'f1', title: 'x' };
     const tracker = trackDocumentKeydown();
     (
       renamer as unknown as {
-        setupDialogEvents: (
-          t: ChromeBookmarkNode,
-          s: ChromeBookmarkNode[]
-        ) => void;
+        showDialog: (t: ChromeBookmarkNode, s: ChromeBookmarkNode[]) => void;
       }
-    ).setupDialogEvents(target, []);
+    ).showDialog(target, []);
     expect(tracker.activeCount()).toBe(1);
-    click('.edit-dialog-cancel');
+    click('#folder-rename-dialog .edit-dialog-cancel');
     expect(tracker.activeCount()).toBe(0);
     tracker.restore();
   });

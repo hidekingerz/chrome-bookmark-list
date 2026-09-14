@@ -3,7 +3,7 @@ import { isEditableElement } from '../../scripts/dom.js';
 import { escapeHtml, getAllFolders } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
-import { confirmDialog } from '../Dialog/index.js';
+import { confirmDialog, openDialog } from '../Dialog/index.js';
 import { Toast } from '../Toast/index.js';
 import { UndoManager } from '../UndoManager/index.js';
 
@@ -497,14 +497,11 @@ export class BookmarkSelection {
     });
   }
 
-  private async showMoveDialog(
+  private showMoveDialog(
     folders: ChromeBookmarkNode[],
     count: number
   ): Promise<string | null> {
     return new Promise((resolve) => {
-      const existing = document.getElementById('bulk-move-dialog');
-      existing?.remove();
-
       const folderOptions = folders
         .map((folder) => {
           const label = folder.title || `(ルート: ${folder.id})`;
@@ -512,58 +509,38 @@ export class BookmarkSelection {
         })
         .join('');
 
-      const html = `
-        <div id="bulk-move-dialog" class="edit-dialog-overlay">
-          <div class="edit-dialog">
-            <div class="edit-dialog-header">
-              <h3>${count} 件のブックマークを移動</h3>
-              <button class="edit-dialog-close" type="button">×</button>
-            </div>
-            <div class="edit-dialog-content">
+      let result: string | null = null;
+      openDialog({
+        id: 'bulk-move-dialog',
+        title: `${count} 件のブックマークを移動`,
+        bodyHtml: `
               <div class="edit-form-group">
                 <label for="bulk-move-parent">移動先フォルダ:</label>
                 <select id="bulk-move-parent">
                   ${folderOptions}
                 </select>
               </div>
-            </div>
-            <div class="edit-dialog-actions">
-              <button type="button" class="edit-dialog-cancel">キャンセル</button>
-              <button type="button" class="edit-dialog-save bulk-move-confirm">移動</button>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.insertAdjacentHTML('beforeend', html);
-
-      const dialog = document.getElementById('bulk-move-dialog');
-      const close = (result: string | null) => {
-        // どの経路で閉じても ESC 用リスナーを確実に解除する (#100 リーク防止)
-        document.removeEventListener('keydown', handleKey);
-        dialog?.remove();
-        resolve(result);
-      };
-      dialog
-        ?.querySelector('.edit-dialog-close')
-        ?.addEventListener('click', () => close(null));
-      dialog
-        ?.querySelector('.edit-dialog-cancel')
-        ?.addEventListener('click', () => close(null));
-      dialog
-        ?.querySelector('.bulk-move-confirm')
-        ?.addEventListener('click', () => {
-          const select = document.getElementById(
-            'bulk-move-parent'
-          ) as HTMLSelectElement | null;
-          close(select?.value ?? null);
-        });
-
-      const handleKey = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          close(null);
-        }
-      };
-      document.addEventListener('keydown', handleKey);
+        `,
+        buttons: [
+          {
+            label: 'キャンセル',
+            className: 'edit-dialog-cancel',
+            onClick: (close) => close(),
+          },
+          {
+            label: '移動',
+            className: 'edit-dialog-save bulk-move-confirm',
+            onClick: (close) => {
+              const select = document.getElementById(
+                'bulk-move-parent'
+              ) as HTMLSelectElement | null;
+              result = select?.value ?? null;
+              close();
+            },
+          },
+        ],
+        onClose: () => resolve(result),
+      });
     });
   }
 }
