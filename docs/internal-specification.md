@@ -32,9 +32,7 @@ Chrome Extension (Manifest V3)
 │   ├── RecentlyClosedPanel/ (最近閉じたタブ・復元機能)
 │   └── CalendarHistoryPanel/ (カレンダー履歴タブ・検索機能)
 ├── Types (強化された型定義)
-│   ├── bookmark.ts (ブックマーク関連)
-│   ├── events.ts (イベント関連)
-│   └── index.ts (統合エクスポート)
+│   └── bookmark.ts (ブックマーク関連)
 ├── Core Logic (newtab-core.ts - 薄い関数 API)
 ├── History API (history.ts - 履歴データ取得)
 ├── Utility Functions (utils.ts)
@@ -94,7 +92,7 @@ chrome-bookmark-list/
 │   │   ├── BookmarkService.ts   # ブックマーク処理とAPI操作
 │   │   └── FaviconService.ts    # Favicon取得（Chrome _favicon API）
 │   ├── constants/               # アプリケーション定数
-│   │   └── index.ts             # 定数定義（エラーメッセージ、CSS、セレクター等）
+│   │   └── index.ts             # 定数定義（検索デバウンス、ルート ID、セレクター）
 │   ├── scripts/                 # スクリプトファイル
 │   │   ├── newtab.ts            # メインエントリーポイント
 │   │   ├── newtab-core.ts       # コア関数 API
@@ -264,6 +262,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 **BookmarkFolderEvents.ts** - フォルダーのイベント処理:
 - `setupFolderClickHandler()`: イベント委譲による一元管理
 - `handleFolderClick()`: フォルダクリック処理
+- `updateFolderUI()` / `updateBookmarkListUI()`: UI状態同期
 - 処理分岐:
   1. 編集ボタン → 編集ダイアログ表示
   2. 削除ボタン → 削除確認・実行

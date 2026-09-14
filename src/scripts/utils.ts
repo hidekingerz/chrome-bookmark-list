@@ -94,6 +94,3 @@ export function getDomain(url: string): string {
     return 'localhost';
   }
 }
-
-export { BookmarkService } from '../services/BookmarkService.js';
-export { FaviconService } from '../services/FaviconService.js';
