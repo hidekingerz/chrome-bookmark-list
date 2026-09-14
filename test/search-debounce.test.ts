@@ -1,7 +1,7 @@
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupBookmarkSearch } from '../src/scripts/searchInput';
-import type { BookmarkFolder } from '../src/scripts/types';
+import type { BookmarkFolder } from '../src/types/bookmark';
 
 /**
  * #104-2 検索デバウンスの再現/リグレッションテスト。

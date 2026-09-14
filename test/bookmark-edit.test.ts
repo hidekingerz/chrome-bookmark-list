@@ -1,7 +1,7 @@
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleBookmarkEdit, renderFolder } from '../src/scripts/newtab-core';
-import type { BookmarkFolder } from '../src/scripts/types';
+import type { BookmarkFolder } from '../src/types/bookmark';
 
 // ブックマーク編集機能のテスト
 describe('ブックマーク編集機能のテスト', () => {

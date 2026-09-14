@@ -4,7 +4,7 @@ import {
   renderFolder,
   setupFolderClickHandler,
 } from '../src/scripts/newtab-core';
-import type { BookmarkFolder } from '../src/scripts/types';
+import type { BookmarkFolder } from '../src/types/bookmark';
 import { processBookmarkTree } from '../src/scripts/utils';
 
 describe('3層構造フォルダの問題を検証', () => {

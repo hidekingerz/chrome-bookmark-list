@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BookmarkFolder } from '../src/scripts/types';
+import type { BookmarkFolder } from '../src/types/bookmark';
 
 // フォルダクリック機能のテスト
 describe('フォルダクリック機能のテスト', () => {
