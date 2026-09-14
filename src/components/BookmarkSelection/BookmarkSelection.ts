@@ -3,6 +3,7 @@ import { isEditableElement } from '../../scripts/dom.js';
 import { escapeHtml, getAllFolders } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
+import { confirmDialog } from '../Dialog/index.js';
 import { Toast } from '../Toast/index.js';
 import { UndoManager } from '../UndoManager/index.js';
 
@@ -481,59 +482,18 @@ export class BookmarkSelection {
   // ダイアログ表示 (一括削除確認 / 移動先フォルダ選択)
   // ---------------------------------------------------------------------
 
-  private async showConfirmDialog(
-    message: string,
-    title: string
-  ): Promise<boolean> {
-    return new Promise((resolve) => {
-      const existing = document.getElementById('bulk-confirm-dialog');
-      existing?.remove();
-
-      const html = `
-        <div id="bulk-confirm-dialog" class="edit-dialog-overlay">
-          <div class="edit-dialog">
-            <div class="edit-dialog-header">
-              <h3>${escapeHtml(title)}</h3>
-              <button class="edit-dialog-close" type="button">×</button>
-            </div>
-            <div class="edit-dialog-content">
+  private showConfirmDialog(message: string, title: string): Promise<boolean> {
+    return confirmDialog({
+      id: 'bulk-confirm-dialog',
+      title,
+      bodyHtml: `
               <div class="delete-confirmation-message">
                 <p>${escapeHtml(message)}</p>
                 <p class="delete-warning">削除後 5 秒以内であれば「元に戻す」で復元できます。</p>
               </div>
-            </div>
-            <div class="edit-dialog-actions">
-              <button type="button" class="edit-dialog-cancel">キャンセル</button>
-              <button type="button" class="delete-dialog-confirm">削除</button>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.insertAdjacentHTML('beforeend', html);
-
-      const dialog = document.getElementById('bulk-confirm-dialog');
-      const close = (result: boolean) => {
-        // どの経路で閉じても ESC 用リスナーを確実に解除する (#100 リーク防止)
-        document.removeEventListener('keydown', handleKey);
-        dialog?.remove();
-        resolve(result);
-      };
-      dialog
-        ?.querySelector('.edit-dialog-close')
-        ?.addEventListener('click', () => close(false));
-      dialog
-        ?.querySelector('.edit-dialog-cancel')
-        ?.addEventListener('click', () => close(false));
-      dialog
-        ?.querySelector('.delete-dialog-confirm')
-        ?.addEventListener('click', () => close(true));
-
-      const handleKey = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          close(false);
-        }
-      };
-      document.addEventListener('keydown', handleKey);
+      `,
+      confirmLabel: '削除',
+      confirmClassName: 'delete-dialog-confirm',
     });
   }
 

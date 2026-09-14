@@ -1,4 +1,5 @@
 import { escapeHtml } from '../../scripts/utils.js';
+import { confirmDialog } from '../Dialog/index.js';
 
 /** Chrome のタブグループ色 (固定リストから自動割り当て) */
 type TabGroupColor =
@@ -105,62 +106,16 @@ export class TabGroupOpener {
   /**
    * 大量タブを開く前の確認ダイアログを表示する。
    */
-  private async confirmManyTabs(
-    count: number,
-    folderName: string
-  ): Promise<boolean> {
-    return new Promise((resolve) => {
-      document.getElementById('tab-group-confirm-dialog')?.remove();
-      document.body.insertAdjacentHTML(
-        'beforeend',
-        this.createConfirmDialogHTML(count, folderName)
-      );
-
-      const dialog = document.getElementById('tab-group-confirm-dialog');
-      const closeBtn = dialog?.querySelector('.edit-dialog-close');
-      const cancelBtn = dialog?.querySelector('.edit-dialog-cancel');
-      const confirmBtn = dialog?.querySelector('.tab-group-confirm');
-
-      const close = (result: boolean) => {
-        // どの経路で閉じても ESC 用リスナーを確実に解除する (#100 リーク防止)
-        document.removeEventListener('keydown', keydown);
-        dialog?.remove();
-        resolve(result);
-      };
-
-      closeBtn?.addEventListener('click', () => close(false));
-      cancelBtn?.addEventListener('click', () => close(false));
-      confirmBtn?.addEventListener('click', () => close(true));
-
-      const keydown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          close(false);
-        }
-      };
-      document.addEventListener('keydown', keydown);
-
-      (cancelBtn as HTMLElement | null)?.focus();
-    });
-  }
-
-  private createConfirmDialogHTML(count: number, folderName: string): string {
-    return `
-      <div id="tab-group-confirm-dialog" class="edit-dialog-overlay">
-        <div class="edit-dialog" role="dialog" aria-modal="true">
-          <div class="edit-dialog-header">
-            <h3>多数のタブを開きますか？</h3>
-            <button class="edit-dialog-close" type="button">×</button>
-          </div>
-          <div class="edit-dialog-content">
+  private confirmManyTabs(count: number, folderName: string): Promise<boolean> {
+    return confirmDialog({
+      id: 'tab-group-confirm-dialog',
+      title: '多数のタブを開きますか？',
+      bodyHtml: `
             <p>「${escapeHtml(folderName)}」内の <strong>${count}件</strong> のブックマークを一度に開きます。</p>
             <p class="delete-warning">処理に時間がかかる場合があります。</p>
-          </div>
-          <div class="edit-dialog-actions">
-            <button type="button" class="edit-dialog-cancel">キャンセル</button>
-            <button type="button" class="edit-dialog-save tab-group-confirm">開く</button>
-          </div>
-        </div>
-      </div>
-    `;
+      `,
+      confirmLabel: '開く',
+      confirmClassName: 'edit-dialog-save tab-group-confirm',
+    });
   }
 }

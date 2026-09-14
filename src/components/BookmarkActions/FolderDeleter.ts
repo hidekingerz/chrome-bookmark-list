@@ -1,6 +1,7 @@
 import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
+import { confirmDialog } from '../Dialog/index.js';
 import { Toast } from '../Toast/index.js';
 import { UndoManager } from '../UndoManager/index.js';
 
@@ -110,26 +111,11 @@ export class FolderDeleter {
     }
   }
 
-  private async showConfirmation(
+  private showConfirmation(
     title: string,
     bookmarkCount: number,
     folderCount: number
   ): Promise<boolean> {
-    return new Promise((resolve) => {
-      document.getElementById('folder-delete-dialog')?.remove();
-      document.body.insertAdjacentHTML(
-        'beforeend',
-        this.createDialogHTML(title, bookmarkCount, folderCount)
-      );
-      this.setupDialogEvents(resolve);
-    });
-  }
-
-  private createDialogHTML(
-    title: string,
-    bookmarkCount: number,
-    folderCount: number
-  ): string {
     const contentWarning =
       bookmarkCount > 0 || folderCount > 0
         ? `<p class="delete-warning">中の ${bookmarkCount}件のブックマーク${
@@ -137,14 +123,10 @@ export class FolderDeleter {
           } も削除されます。</p>`
         : '';
 
-    return `
-      <div id="folder-delete-dialog" class="edit-dialog-overlay">
-        <div class="edit-dialog" role="dialog" aria-modal="true">
-          <div class="edit-dialog-header">
-            <h3>フォルダを削除</h3>
-            <button class="edit-dialog-close" type="button">×</button>
-          </div>
-          <div class="edit-dialog-content">
+    return confirmDialog({
+      id: 'folder-delete-dialog',
+      title: 'フォルダを削除',
+      bodyHtml: `
             <div class="delete-confirmation-message">
               <p>以下のフォルダを削除しますか？</p>
               <div class="delete-bookmark-info">
@@ -152,42 +134,10 @@ export class FolderDeleter {
               </div>
               ${contentWarning}
             </div>
-          </div>
-          <div class="edit-dialog-actions">
-            <button type="button" class="edit-dialog-cancel">キャンセル</button>
-            <button type="button" class="delete-dialog-confirm folder-delete-confirm">削除</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  private setupDialogEvents(resolve: (value: boolean) => void): void {
-    const dialog = document.getElementById('folder-delete-dialog');
-    const closeBtn = dialog?.querySelector('.edit-dialog-close');
-    const cancelBtn = dialog?.querySelector('.edit-dialog-cancel');
-    const confirmBtn = dialog?.querySelector('.folder-delete-confirm');
-
-    const close = (confirmed: boolean) => {
-      // どの経路で閉じても ESC 用リスナーを確実に解除する (#100 リーク防止)
-      document.removeEventListener('keydown', keydownHandler);
-      dialog?.remove();
-      resolve(confirmed);
-    };
-
-    closeBtn?.addEventListener('click', () => close(false));
-    cancelBtn?.addEventListener('click', () => close(false));
-    confirmBtn?.addEventListener('click', () => close(true));
-
-    const keydownHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        close(false);
-      }
-    };
-    document.addEventListener('keydown', keydownHandler);
-
-    // 開いた直後にキャンセルへフォーカス (誤操作防止 + a11y)
-    (cancelBtn as HTMLElement | null)?.focus();
+      `,
+      confirmLabel: '削除',
+      confirmClassName: 'delete-dialog-confirm folder-delete-confirm',
+    });
   }
 }
 
