@@ -622,4 +622,30 @@ describe('BookmarkService', () => {
       );
     });
   });
+
+  describe('getAllFolders', () => {
+    it('仮想ルート id=0 を除き、フォルダのみを深さ優先で返す', async () => {
+      vi.mocked(chrome.bookmarks.getTree).mockResolvedValue([
+        {
+          id: '0',
+          title: '',
+          children: [
+            {
+              id: '1',
+              title: 'ブックマークバー',
+              children: [
+                { id: '10', title: 'GitHub', url: 'https://github.com' },
+                { id: '11', title: 'Work', children: [] },
+              ],
+            },
+            { id: '2', title: 'その他のブックマーク', children: [] },
+          ],
+        },
+      ] as chrome.bookmarks.BookmarkTreeNode[]);
+
+      const folders = await new BookmarkService().getAllFolders();
+
+      expect(folders.map((f) => f.id)).toEqual(['1', '11', '2']);
+    });
+  });
 });

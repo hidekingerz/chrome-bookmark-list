@@ -1,5 +1,5 @@
 import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
-import { escapeHtml } from '../../scripts/utils.js';
+import { escapeHtml, getAllFolders } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import { UndoManager } from '../UndoManager/index.js';
 
@@ -19,30 +19,11 @@ export class FolderCreator {
    */
   async openCreateDialog(defaultParentId?: string): Promise<void> {
     try {
-      const folders = await this.getAllFolders();
+      const folders = await getAllFolders();
       this.showDialog(folders, defaultParentId);
     } catch (error) {
       console.error('❌ フォルダ作成ダイアログの表示に失敗:', error);
     }
-  }
-
-  private async getAllFolders(): Promise<ChromeBookmarkNode[]> {
-    const tree = await chrome.bookmarks.getTree();
-    const folders: ChromeBookmarkNode[] = [];
-    const collect = (nodes: ChromeBookmarkNode[]) => {
-      for (const node of nodes) {
-        if (node.children && !node.url) {
-          // id='0' はツリーの仮想ルートで、ここを親に指定した chrome.bookmarks.create
-          // は失敗するため候補から除外する
-          if (node.id !== '0') {
-            folders.push(node);
-          }
-          collect(node.children);
-        }
-      }
-    };
-    collect(tree);
-    return folders;
   }
 
   private showDialog(

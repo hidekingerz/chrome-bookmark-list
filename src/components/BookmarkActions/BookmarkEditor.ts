@@ -1,5 +1,5 @@
 import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
-import { escapeHtml } from '../../scripts/utils.js';
+import { escapeHtml, getAllFolders } from '../../scripts/utils.js';
 import type {
   BookmarkMoveData,
   BookmarkUpdateData,
@@ -43,7 +43,7 @@ export class BookmarkEditor {
       }
 
       // すべてのフォルダーを取得
-      const allFolders = await this.getAllFolders();
+      const allFolders = await getAllFolders();
 
       // 編集ダイアログを表示
       this.showEditDialog(bookmark, allFolders);
@@ -51,27 +51,6 @@ export class BookmarkEditor {
       console.error('❌ ブックマークの編集準備に失敗しました:', error);
       alert('ブックマークの編集準備に失敗しました。');
     }
-  }
-
-  /**
-   * すべてのフォルダーを取得する
-   */
-  private async getAllFolders(): Promise<ChromeBookmarkNode[]> {
-    const bookmarkTree = await chrome.bookmarks.getTree();
-    const folders: ChromeBookmarkNode[] = [];
-
-    const collectFolders = (nodes: ChromeBookmarkNode[]) => {
-      for (const node of nodes) {
-        if (node.children && !node.url) {
-          // フォルダー（URLがない）の場合
-          folders.push(node);
-          collectFolders(node.children);
-        }
-      }
-    };
-
-    collectFolders(bookmarkTree);
-    return folders;
   }
 
   /**
@@ -107,7 +86,7 @@ export class BookmarkEditor {
     const folderOptions = folders
       .map(
         (folder) => `
-        <option value="${folder.id}" ${folder.id === bookmark.parentId ? 'selected' : ''}>
+        <option value="${escapeHtml(folder.id)}" ${folder.id === bookmark.parentId ? 'selected' : ''}>
           ${escapeHtml(folder.title)}
         </option>
       `

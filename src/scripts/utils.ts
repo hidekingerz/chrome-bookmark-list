@@ -65,6 +65,10 @@ export function getTotalBookmarks(folder: BookmarkFolder): number {
   return getBookmarkService().getTotalBookmarks(folder);
 }
 
+export async function getAllFolders(): Promise<ChromeBookmarkNode[]> {
+  return getBookmarkService().getAllFolders();
+}
+
 /**
  * HTML の特殊文字をエスケープする。
  * textContent→innerHTML 方式は & < > のみをエスケープし " ' を残すため、
