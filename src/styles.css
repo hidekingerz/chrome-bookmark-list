@@ -1322,6 +1322,7 @@ body.dragging-folder {
 }
 
 .history-timeline .history-item:hover {
+  background: var(--surface-hover);
   transform: none;
   box-shadow: none;
 }

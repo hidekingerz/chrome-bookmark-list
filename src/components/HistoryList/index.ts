@@ -10,9 +10,17 @@ export interface HistoryListItemView {
   title: string;
   /** URL 行に表示する文字列（URL 全体 or ドメイン） */
   subtitle: string;
-  /** メタ行。空なら描画しない */
+  /**
+   * メタ行。空なら描画しない。
+   * `text` はエスケープされるが `className` はされないため、
+   * 呼び出し側が管理するリテラル（外部入力を含まない値）のみ渡すこと。
+   */
   meta: Array<{ className: string; text: string }>;
-  /** ルート要素に付ける追加属性（例: data-session-id）。値はエスケープされる */
+  /**
+   * ルート要素に付ける追加属性（例: data-session-id）。
+   * 値はエスケープされるが**属性名はエスケープされない**ため、
+   * キーは呼び出し側が管理するリテラル（外部入力を含まない値）のみ渡すこと。
+   */
   attributes?: Record<string, string>;
 }
 
