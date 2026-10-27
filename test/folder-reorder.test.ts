@@ -311,7 +311,7 @@ describe('BookmarkDragAndDrop — フォルダ並び替え (#77)', () => {
 
     const toast = document.querySelector('.app-toast');
     expect(toast).not.toBeNull();
-    (toast?.querySelector('.app-toast-action') as HTMLButtonElement).click();
+    (toast!.querySelector('.app-toast-action') as HTMLButtonElement).click();
     await new Promise((r) => setTimeout(r, 30));
 
     // Undo: 現在 idx=1 < originalIndex=2 のため undoIndex = 3

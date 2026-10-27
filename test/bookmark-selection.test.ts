@@ -259,7 +259,7 @@ describe('BookmarkSelection', () => {
     expect(dialog).not.toBeNull();
     expect(dialog?.textContent).toContain('2 件');
 
-    (dialog?.querySelector('.delete-dialog-confirm') as HTMLElement).click();
+    (dialog!.querySelector('.delete-dialog-confirm') as HTMLElement).click();
     await deletePromise;
 
     expect(mockChrome.bookmarks.remove).toHaveBeenCalledTimes(2);
@@ -273,7 +273,7 @@ describe('BookmarkSelection', () => {
     const deletePromise = selection.bulkDelete();
     await new Promise((resolve) => setTimeout(resolve, 10));
     const dialog = document.getElementById('bulk-confirm-dialog');
-    (dialog?.querySelector('.edit-dialog-cancel') as HTMLElement).click();
+    (dialog!.querySelector('.edit-dialog-cancel') as HTMLElement).click();
     await deletePromise;
 
     expect(mockChrome.bookmarks.remove).not.toHaveBeenCalled();
@@ -301,7 +301,7 @@ describe('BookmarkSelection', () => {
       '#bulk-move-parent'
     ) as HTMLSelectElement;
     select.value = '2';
-    (dialog?.querySelector('.bulk-move-confirm') as HTMLElement).click();
+    (dialog!.querySelector('.bulk-move-confirm') as HTMLElement).click();
     await movePromise;
 
     expect(mockChrome.bookmarks.move).toHaveBeenCalledTimes(2);

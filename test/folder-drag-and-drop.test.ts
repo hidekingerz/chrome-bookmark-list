@@ -253,7 +253,7 @@ describe('BookmarkDragAndDrop — フォルダ DnD', () => {
     expect(toast?.textContent).toContain('フォルダ「F1」を移動しました');
 
     // Undo 実行で元の親 (root, index 0) へ戻る
-    (toast?.querySelector('.app-toast-action') as HTMLButtonElement).click();
+    (toast!.querySelector('.app-toast-action') as HTMLButtonElement).click();
     await new Promise((r) => setTimeout(r, 10));
     expect(chrome.bookmarks.move).toHaveBeenCalledWith('f1', {
       parentId: 'root',
@@ -291,7 +291,7 @@ describe('BookmarkDragAndDrop — フォルダ DnD', () => {
 
     // Undo: get で現在 index 0 (< originalIndex 0 ではない) → undoIndex = 0
     const toast = document.querySelector('.app-toast');
-    (toast?.querySelector('.app-toast-action') as HTMLButtonElement).click();
+    (toast!.querySelector('.app-toast-action') as HTMLButtonElement).click();
     await new Promise((r) => setTimeout(r, 10));
     expect(chrome.bookmarks.move).toHaveBeenCalledWith('f1', {
       parentId: 'root',
