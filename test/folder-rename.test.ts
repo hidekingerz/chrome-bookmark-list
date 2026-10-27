@@ -173,7 +173,7 @@ describe('FolderRenamer', () => {
     const toast = document.querySelector('.app-toast');
     expect(toast).not.toBeNull();
 
-    (toast?.querySelector('.app-toast-action') as HTMLButtonElement).click();
+    (toast!.querySelector('.app-toast-action') as HTMLButtonElement).click();
     await new Promise((r) => setTimeout(r, 10));
 
     expect(chrome.bookmarks.update).toHaveBeenLastCalledWith('f1', {

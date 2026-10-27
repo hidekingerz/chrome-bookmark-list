@@ -101,7 +101,7 @@ describe('TabGroupOpener', () => {
     expect(dialog?.textContent).toContain('25件');
 
     // キャンセル
-    (dialog?.querySelector('.edit-dialog-cancel') as HTMLElement).click();
+    (dialog!.querySelector('.edit-dialog-cancel') as HTMLElement).click();
     await promise;
 
     expect(chrome.tabs.create).not.toHaveBeenCalled();
@@ -117,7 +117,7 @@ describe('TabGroupOpener', () => {
 
     await new Promise((r) => setTimeout(r, 10));
     const dialog = document.getElementById('tab-group-confirm-dialog');
-    (dialog?.querySelector('.tab-group-confirm') as HTMLElement).click();
+    (dialog!.querySelector('.tab-group-confirm') as HTMLElement).click();
     await promise;
 
     expect(chrome.tabs.create).toHaveBeenCalledTimes(22);

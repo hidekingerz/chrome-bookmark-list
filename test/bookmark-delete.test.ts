@@ -163,7 +163,7 @@ describe('ブックマーク削除機能のテスト', () => {
     );
 
     // 「元に戻す」を押すと chrome.bookmarks.create が呼ばれる
-    (toast?.querySelector('.app-toast-action') as HTMLButtonElement).click();
+    (toast!.querySelector('.app-toast-action') as HTMLButtonElement).click();
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(chrome.bookmarks.create).toHaveBeenCalledWith({
       parentId: 'folder-1',

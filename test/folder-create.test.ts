@@ -158,7 +158,7 @@ describe('FolderCreator', () => {
     expect(toast).not.toBeNull();
     expect(toast?.textContent).toContain('新規フォルダ');
 
-    (toast?.querySelector('.app-toast-action') as HTMLButtonElement).click();
+    (toast!.querySelector('.app-toast-action') as HTMLButtonElement).click();
     await new Promise((r) => setTimeout(r, 10));
 
     expect(chrome.bookmarks.removeTree).toHaveBeenCalledWith('new-folder');

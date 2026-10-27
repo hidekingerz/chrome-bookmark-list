@@ -167,7 +167,7 @@ describe('BookmarkDragAndDrop — 複数選択ドラッグでの一括移動', (
     expect(toast).not.toBeNull();
     expect(toast?.textContent).toContain('2 件のブックマークを移動しました');
 
-    (toast?.querySelector('.app-toast-action') as HTMLButtonElement).click();
+    (toast!.querySelector('.app-toast-action') as HTMLButtonElement).click();
     await new Promise((r) => setTimeout(r, 30));
 
     // 元の親 (src) + 元の index へ戻す move が 2 件呼ばれる
