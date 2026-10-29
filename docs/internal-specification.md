@@ -43,7 +43,7 @@ Chrome Extension (Manifest V3)
 
 - **言語**: TypeScript 5.4.5
 - **ビルドツール**: TypeScript Compiler (tsc)
-- **テストフレームワーク**: Vitest 1.6.0
+- **テストフレームワーク**: Vitest 5.0
 - **DOM環境**: Happy DOM / JSDOM
 - **CSS**: Vanilla CSS (Grid + Flexbox)
 - **Chrome API**: Bookmarks API, History API, Sessions API, _favicon API
@@ -126,7 +126,7 @@ chrome-bookmark-list/
 ├── build.sh                     # ビルドスクリプト
 ├── package.json                 # Node.js依存関係
 ├── tsconfig.json                # TypeScript設定
-├── vitest.config.ts             # テスト設定
+├── vitest.config.mts            # テスト設定
 ├── biome.json                   # Biome設定
 └── README.md                    # プロジェクト概要
 ```
@@ -616,7 +616,7 @@ try {
 ### 技術スタック詳細
 
 - **TypeScript 5.4.5** - 型安全なJavaScript開発
-- **Vitest 1.6.0** - 高速なテストフレームワーク（ユニットテスト・統合テスト）
+- **Vitest 5.0** - 高速なテストフレームワーク（ユニットテスト・統合テスト）
 - **Manifest V3** - 最新のChrome拡張機能仕様
 - **Vanilla JavaScript/TypeScript** - フレームワークを使用しない軽量実装
 - **CSS Grid & Flexbox** - モダンなレイアウト
