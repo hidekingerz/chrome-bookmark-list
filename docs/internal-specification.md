@@ -41,7 +41,7 @@ Chrome Extension (Manifest V3)
 
 ### 技術スタック
 
-- **言語**: TypeScript 5.4.5
+- **言語**: TypeScript 7.0
 - **ビルドツール**: TypeScript Compiler (tsc)
 - **テストフレームワーク**: Vitest 5.0
 - **DOM環境**: Happy DOM / JSDOM
@@ -615,7 +615,7 @@ try {
 
 ### 技術スタック詳細
 
-- **TypeScript 5.4.5** - 型安全なJavaScript開発
+- **TypeScript 7.0** - 型安全なJavaScript開発
 - **Vitest 5.0** - 高速なテストフレームワーク（ユニットテスト・統合テスト）
 - **Manifest V3** - 最新のChrome拡張機能仕様
 - **Vanilla JavaScript/TypeScript** - フレームワークを使用しない軽量実装
