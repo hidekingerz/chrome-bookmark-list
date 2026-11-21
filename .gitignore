@@ -49,3 +49,6 @@ coverage/
 # Optional eslint cache
 .eslintcache
 dist.zip
+
+# Mutation testing (mutator) のキャッシュとレポート
+.mutator/
