@@ -3,6 +3,7 @@ import { escapeHtml, getAllFolders } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import {
   type DialogHandle,
+  errorDialog,
   openDialog,
   showDialogError,
 } from '../Dialog/index.js';
@@ -26,6 +27,7 @@ export class FolderCreator {
       this.showDialog(folders, defaultParentId);
     } catch (error) {
       console.error('❌ フォルダ作成ダイアログの表示に失敗:', error);
+      void errorDialog('フォルダの作成を開始できませんでした。');
     }
   }
 
@@ -56,7 +58,7 @@ export class FolderCreator {
                 ${folderOptions}
               </select>
             </div>
-            <div class="dialog-error folder-create-error" style="display:none; color: var(--danger); margin-top: 8px;"></div>
+            <div class="dialog-error folder-create-error" role="alert" style="display:none; color: var(--danger); margin-top: 8px;"></div>
       `,
       buttons: [
         {
@@ -102,6 +104,7 @@ export class FolderCreator {
     const parentId = parentSelect.value;
 
     if (!title) {
+      showDialogError(this.dialog, 'フォルダ名を入力してください。');
       nameInput.focus();
       return;
     }

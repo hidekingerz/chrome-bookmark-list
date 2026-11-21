@@ -55,12 +55,23 @@ export class BookmarkFolderRenderer {
     const draggableAttr = isPermanent ? '' : 'draggable="true"';
 
     const safeTitle = escapeHtml(folder.title);
+    // 読み上げ用の名前には、見えている文字（フォルダ名・フォルダの数）をすべて含める
+    const subfolderLabel = hasSubfolders
+      ? `${folder.subfolders.length}個のフォルダ`
+      : '';
+    const ariaLabel = [
+      `フォルダ「${safeTitle}」`,
+      subfolderLabel,
+      `${totalBookmarks}件`,
+    ]
+      .filter(Boolean)
+      .join(' ');
     return `
-      <div class="folder-header ${headerClass}" tabindex="0" role="treeitem" aria-expanded="${folder.expanded ? 'true' : 'false'}" aria-label="フォルダ「${safeTitle}」 ${totalBookmarks}件" ${draggableAttr}>
+      <div class="folder-header ${headerClass}" tabindex="0" role="treeitem" aria-expanded="${folder.expanded ? 'true' : 'false'}" aria-label="${ariaLabel}" ${draggableAttr}>
         <div class="folder-info">
           ${this.renderFolderIcon(hasSubfolders, hasBookmarks, folder.expanded)}
           <h2 class="folder-title">${safeTitle}</h2>
-          ${hasSubfolders ? `<span class="subfolder-count">${folder.subfolders.length}個のフォルダ</span>` : ''}
+          ${hasSubfolders ? `<span class="subfolder-count">${subfolderLabel}</span>` : ''}
         </div>
         <span class="bookmark-count" aria-hidden="true">${totalBookmarks}</span>
       </div>

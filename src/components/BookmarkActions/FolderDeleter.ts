@@ -1,8 +1,7 @@
 import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
-import { confirmDialog } from '../Dialog/index.js';
-import { Toast } from '../Toast/index.js';
+import { confirmDialog, errorDialog } from '../Dialog/index.js';
 import { UndoManager } from '../UndoManager/index.js';
 
 /**
@@ -18,6 +17,7 @@ export class FolderDeleter {
       const [subtree] = await chrome.bookmarks.getSubTree(folderId);
       if (!subtree) {
         console.error('❌ 削除対象のフォルダが見つかりません:', folderId);
+        void errorDialog('削除するフォルダが見つかりませんでした。');
         return;
       }
       const counts = this.countContents(subtree);
@@ -47,10 +47,10 @@ export class FolderDeleter {
         });
       }
     } catch (error) {
-      // 確認ダイアログは削除実行前に閉じているため、失敗は Toast で通知する
+      // 確認ダイアログは削除実行前に閉じているため、失敗は「エラー」ダイアログで知らせる
       // (console のみで握りつぶさない)
       console.error('❌ フォルダの削除に失敗しました:', error);
-      Toast.show({ message: 'フォルダの削除に失敗しました。' });
+      void errorDialog('フォルダの削除に失敗しました。');
     }
   }
 

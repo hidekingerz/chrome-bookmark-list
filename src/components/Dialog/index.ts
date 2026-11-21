@@ -56,9 +56,9 @@ export function openDialog(options: DialogOptions): DialogHandle {
     'beforeend',
     `
       <div id="${options.id}" class="edit-dialog-overlay">
-        <div class="edit-dialog" role="dialog" aria-modal="true">
+        <div class="edit-dialog" role="dialog" aria-modal="true" aria-labelledby="${options.id}-title">
           <div class="edit-dialog-header">
-            <h3>${escapeHtml(options.title)}</h3>
+            <h3 id="${options.id}-title">${escapeHtml(options.title)}</h3>
             <button class="edit-dialog-close" type="button">×</button>
           </div>
           <div class="edit-dialog-content">${options.bodyHtml}</div>
@@ -159,11 +159,30 @@ export function alertDialog(options: {
         {
           label: 'OK',
           className: 'edit-dialog-cancel',
+          // OK にフォーカスを移す。背後の項目にフォーカスが残ると、Enter がそちらに届く
+          autofocus: true,
           onClick: (close) => close(),
         },
       ],
       onClose: () => resolve(),
     });
+  });
+}
+
+/**
+ * エラー通知ダイアログ（OK ボタンのみ）。閉じられたら解決する。
+ * 操作の失敗をユーザーへ知らせる共通の入口で、ブラウザ標準の alert() の代わりに使う。
+ * 他のダイアログを開いたまま知らせたいときは showDialogError を使う（同時に開けるのは 1 つ）。
+ */
+export function errorDialog(message: string): Promise<void> {
+  return alertDialog({
+    id: 'error-dialog',
+    title: 'エラー',
+    bodyHtml: `
+            <div class="error-message">
+              <p>❌ ${escapeHtml(message)}</p>
+            </div>
+      `,
   });
 }
 

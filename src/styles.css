@@ -9,7 +9,10 @@
   --accent-contrast: #ffffff;
   --accent-soft: rgba(91, 110, 232, 0.1);
   --accent-soft-strong: rgba(91, 110, 232, 0.16);
-  --accent-gradient: linear-gradient(135deg, #5b6ee8 0%, #8a5cf6 100%);
+  /* 白い文字を載せる。両端とも白に対して 4.5:1 以上（WCAG 2 AA） */
+  --accent-gradient: linear-gradient(135deg, #4f61e0 0%, #7a4cee 100%);
+  /* 文字に使うアクセント色。淡いアクセント背景の上でも 4.5:1 以上 */
+  --accent-text: #4250d0;
 
   /* サーフェス */
   --bg: #eef1f8;
@@ -24,8 +27,9 @@
 
   /* テキスト */
   --text: #1f2433;
-  --text-muted: #6b7280;
-  --text-subtle: #9aa1ad;
+  /* 補助の文字色。白・淡い背景のどちらの上でも 4.5:1 以上 */
+  --text-muted: #555c6b;
+  --text-subtle: #5f6675;
 
   /* ボーダー・影 */
   --border: #e4e7f0;
@@ -55,6 +59,7 @@
     --accent-soft: rgba(132, 147, 255, 0.14);
     --accent-soft-strong: rgba(132, 147, 255, 0.22);
     --accent-gradient: linear-gradient(135deg, #6f80ff 0%, #a06bff 100%);
+    --accent-text: #a2adff;
 
     --bg: #0f1117;
     --bg-accent: radial-gradient(
@@ -68,7 +73,7 @@
 
     --text: #e7e9f0;
     --text-muted: #9ba3b4;
-    --text-subtle: #6b7382;
+    --text-subtle: #8d95a4;
 
     --border: #2a2f3d;
     --border-strong: #3a4151;
@@ -309,7 +314,8 @@ header h1 {
 
 .subfolder-count {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  /* 見出しのホバー色の上に、さらに淡い背景を重ねる。補助色では 4.5:1 を割るので本文色にする */
+  color: var(--text);
   margin-left: 8px;
   background: var(--accent-soft);
   padding: 2px 8px;
@@ -415,7 +421,7 @@ header h1 {
 
 .bookmark-link:hover {
   background-color: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .bookmark-favicon-container {
@@ -897,7 +903,7 @@ body.dragging-folder {
 
 .delete-dialog-confirm {
   background: linear-gradient(135deg, var(--danger) 0%, var(--danger-strong) 100%);
-  color: #ffffff;
+  color: var(--accent-contrast);
   padding: 10px 20px;
   border: none;
   border-radius: var(--radius-sm);
@@ -989,7 +995,7 @@ body.dragging-folder {
 }
 
 .history-item-title:hover {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .history-item-url {
@@ -1014,7 +1020,7 @@ body.dragging-folder {
 
 .history-item-count {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   padding: 2px 8px;
   border-radius: var(--radius-pill);
   font-size: 10px;
@@ -1071,7 +1077,7 @@ body.dragging-folder {
   width: 34px;
   height: 34px;
   font-size: 18px;
-  color: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1121,7 +1127,7 @@ body.dragging-folder {
   transition: all var(--transition);
 }
 
-.calendar-day:not(.other-month):hover {
+.calendar-day:not(.other-month):not(.selected):hover {
   background: var(--accent-soft);
   border-color: var(--accent);
   transform: scale(1.05);
@@ -1132,14 +1138,13 @@ body.dragging-folder {
   background: transparent;
   border-color: transparent;
   cursor: default;
-  opacity: 0.5;
 }
 
 .calendar-day.today {
   background: var(--accent-soft);
   border-color: var(--accent);
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .calendar-day.selected {
@@ -1207,7 +1212,7 @@ body.dragging-folder {
   display: inline-block;
   padding: 6px 12px;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   text-decoration: none;
   border-radius: var(--radius-sm);
   font-size: 12px;
@@ -1248,8 +1253,9 @@ body.dragging-folder {
 
 .timeline-hour-count {
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.22);
-  padding: 2px 10px;
+  /* 背景は重ねない（淡い色を重ねると、文字とのコントラストが 4.5:1 を割る） */
+  border: 1px solid currentColor;
+  padding: 1px 10px;
   border-radius: var(--radius-pill);
 }
 
@@ -1273,7 +1279,7 @@ body.dragging-folder {
 }
 
 .domain-name {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
@@ -1389,7 +1395,7 @@ body.dragging-folder {
   }
 
   .bookmark-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .history-list {
@@ -1738,7 +1744,7 @@ body.dragging-folder {
 }
 
 .bookmark-item.selected .bookmark-link {
-  color: var(--accent-strong);
+  color: var(--accent-text);
 }
 
 .bookmark-item.selected .bookmark-link:hover {

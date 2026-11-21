@@ -125,7 +125,7 @@ describe('FolderCreator', () => {
     document.removeEventListener('bookmarks-changed', changedSpy);
   });
 
-  it('フォルダ名が空のときは作成されない', async () => {
+  it('フォルダ名が空のときは作成せず、ダイアログの中に理由を表示する', async () => {
     const creator = new FolderCreator();
     await creator.openCreateDialog('1');
 
@@ -137,6 +137,28 @@ describe('FolderCreator', () => {
 
     expect(chrome.bookmarks.create).not.toHaveBeenCalled();
     expect(document.getElementById('folder-create-dialog')).not.toBeNull();
+    const error = document.querySelector(
+      '#folder-create-dialog .dialog-error'
+    ) as HTMLElement;
+    expect(error.textContent).toBe('フォルダ名を入力してください。');
+    expect(error.style.display).toBe('block');
+  });
+
+  it('フォルダ名が空白だけのときも作成せず、同じ理由を表示する', async () => {
+    const creator = new FolderCreator();
+    await creator.openCreateDialog('1');
+    (document.getElementById('folder-create-name') as HTMLInputElement).value =
+      '   ';
+
+    (
+      document.querySelector('.folder-create-confirm') as HTMLButtonElement
+    ).click();
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(chrome.bookmarks.create).not.toHaveBeenCalled();
+    expect(
+      document.querySelector('#folder-create-dialog .dialog-error')?.textContent
+    ).toBe('フォルダ名を入力してください。');
   });
 
   it('作成後に Undo Toast が表示され、Undo で removeTree が呼ばれる', async () => {

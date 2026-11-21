@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BookmarkSelection } from '../src/components/BookmarkSelection/BookmarkSelection';
 import { Toast } from '../src/components/Toast/index';
 import { UndoManager } from '../src/components/UndoManager/index';
+import {
+  type FakeBookmarks,
+  installFakeBookmarks,
+} from './helpers/fake-bookmarks';
 
 /**
  * 複数選択ロジックのテスト。
@@ -119,6 +123,10 @@ describe('BookmarkSelection', () => {
   });
 
   afterEach(() => {
+    // 各テストが仕掛けた Toast / UndoManager のスパイを次のテストへ持ち越さない
+    vi.restoreAllMocks();
+    UndoManager.getInstance().clear();
+    Toast.dismissCurrent();
     dom.window.close();
     vi.clearAllMocks();
   });
@@ -130,6 +138,49 @@ describe('BookmarkSelection', () => {
   function urlAt(index: number): string {
     const link = container.querySelectorAll('.bookmark-link')[index];
     return link.getAttribute('data-url') ?? '';
+  }
+
+  /**
+   * 並び順を持つ chrome.bookmarks の代役を入れる。
+   * ブックマークバー (1) に A・B・C、その他のブックマーク (2) は空。
+   */
+  function installTree(): FakeBookmarks {
+    return installFakeBookmarks([
+      {
+        id: '1',
+        title: 'ブックマークバー',
+        children: [
+          { id: 'a', title: 'A', url: urlAt(0) },
+          { id: 'b', title: 'B', url: urlAt(1) },
+          { id: 'c', title: 'C', url: urlAt(2) },
+        ],
+      },
+      { id: '2', title: 'その他のブックマーク', children: [] },
+    ]);
+  }
+
+  function errorDialogMessage(): string | undefined {
+    return document
+      .querySelector('#error-dialog .error-message')
+      ?.textContent?.trim();
+  }
+
+  function toastMessage(): string | undefined {
+    return document.querySelector('.app-toast-message')?.textContent?.trim();
+  }
+
+  function undoButton(): HTMLElement | null {
+    return document.querySelector('.app-toast-action');
+  }
+
+  /** 一括移動のダイアログで移動先を選んで「移動」を押す。 */
+  async function confirmMoveTo(parentId: string): Promise<void> {
+    await vi.waitFor(() => {
+      expect(document.getElementById('bulk-move-parent')).not.toBeNull();
+    });
+    (document.getElementById('bulk-move-parent') as HTMLSelectElement).value =
+      parentId;
+    (document.querySelector('.bulk-move-confirm') as HTMLElement).click();
   }
 
   it('修飾キーなし・未選択時は consumed=false で通常クリックを通す', () => {
@@ -280,37 +331,18 @@ describe('BookmarkSelection', () => {
     expect(selection.count).toBe(1);
   });
 
-  it('一括移動はダイアログで親フォルダを選択し chrome.bookmarks.move を呼ぶ', async () => {
-    const mockChrome = globalThis.chrome as any;
-    mockChrome.bookmarks.search.mockImplementation(({ url }: { url: string }) =>
-      Promise.resolve([
-        { id: `id-${url}`, parentId: '1', index: 0, title: url, url },
-      ])
-    );
-    mockChrome.bookmarks.move.mockResolvedValue(undefined);
-
+  it('一括移動はダイアログで選んだフォルダへ、選んだ順のまま移し、選択を解除する', async () => {
+    const bookmarks = installTree();
     selection.toggle(urlAt(0), 'A', itemAt(0));
     selection.toggle(urlAt(1), 'B', itemAt(1));
 
-    const movePromise = selection.bulkMove();
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const dialog = document.getElementById('bulk-move-dialog');
-    expect(dialog).not.toBeNull();
+    const moving = selection.bulkMove();
+    await confirmMoveTo('2');
+    await moving;
 
-    const select = dialog?.querySelector(
-      '#bulk-move-parent'
-    ) as HTMLSelectElement;
-    select.value = '2';
-    (dialog!.querySelector('.bulk-move-confirm') as HTMLElement).click();
-    await movePromise;
-
-    expect(mockChrome.bookmarks.move).toHaveBeenCalledTimes(2);
-    expect(mockChrome.bookmarks.move).toHaveBeenCalledWith(
-      'id-https://a.example.com',
-      {
-        parentId: '2',
-      }
-    );
+    expect(bookmarks.titles('2')).toEqual(['A', 'B']);
+    expect(bookmarks.titles('1')).toEqual(['C']);
+    expect(toastMessage()).toBe('2 件のブックマークを移動しました');
     expect(selection.count).toBe(0);
   });
 
@@ -390,6 +422,36 @@ describe('BookmarkSelection', () => {
   // -------------------------------------------------------------------
   // refresh による DOM 再適用 (reapplySelectionToDom)
   // -------------------------------------------------------------------
+
+  it('refresh は、選択していない項目に残っていたハイライトを外す', () => {
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    // 選択していないのに、DOM 上はハイライトが残っている項目
+    itemAt(1).classList.add('selected');
+
+    selection.refresh(container);
+
+    expect(itemAt(0).classList.contains('selected')).toBe(true);
+    expect(itemAt(1).classList.contains('selected')).toBe(false);
+    expect(selection.count).toBe(1);
+  });
+
+  it('URL を持たない項目は、範囲選択の対象に数えない', () => {
+    // A と B の間に、リンクを持たない項目が挟まっている
+    const broken = document.createElement('li');
+    broken.className = 'bookmark-item';
+    itemAt(1).before(broken);
+    selection.refresh(container);
+
+    selection.handleClick(urlAt(0), 'A', itemAt(0), clickEvent());
+    const itemB = container.querySelectorAll(
+      '.bookmark-item'
+    )[2] as HTMLElement;
+    selection.handleClick(urlAt(1), 'B', itemB, clickEvent({ shiftKey: true }));
+
+    expect(selection.count).toBe(2);
+    expect(selection.getSelectedUrls()).toEqual([urlAt(0), urlAt(1)]);
+    expect(broken.classList.contains('selected')).toBe(false);
+  });
 
   it('refresh は新しい DOM 要素へ選択ハイライトを再適用する', () => {
     selection.toggle(urlAt(0), 'A', itemAt(0));
@@ -536,20 +598,84 @@ describe('BookmarkSelection', () => {
     expect(selection.count).toBe(0);
   });
 
-  it('一括削除で全件失敗すると失敗を通知し Undo を登録しない (#101)', async () => {
-    // 旧挙動 (ループ全体を catch し console.error のみ) の assert を #101 の
-    // 根本修正に合わせて意図的に更新: 各件を捕捉してログし、成功が0なら
-    // Undo は登録せず Toast で失敗を通知する。
-    const mockChrome = globalThis.chrome as any;
-    mockChrome.bookmarks.search.mockImplementation(({ url }: { url: string }) =>
-      Promise.resolve([{ id: `id-${url}`, parentId: '1', index: 0, url }])
+  it('一括削除は、選んだ順が並び順と逆でも、「元に戻す」で元の並びに作り直す', async () => {
+    const bookmarks = installTree();
+    // B → A の順に選ぶ（並び順とは逆）
+    selection.toggle(urlAt(1), 'B', itemAt(1));
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+
+    const deleting = selection.bulkDelete();
+    await new Promise((r) => setTimeout(r, 10));
+    (document.querySelector('.delete-dialog-confirm') as HTMLElement).click();
+    await deleting;
+    expect(bookmarks.titles('1')).toEqual(['C']);
+
+    undoButton()?.click();
+
+    await vi.waitFor(() => {
+      expect(bookmarks.titles('1')).toEqual(['A', 'B', 'C']);
+    });
+  });
+
+  it('一括削除で、対象を調べる段階で失敗した分も失敗として数え、残りは削除する', async () => {
+    const bookmarks = installTree();
+    // B だけ、どのブックマークかを調べる検索が失敗する
+    const search = globalThis.chrome.bookmarks.search as ReturnType<
+      typeof vi.fn
+    >;
+    const realSearch = search.getMockImplementation() as (query: {
+      url: string;
+    }) => Promise<unknown>;
+    search.mockImplementation((query: { url: string }) =>
+      query.url === urlAt(1)
+        ? Promise.reject(new Error('boom'))
+        : realSearch(query)
     );
-    mockChrome.bookmarks.remove.mockRejectedValue(new Error('boom'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    selection.toggle(urlAt(1), 'B', itemAt(1));
+    const deleting = selection.bulkDelete();
+    await new Promise((r) => setTimeout(r, 10));
+    (document.querySelector('.delete-dialog-confirm') as HTMLElement).click();
+    await deleting;
+
+    expect(bookmarks.titles('1')).toEqual(['B', 'C']);
+    expect(toastMessage()).toBe('1 件を削除しました（1 件は失敗）');
+  });
+
+  it('一括移動で、対象を調べる段階で失敗した分も失敗として数え、残りは移動する', async () => {
+    const bookmarks = installTree();
+    const search = globalThis.chrome.bookmarks.search as ReturnType<
+      typeof vi.fn
+    >;
+    const realSearch = search.getMockImplementation() as (query: {
+      url: string;
+    }) => Promise<unknown>;
+    search.mockImplementation((query: { url: string }) =>
+      query.url === urlAt(1)
+        ? Promise.reject(new Error('boom'))
+        : realSearch(query)
+    );
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    selection.toggle(urlAt(0), 'A', itemAt(0));
+    selection.toggle(urlAt(1), 'B', itemAt(1));
+    const moving = selection.bulkMove();
+    await confirmMoveTo('2');
+    await moving;
+
+    expect(bookmarks.titles('2')).toEqual(['A']);
+    expect(bookmarks.titles('1')).toEqual(['B', 'C']);
+    expect(toastMessage()).toBe('1 件を移動しました（1 件は失敗）');
+  });
+
+  it('一括削除で全件失敗すると「エラー」ダイアログで知らせ、「元に戻す」は出さない (#101)', async () => {
+    const bookmarks = installTree();
+    (
+      globalThis.chrome.bookmarks.remove as ReturnType<typeof vi.fn>
+    ).mockRejectedValue(new Error('boom'));
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const toastSpy = vi.spyOn(Toast, 'show').mockReturnValue({} as never);
-    const registerSpy = vi
-      .spyOn(UndoManager.getInstance(), 'register')
-      .mockImplementation(() => {});
 
     selection.toggle(urlAt(0), 'A', itemAt(0));
     const p = selection.bulkDelete();
@@ -557,17 +683,17 @@ describe('BookmarkSelection', () => {
     (document.querySelector('.delete-dialog-confirm') as HTMLElement).click();
     await p;
 
-    expect(errSpy).toHaveBeenCalledWith(
-      '❌ 一括削除中にブックマークの削除に失敗しました:',
-      expect.any(Error)
-    );
-    expect(registerSpy).not.toHaveBeenCalled();
-    expect(toastSpy).toHaveBeenCalledWith({
-      message: '1 件のブックマークを削除できませんでした',
+    await vi.waitFor(() => {
+      expect(errorDialogMessage()).toBe(
+        '❌ 1 件のブックマークを削除できませんでした。'
+      );
     });
+    expect(undoButton()).toBeNull();
+    expect(toastMessage()).toBeUndefined();
+    expect(bookmarks.titles('1')).toEqual(['A', 'B', 'C']);
+    expect(errSpy).toHaveBeenCalled();
     expect(selection.count).toBe(0);
     errSpy.mockRestore();
-    toastSpy.mockRestore();
   });
 
   it('一括削除は途中失敗しても残りを処理し成功分を UI/Undo に反映する (#101)', async () => {
@@ -627,48 +753,22 @@ describe('BookmarkSelection', () => {
   // bulkMove: undo / キャンセル / 空ヒット / 例外 / ルートラベル
   // -------------------------------------------------------------------
 
-  it('一括移動の Undo で元の親フォルダへ戻す (親不明はスキップ)', async () => {
-    const mockChrome = globalThis.chrome as any;
-    mockChrome.bookmarks.search.mockImplementation(
-      ({ url }: { url: string }) => {
-        // a は親あり、b は親 undefined (Undo でスキップされる)
-        if (url === urlAt(0)) {
-          return Promise.resolve([
-            { id: 'id-a', parentId: '1', index: 2, url },
-          ]);
-        }
-        return Promise.resolve([
-          { id: 'id-b', parentId: undefined, index: undefined, url },
-        ]);
-      }
-    );
-    mockChrome.bookmarks.move.mockResolvedValue(undefined);
-
-    let captured: { undo: () => Promise<void> } | undefined;
-    vi.spyOn(UndoManager.getInstance(), 'register').mockImplementation(
-      (op: any) => {
-        captured = op;
-      }
-    );
-
-    selection.toggle(urlAt(0), 'A', itemAt(0));
+  it('一括移動の Undo で、元のフォルダの元の並びへ戻す', async () => {
+    const bookmarks = installTree();
     selection.toggle(urlAt(1), 'B', itemAt(1));
+    selection.toggle(urlAt(2), 'C', itemAt(2));
 
-    const p = selection.bulkMove();
-    await new Promise((r) => setTimeout(r, 10));
-    (document.querySelector('.bulk-move-confirm') as HTMLElement).click();
-    await p;
+    const moving = selection.bulkMove();
+    await confirmMoveTo('2');
+    await moving;
+    expect(bookmarks.titles('1')).toEqual(['A']);
 
-    expect(mockChrome.bookmarks.move).toHaveBeenCalledTimes(2);
-    mockChrome.bookmarks.move.mockClear();
+    undoButton()?.click();
 
-    await captured?.undo();
-    // 親ありの a のみ戻す
-    expect(mockChrome.bookmarks.move).toHaveBeenCalledTimes(1);
-    expect(mockChrome.bookmarks.move).toHaveBeenCalledWith('id-a', {
-      parentId: '1',
-      index: 2,
+    await vi.waitFor(() => {
+      expect(bookmarks.titles('1')).toEqual(['A', 'B', 'C']);
     });
+    expect(bookmarks.titles('2')).toEqual([]);
   });
 
   it('一括移動ダイアログをキャンセルすると move を呼ばない', async () => {
@@ -707,83 +807,66 @@ describe('BookmarkSelection', () => {
     expect(selection.count).toBe(0);
   });
 
-  it('一括移動で全件失敗すると失敗を通知し Undo を登録しない (#101)', async () => {
-    // 旧挙動の assert を #101 の根本修正に合わせて意図的に更新。
-    const mockChrome = globalThis.chrome as any;
-    mockChrome.bookmarks.search.mockImplementation(({ url }: { url: string }) =>
-      Promise.resolve([{ id: `id-${url}`, parentId: '1', index: 0, url }])
-    );
-    mockChrome.bookmarks.move.mockRejectedValue(new Error('boom'));
+  it('一括移動で全件失敗すると「エラー」ダイアログで知らせ、「元に戻す」は出さない (#101)', async () => {
+    const bookmarks = installTree();
+    (
+      globalThis.chrome.bookmarks.move as ReturnType<typeof vi.fn>
+    ).mockRejectedValue(new Error('boom'));
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const toastSpy = vi.spyOn(Toast, 'show').mockReturnValue({} as never);
-    const registerSpy = vi
-      .spyOn(UndoManager.getInstance(), 'register')
-      .mockImplementation(() => {});
 
     selection.toggle(urlAt(0), 'A', itemAt(0));
-    const p = selection.bulkMove();
-    await new Promise((r) => setTimeout(r, 10));
-    (document.querySelector('.bulk-move-confirm') as HTMLElement).click();
-    await p;
+    const moving = selection.bulkMove();
+    await confirmMoveTo('2');
+    await moving;
 
-    expect(errSpy).toHaveBeenCalledWith(
-      '❌ 一括移動中にブックマークの移動に失敗しました:',
-      expect.any(Error)
-    );
-    expect(registerSpy).not.toHaveBeenCalled();
-    expect(toastSpy).toHaveBeenCalledWith({
-      message: '1 件のブックマークを移動できませんでした',
+    await vi.waitFor(() => {
+      expect(errorDialogMessage()).toBe(
+        '❌ 1 件のブックマークを移動できませんでした。'
+      );
     });
+    expect(undoButton()).toBeNull();
+    expect(toastMessage()).toBeUndefined();
+    expect(bookmarks.titles('1')).toEqual(['A', 'B', 'C']);
+    expect(errSpy).toHaveBeenCalled();
     expect(selection.count).toBe(0);
     errSpy.mockRestore();
-    toastSpy.mockRestore();
   });
 
-  it('一括移動は途中失敗しても残りを処理し成功分を UI/Undo に反映する (#101)', async () => {
-    const mockChrome = globalThis.chrome as any;
-    mockChrome.bookmarks.search.mockImplementation(({ url }: { url: string }) =>
-      Promise.resolve([
-        { id: `id-${url}`, parentId: '1', index: 0, title: url, url },
-      ])
-    );
-    // 2件目 (urlAt(1)) の移動だけ失敗させる。旧実装ではここで全体が中断する。
-    mockChrome.bookmarks.move.mockImplementation((id: string) =>
-      id === `id-${urlAt(1)}`
-        ? Promise.reject(new Error('boom'))
-        : Promise.resolve(undefined)
+  it('一括移動は途中の 1 件が失敗しても残りを移し、「元に戻す」は移せた分を元の並びへ戻す (#101)', async () => {
+    const bookmarks = installTree();
+    // B の移動だけ失敗させる。それ以外は代役がそのまま動かす
+    const move = globalThis.chrome.bookmarks.move as ReturnType<typeof vi.fn>;
+    const realMove = move.getMockImplementation() as (
+      ...args: unknown[]
+    ) => Promise<unknown>;
+    move.mockImplementation((id: string, ...rest: unknown[]) =>
+      id === 'b' ? Promise.reject(new Error('boom')) : realMove(id, ...rest)
     );
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    const toastSpy = vi.spyOn(Toast, 'show').mockReturnValue({} as never);
     const changedSpy = vi.fn();
     document.addEventListener('bookmarks-changed', changedSpy);
-
-    let registered: { message: string } | undefined;
-    vi.spyOn(UndoManager.getInstance(), 'register').mockImplementation(
-      (op: any) => {
-        registered = op;
-      }
-    );
 
     selection.toggle(urlAt(0), 'A', itemAt(0));
     selection.toggle(urlAt(1), 'B', itemAt(1));
     selection.toggle(urlAt(2), 'C', itemAt(2));
 
-    const p = selection.bulkMove();
-    await new Promise((r) => setTimeout(r, 10));
-    const select = document.getElementById(
-      'bulk-move-parent'
-    ) as HTMLSelectElement;
-    select.value = '2';
-    (document.querySelector('.bulk-move-confirm') as HTMLElement).click();
-    await p;
+    const moving = selection.bulkMove();
+    await confirmMoveTo('2');
+    await moving;
 
-    // 1件失敗しても 3件すべて move を試みる (中断しない)
-    expect(mockChrome.bookmarks.move).toHaveBeenCalledTimes(3);
+    expect(bookmarks.titles('2')).toEqual(['A', 'C']);
+    expect(bookmarks.titles('1')).toEqual(['B']);
+    expect(toastMessage()).toBe('2 件を移動しました（1 件は失敗）');
     expect(changedSpy).toHaveBeenCalled();
-    expect(registered).toBeDefined();
-    expect(registered?.message).toContain('2 件');
     expect(selection.count).toBe(0);
-    toastSpy.mockRestore();
+
+    move.mockImplementation(realMove);
+    undoButton()?.click();
+
+    await vi.waitFor(() => {
+      expect(bookmarks.titles('1')).toEqual(['A', 'B', 'C']);
+    });
+    expect(bookmarks.titles('2')).toEqual([]);
   });
 
   it('未選択での bulkMove は何もしない', async () => {

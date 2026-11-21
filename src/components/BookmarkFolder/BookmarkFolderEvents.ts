@@ -7,10 +7,25 @@ import { BookmarkActions } from '../BookmarkActions/index.js';
 import { TabGroupOpener } from '../BookmarkActions/TabGroupOpener.js';
 import { BookmarkSelection } from '../BookmarkSelection/index.js';
 import { ContextMenu, type ContextMenuItem } from '../ContextMenu/index.js';
+import { errorDialog } from '../Dialog/index.js';
 
 // Chrome のパーマネントフォルダの ID
 // 1: ブックマークバー / 2: その他のブックマーク / 3: モバイルのブックマーク
 const PERMANENT_ROOT_IDS = new Set(['1', '2', '3']);
+
+/**
+ * タブを開く操作の失敗を「エラー」ダイアログで知らせる。
+ * テスト用のモックなど、Promise を返さない実装でも落ちないよう Promise.resolve で包む。
+ */
+function reportTabFailure(opening: unknown): Promise<void> {
+  return Promise.resolve(opening).then(
+    () => undefined,
+    (error) => {
+      console.error('❌ タブを開けませんでした:', error);
+      void errorDialog('タブを開けませんでした。');
+    }
+  );
+}
 
 /**
  * ブックマークフォルダーのイベント処理を担当するクラス
@@ -340,23 +355,19 @@ export class BookmarkFolderEvents {
       {
         label: '開く',
         icon: '🔗',
-        onSelect: () => {
-          chrome.tabs.update({ url });
-        },
+        onSelect: () => reportTabFailure(chrome.tabs.update({ url })),
       },
       {
         label: '新しいタブで開く',
         icon: '🆕',
-        onSelect: () => {
-          chrome.tabs.create({ url, active: true });
-        },
+        onSelect: () =>
+          reportTabFailure(chrome.tabs.create({ url, active: true })),
       },
       {
         label: 'バックグラウンドで開く',
         icon: '↗️',
-        onSelect: () => {
-          chrome.tabs.create({ url, active: false });
-        },
+        onSelect: () =>
+          reportTabFailure(chrome.tabs.create({ url, active: false })),
       },
       {
         label: 'URLをコピー',
@@ -438,11 +449,12 @@ export class BookmarkFolderEvents {
         icon: '🆕',
         separatorBefore: true,
         disabled: !hasBookmarks,
-        onSelect: () => {
-          for (const url of allUrls) {
-            chrome.tabs.create({ url, active: false });
-          }
-        },
+        onSelect: () =>
+          reportTabFailure(
+            Promise.all(
+              allUrls.map((url) => chrome.tabs.create({ url, active: false }))
+            )
+          ),
       },
       {
         label: `グループにまとめて開く (${allUrls.length})`,
@@ -533,6 +545,7 @@ export class BookmarkFolderEvents {
       }
     } catch (error) {
       console.error('❌ URLのコピーに失敗しました:', error);
+      void errorDialog('URLのコピーに失敗しました。');
     }
   }
 
@@ -593,7 +606,9 @@ export class BookmarkFolderEvents {
 
     e.preventDefault();
     const openInBackground = Boolean(mouseEvent.metaKey || mouseEvent.ctrlKey);
-    chrome.tabs.create({ url, active: !openInBackground });
+    void reportTabFailure(
+      chrome.tabs.create({ url, active: !openInBackground })
+    );
   }
 
   /**
@@ -611,7 +626,7 @@ export class BookmarkFolderEvents {
     if (!url) {
       return;
     }
-    chrome.tabs.create({ url, active: false });
+    void reportTabFailure(chrome.tabs.create({ url, active: false }));
   }
 
   /**
@@ -698,10 +713,10 @@ export class BookmarkFolderEvents {
       '.expand-icon'
     ) as HTMLElement;
     const subfoldersContainer = folderElement.querySelector(
-      '.subfolders-container'
+      ':scope > .subfolders-container'
     ) as HTMLElement;
     const bookmarkList = folderElement.querySelector(
-      '.bookmark-list'
+      ':scope > .bookmark-list'
     ) as HTMLElement;
 
     // アイコンの更新
@@ -735,7 +750,7 @@ export class BookmarkFolderEvents {
       '.expand-icon'
     ) as HTMLElement;
     const bookmarkList = folderElement.querySelector(
-      '.bookmark-list'
+      ':scope > .bookmark-list'
     ) as HTMLElement;
 
     // アイコンの更新

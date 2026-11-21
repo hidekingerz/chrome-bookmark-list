@@ -1,8 +1,13 @@
 import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
+import { errorDialog } from '../Dialog/index.js';
 import { UndoManager } from '../UndoManager/index.js';
 import { moveBackForUndo } from '../UndoManager/moveBack.js';
+import {
+  restoreChildOrder,
+  snapshotChildOrder,
+} from '../UndoManager/restoreOrder.js';
 import { Autoscroller } from './Autoscroller.js';
 
 /**
@@ -473,13 +478,13 @@ export class BookmarkDragAndDrop {
     }
 
     // ブックマーク移動処理を実行
-    this.moveBookmark(this.draggedBookmark.url, targetFolderId)
+    this.moveBookmark(this.draggedBookmark, targetFolderId)
       .then(() => {
         this.refreshBookmarkList();
       })
       .catch((error) => {
         console.error('ブックマーク移動エラー:', error);
-        alert('ブックマークの移動に失敗しました。');
+        void errorDialog('ブックマークの移動に失敗しました。');
       });
 
     // ハイライトを削除
@@ -510,7 +515,7 @@ export class BookmarkDragAndDrop {
 
     const onError = (error: unknown): void => {
       console.error('ブックマーク並び替えエラー:', error);
-      alert('ブックマークの並び替えに失敗しました。');
+      void errorDialog('ブックマークの並び替えに失敗しました。');
     };
 
     // 複数選択ドラッグ (プレビューに N 件バッジ) の reorder は選択中の全アイテムを
@@ -566,48 +571,64 @@ export class BookmarkDragAndDrop {
       }
 
       const parentId = target.parentId;
-      const targetIndex = target.index ?? 0;
-      let insertIndex = zone === 'before' ? targetIndex : targetIndex + 1;
+      let failureCount = 0;
 
-      const moveInfos: {
-        id: string;
-        previousParentId: string | undefined;
-        previousIndex: number | undefined;
-        title: string;
-      }[] = [];
-
+      // 動かす対象を先にすべて同定し、元の並びを控えてから動かす
+      const nodes: chrome.bookmarks.BookmarkTreeNode[] = [];
       for (const src of sources) {
         // data-bookmark-id で一意に同定する (#97)
         const node = await resolveBookmarkNode(src.id, src.url);
-        if (!node) continue;
+        // 既に無くなっていた項目は、失敗として数える
+        if (!node) {
+          failureCount++;
+          continue;
+        }
         // ターゲット自身は動かさない (自分の位置を基準に自分を挿入しない)
         if (node.id === target.id) continue;
-        moveInfos.push({
-          id: node.id,
-          previousParentId: node.parentId,
-          previousIndex: node.index,
-          title: node.title,
-        });
-        await chrome.bookmarks.move(node.id, { parentId, index: insertIndex });
-        insertIndex++;
+        nodes.push(node);
+      }
+      const snapshot = await snapshotChildOrder(
+        nodes.map((node) => node.parentId)
+      );
+
+      // chrome.bookmarks.move の index は「動かす前の並びでの位置」。1 件動かすたびに
+      // 基準の現在位置を読み直し、before なら基準の直前、after なら直前に置いた項目の
+      // 直後へ入れる。こうすると同じフォルダ内でも別フォルダからでも表示順を保てる。
+      let anchorId = target.id;
+      let movedCount = 0;
+      // 途中の 1 件が失敗しても残りを処理し、成功した分だけを数える
+      for (const node of nodes) {
+        try {
+          const [anchor] = await chrome.bookmarks.get(anchorId);
+          const anchorIndex = anchor?.index ?? 0;
+          await chrome.bookmarks.move(node.id, {
+            parentId,
+            index: zone === 'before' ? anchorIndex : anchorIndex + 1,
+          });
+          movedCount++;
+          if (zone === 'after') anchorId = node.id;
+        } catch (error) {
+          failureCount++;
+          console.error('ブックマークの並び替えに失敗しました:', error);
+        }
       }
 
-      if (moveInfos.length > 0) {
+      if (movedCount > 0) {
         UndoManager.getInstance().register({
-          message: `${moveInfos.length} 件のブックマークを並び替えました`,
+          message:
+            failureCount > 0
+              ? `${movedCount} 件を並び替えました（${failureCount} 件は失敗）`
+              : `${movedCount} 件のブックマークを並び替えました`,
           undo: async () => {
-            // 元位置へ戻すときは後ろの項目から順に戻す (index のずれを避ける)
-            for (let i = moveInfos.length - 1; i >= 0; i--) {
-              const info = moveInfos[i];
-              if (info.previousParentId === undefined) continue;
-              await chrome.bookmarks.move(info.id, {
-                parentId: info.previousParentId,
-                index: info.previousIndex,
-              });
-            }
+            await restoreChildOrder(snapshot);
             dispatchBookmarksChanged('undo-bulk-reorder');
           },
         });
+      } else if (failureCount > 0) {
+        // 1 件も動かせなかったときは「エラー」ダイアログで知らせる
+        void errorDialog(
+          `${failureCount} 件のブックマークを並び替えられませんでした。`
+        );
       }
     } catch (error) {
       console.error('Chrome Bookmarks API エラー (bulk reorder):', error);
@@ -669,17 +690,20 @@ export class BookmarkDragAndDrop {
    * draggedBookmark.additionalUrls に複数 URL が入っている場合は一括移動する。
    */
   private async moveBookmark(
-    bookmarkUrl: string,
+    dragged: {
+      id: string;
+      url: string;
+      additionalUrls: string[];
+      additionalIds: string[];
+    },
     targetFolderId: string
   ): Promise<void> {
-    const urls = this.draggedBookmark?.additionalUrls ?? [bookmarkUrl];
-    const ids = this.draggedBookmark?.additionalIds ?? [
-      this.draggedBookmark?.id ?? '',
-    ];
+    const urls = dragged.additionalUrls;
+    const ids = dragged.additionalIds;
 
     // 単一ドラッグ: 従来の挙動 (Undo: 単一)
     if (urls.length <= 1) {
-      return this.moveSingleBookmark(bookmarkUrl, targetFolderId);
+      return this.moveSingleBookmark(dragged, targetFolderId);
     }
 
     // 複数選択ドラッグ: すべて移動 (Undo: 一括)。id と url を対で渡す (#97)
@@ -691,46 +715,57 @@ export class BookmarkDragAndDrop {
     items: { id: string; url: string }[],
     targetFolderId: string
   ): Promise<void> {
-    const moveInfos: {
-      id: string;
-      previousParentId: string | undefined;
-      previousIndex: number | undefined;
-      title: string;
-    }[] = [];
-
     try {
+      // 動かす対象を先にすべて同定し、元の並びを控えてから動かす
+      const targets: chrome.bookmarks.BookmarkTreeNode[] = [];
+      let failureCount = 0;
       for (const item of items) {
         // data-bookmark-id で一意に同定する (#97)
         const target = await resolveBookmarkNode(item.id, item.url);
-        if (!target) continue;
+        // 既に無くなっていた項目は、失敗として数える
+        if (!target) {
+          failureCount++;
+          continue;
+        }
         // 既に移動先フォルダにある項目を move すると末尾へ並び替わる副作用が
         // あるため skip する (#105)。同一フォルダ判定はドラッグ本体の
         // originalFolderId しか見ておらず、選択に移動先フォルダ内の項目が
         // 含まれると意図しない並び替えが起きていた。
         if (target.parentId === targetFolderId) continue;
-        moveInfos.push({
-          id: target.id,
-          previousParentId: target.parentId,
-          previousIndex: target.index,
-          title: target.title,
-        });
-        await chrome.bookmarks.move(target.id, { parentId: targetFolderId });
+        targets.push(target);
+      }
+      const snapshot = await snapshotChildOrder(
+        targets.map((target) => target.parentId)
+      );
+
+      // 途中の 1 件が失敗しても残りを処理し、成功した分だけを数える
+      let movedCount = 0;
+      for (const target of targets) {
+        try {
+          await chrome.bookmarks.move(target.id, { parentId: targetFolderId });
+          movedCount++;
+        } catch (error) {
+          failureCount++;
+          console.error('ブックマークの移動に失敗しました:', error);
+        }
       }
 
-      if (moveInfos.length > 0) {
+      if (movedCount > 0) {
         UndoManager.getInstance().register({
-          message: `${moveInfos.length} 件のブックマークを移動しました`,
+          message:
+            failureCount > 0
+              ? `${movedCount} 件を移動しました（${failureCount} 件は失敗）`
+              : `${movedCount} 件のブックマークを移動しました`,
           undo: async () => {
-            for (const info of moveInfos) {
-              if (info.previousParentId === undefined) continue;
-              await chrome.bookmarks.move(info.id, {
-                parentId: info.previousParentId,
-                index: info.previousIndex,
-              });
-            }
+            await restoreChildOrder(snapshot);
             dispatchBookmarksChanged('undo-bulk-move');
           },
         });
+      } else if (failureCount > 0) {
+        // 1 件も動かせなかったときは「エラー」ダイアログで知らせる
+        void errorDialog(
+          `${failureCount} 件のブックマークを移動できませんでした。`
+        );
       }
     } catch (error) {
       console.error('Chrome Bookmarks API エラー (bulk move):', error);
@@ -739,15 +774,12 @@ export class BookmarkDragAndDrop {
   }
 
   private async moveSingleBookmark(
-    bookmarkUrl: string,
+    dragged: { id: string; url: string },
     targetFolderId: string
   ): Promise<void> {
     try {
       // data-bookmark-id で一意に同定する (#97)
-      const bookmark = await resolveBookmarkNode(
-        this.draggedBookmark?.id ?? null,
-        bookmarkUrl
-      );
+      const bookmark = await resolveBookmarkNode(dragged.id, dragged.url);
 
       if (!bookmark) {
         throw new Error('移動するブックマークが見つかりません');
@@ -1047,7 +1079,7 @@ export class BookmarkDragAndDrop {
       })
       .catch((error) => {
         console.error('フォルダ移動エラー:', error);
-        alert('フォルダの移動に失敗しました。');
+        void errorDialog('フォルダの移動に失敗しました。');
       });
   }
 

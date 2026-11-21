@@ -1,5 +1,6 @@
 import { BookmarkDragAndDrop } from '../components/BookmarkDragAndDrop/index.js';
 import { CalendarHistoryPanel } from '../components/CalendarHistoryPanel/index.js';
+import { errorDialog } from '../components/Dialog/index.js';
 import { HistoryPanel } from '../components/HistoryPanel/index.js';
 import { KeyboardShortcuts } from '../components/KeyboardShortcuts/index.js';
 import { RecentlyClosedPanel } from '../components/RecentlyClosedPanel/index.js';
@@ -133,7 +134,7 @@ async function displayBookmarks(folders: BookmarkFolder[]): Promise<void> {
   bookmarkContainer.innerHTML = html;
 
   // フォルダクリックイベントを設定
-  setupFolderClickHandler(bookmarkContainer, allBookmarks);
+  setupFolderClickHandler(bookmarkContainer, folders);
 
   // ドラッグ&ドロップ機能を有効化
   if (bookmarkDragAndDrop) {
@@ -166,5 +167,7 @@ async function reloadBookmarks(): Promise<void> {
     }
   } catch (error) {
     console.error('ブックマーク再読み込みエラー:', error);
+    // 一覧は前のまま残る。操作の結果が画面に反映されていないことを知らせる
+    void errorDialog('ブックマークの再読み込みに失敗しました。');
   }
 }

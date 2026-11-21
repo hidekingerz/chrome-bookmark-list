@@ -1,4 +1,5 @@
 import { loadFavicons } from '../../scripts/favicon.js';
+import { errorDialog } from '../Dialog/index.js';
 import { formatDateTime, renderHistoryListItem } from '../HistoryList/index.js';
 
 /** 最近閉じたタブの表示用データ */
@@ -73,7 +74,11 @@ export class RecentlyClosedPanel {
         const tab = session.tab;
         // window エントリ、および sessionId/url の無いタブは表示しない
         if (!tab?.sessionId || !tab.url) continue;
-        if (tab.url.startsWith(ownPagePrefix)) continue;
+        if (
+          tab.url.startsWith(ownPagePrefix) ||
+          tab.url.startsWith('chrome://newtab')
+        )
+          continue;
         // 同一 URL は最新（先頭側）のみ表示
         if (seenUrls.has(tab.url)) continue;
         seenUrls.add(tab.url);
@@ -96,6 +101,7 @@ export class RecentlyClosedPanel {
       await chrome.sessions.restore(sessionId);
     } catch (error) {
       console.error('タブの復元に失敗しました:', error);
+      void errorDialog('タブの復元に失敗しました。');
     }
     // 復元後（失敗時も実状態に合わせるため）一覧を再読み込み
     await this.load();

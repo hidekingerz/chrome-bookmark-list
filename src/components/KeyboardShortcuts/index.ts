@@ -84,6 +84,19 @@ export class KeyboardShortcuts {
       return;
     }
 
+    // コンテキストメニューが開いている間は、キー操作をメニュー側に任せる
+    if (document.querySelector('.context-menu')) {
+      return;
+    }
+
+    // ダイアログ（確認・編集・エラー・ショートカット一覧）が開いている間は、
+    // 背後の一覧を操作しない。Esc で閉じる処理はダイアログ側が持つ
+    if (
+      document.querySelector('.edit-dialog-overlay, .shortcut-help-overlay')
+    ) {
+      return;
+    }
+
     // ? でヘルプ表示
     if (e.key === '?' || (e.shiftKey && e.key === '/')) {
       e.preventDefault();

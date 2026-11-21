@@ -71,11 +71,9 @@ export class UndoManager {
       action: {
         label: '元に戻す',
         failureMessage: '操作の取り消しに失敗しました。',
+        // Toast はアクションの実行前に自分を閉じるので、この時点で onDismiss が
+        // currentUndo をクリア済み (実行中に再登録されても上書きされない)
         onActivate: async () => {
-          // クリアしてから実行 (実行中に再登録されても上書きされる)
-          if (this.currentUndo === undoFn) {
-            this.currentUndo = null;
-          }
           await undoFn();
         },
       },
@@ -86,14 +84,9 @@ export class UndoManager {
    * 現在の Undo を実行する。Toast 経由・Cmd+Z 経由の両方から呼ばれる。
    */
   async triggerUndo(): Promise<boolean> {
-    const handled = await Toast.triggerCurrentAction();
-    if (!handled && this.currentUndo) {
-      const fn = this.currentUndo;
-      this.currentUndo = null;
-      await fn();
-      return true;
-    }
-    return handled;
+    // Undo が有効なのは Toast が表示されている間だけ (閉じると onDismiss で失効する)。
+    // 取り消しは常に Toast のアクションとして実行する
+    return Toast.triggerCurrentAction();
   }
 
   /**

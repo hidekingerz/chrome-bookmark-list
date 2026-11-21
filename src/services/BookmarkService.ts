@@ -49,11 +49,11 @@ export class BookmarkService {
                 if (subfolder) {
                   subfolders.push(subfolder);
                 }
-              } else if (grandChild.url && grandChild.title) {
+              } else if (grandChild.url) {
                 // ルートブックマーク
                 rootBookmarks.push({
                   id: grandChild.id,
-                  title: grandChild.title,
+                  title: grandChild.title || grandChild.url,
                   url: grandChild.url,
                   favicon: null,
                 });
@@ -105,11 +105,11 @@ export class BookmarkService {
         if (subfolder) {
           subfolders.push(subfolder);
         }
-      } else if (child.url && child.title) {
+      } else if (child.url) {
         // ブックマークアイテム
         bookmarks.push({
           id: child.id,
-          title: child.title,
+          title: child.title || child.url,
           url: child.url,
           favicon: null, // 後でFaviconServiceが設定
         });

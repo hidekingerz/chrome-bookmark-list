@@ -9,6 +9,7 @@ import { BookmarkFolderEvents } from '../src/components/BookmarkFolder/BookmarkF
 import { BookmarkFolderRenderer } from '../src/components/BookmarkFolder/BookmarkFolderRenderer';
 import { BookmarkSelection } from '../src/components/BookmarkSelection/BookmarkSelection';
 import type { BookmarkFolder } from '../src/types/bookmark';
+import { installFakeBookmarks } from './helpers/fake-bookmarks';
 
 /**
  * BookmarkFolderEvents の未到達パスを補完するカバレッジ向けテスト。
@@ -86,9 +87,7 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
     mockChrome.tabs.update = vi.fn();
 
     // 副作用のあるダイアログ系メソッドはスパイ化して呼び出しのみ検証する。
-    vi.spyOn(BookmarkActions.prototype, 'handleEdit').mockResolvedValue(
-      undefined
-    );
+    // 編集 (handleEdit) だけは本物を動かし、開いた編集ダイアログの中身で確かめる。
     vi.spyOn(BookmarkActions.prototype, 'handleDelete').mockResolvedValue(
       undefined
     );
@@ -112,7 +111,12 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
         title: '親フォルダ',
         expanded: true,
         bookmarks: [
-          { title: 'サイトA', url: 'https://a.example.com', favicon: null },
+          {
+            id: 'a',
+            title: 'サイトA',
+            url: 'https://a.example.com',
+            favicon: null,
+          },
         ],
         subfolders: [
           {
@@ -120,7 +124,12 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
             title: '子フォルダ',
             expanded: false,
             bookmarks: [
-              { title: 'サイトC', url: 'https://c.example.com', favicon: null },
+              {
+                id: 'c',
+                title: 'サイトC',
+                url: 'https://c.example.com',
+                favicon: null,
+              },
             ],
             subfolders: [],
           },
@@ -132,7 +141,12 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
         title: 'リンク集',
         expanded: false,
         bookmarks: [
-          { title: 'サイトD', url: 'https://d.example.com', favicon: null },
+          {
+            id: 'd',
+            title: 'サイトD',
+            url: 'https://d.example.com',
+            favicon: null,
+          },
         ],
         subfolders: [],
       },
@@ -146,6 +160,38 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
       },
     ];
 
+    // 編集ダイアログが読む chrome.bookmarks（描画する allBookmarks と同じ中身）
+    installFakeBookmarks([
+      {
+        id: '1',
+        title: 'ブックマークバー',
+        children: [
+          {
+            id: 'folder-1',
+            title: '親フォルダ',
+            children: [
+              { id: 'a', title: 'サイトA', url: 'https://a.example.com' },
+              {
+                id: 'sub-1',
+                title: '子フォルダ',
+                children: [
+                  { id: 'c', title: 'サイトC', url: 'https://c.example.com' },
+                ],
+              },
+            ],
+          },
+          {
+            id: 'bm-only',
+            title: 'リンク集',
+            children: [
+              { id: 'd', title: 'サイトD', url: 'https://d.example.com' },
+            ],
+          },
+        ],
+      },
+      { id: '2', title: 'その他のブックマーク', children: [] },
+    ]);
+
     container = dom.window.document.getElementById('bookmarks') as HTMLElement;
     const renderer = new BookmarkFolderRenderer();
     container.innerHTML = renderer.renderFolders(allBookmarks);
@@ -156,6 +202,10 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
   });
 
   afterEach(() => {
+    // 開いたままの編集ダイアログを閉じ、document に付いたリスナーを外す
+    document.dispatchEvent(
+      new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+    );
     dom.window.close();
     vi.restoreAllMocks();
     vi.clearAllMocks();
@@ -191,9 +241,18 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
     const btn = menuButtons().find((b) => b.textContent?.includes(label));
     btn?.click();
   }
+  /** 開いている編集ダイアログの入力欄の中身。開いていなければ null。 */
+  function editDialogFields(): { title: string; url: string } | null {
+    const dialog = document.getElementById('edit-dialog');
+    if (!dialog) return null;
+    return {
+      title: (dialog.querySelector('#edit-title') as HTMLInputElement).value,
+      url: (dialog.querySelector('#edit-url') as HTMLInputElement).value,
+    };
+  }
 
   // === クリックによる編集・削除ボタン ===
-  it('編集ボタンクリックで handleEdit が呼ばれ既定動作が抑制される', () => {
+  it('編集ボタンをクリックすると、そのブックマークの編集ダイアログが開き、既定動作は抑制される', async () => {
     const editBtn = container.querySelector(
       '.bookmark-edit-btn'
     ) as HTMLElement;
@@ -203,8 +262,15 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
     });
     editBtn.dispatchEvent(ev);
 
-    expect(BookmarkActions.prototype.handleEdit).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(editDialogFields()).toEqual({
+        title: 'サイトA',
+        url: 'https://a.example.com',
+      });
+    });
     expect(ev.defaultPrevented).toBe(true);
+    // 編集ボタンのクリックでブックマークそのものは開かない
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
   });
 
   it('削除ボタンクリックで handleDelete が呼ばれる', () => {
@@ -405,10 +471,16 @@ describe('BookmarkFolderEvents カバレッジ補完', () => {
     );
   });
 
-  it('「編集」で handleEdit が呼ばれる', () => {
-    dispatchContextMenu(bookmarkItem());
+  it('右クリックメニューの「編集」で、右クリックしたブックマークの編集ダイアログが開く', async () => {
+    dispatchContextMenu(bookmarkItem('bm-only'));
     clickMenuItem('編集');
-    expect(BookmarkActions.prototype.handleEdit).toHaveBeenCalled();
+
+    await vi.waitFor(() => {
+      expect(editDialogFields()).toEqual({
+        title: 'サイトD',
+        url: 'https://d.example.com',
+      });
+    });
   });
 
   it('「削除」で handleDelete が呼ばれる', () => {

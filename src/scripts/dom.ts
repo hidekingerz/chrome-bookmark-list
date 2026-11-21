@@ -14,3 +14,11 @@ export function isEditableElement(el: Element | null): boolean {
   }
   return (el as HTMLElement).isContentEditable === true;
 }
+
+/**
+ * 画面に重ねて出す部品（複数選択のツールバー、コンテキストメニュー）の置き場所。
+ * ページの内容はランドマークの中に置く。main が無いページでは body に置く。
+ */
+export function overlayHost(): HTMLElement {
+  return document.querySelector('main') ?? document.body;
+}

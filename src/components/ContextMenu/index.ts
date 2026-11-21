@@ -1,4 +1,6 @@
+import { overlayHost } from '../../scripts/dom.js';
 import { escapeHtml } from '../../scripts/utils.js';
+import { errorDialog } from '../Dialog/index.js';
 
 export interface ContextMenuItem {
   label: string;
@@ -29,7 +31,7 @@ export class ContextMenu {
     }
 
     const menu = this.createMenuElement(items);
-    document.body.appendChild(menu);
+    overlayHost().appendChild(menu);
 
     // 画面端での見切れを防ぐため、表示後に位置を補正
     this.positionMenu(menu, x, y);
@@ -130,6 +132,9 @@ export class ContextMenu {
       menu.style.left = `${finalX}px`;
       menu.style.top = `${finalY}px`;
       menu.style.visibility = 'visible';
+      menu
+        .querySelector<HTMLElement>('.context-menu-item:not(.disabled)')
+        ?.focus();
     });
   }
 
@@ -149,10 +154,17 @@ export class ContextMenu {
         const item = items[index];
         if (!item || item.disabled) return;
         this.close();
-        // メニューを閉じた後にアクションを実行
-        Promise.resolve(item.onSelect()).catch((err) => {
+        // メニューを閉じた後にアクションを実行（クリックと同じタイミングで呼ぶ）。
+        // 個別の通知を持たない項目の失敗も、「エラー」ダイアログで知らせる
+        const report = (err: unknown): void => {
           console.error('❌ コンテキストメニューアクションの実行に失敗:', err);
-        });
+          void errorDialog('操作に失敗しました。');
+        };
+        try {
+          Promise.resolve(item.onSelect()).catch(report);
+        } catch (err) {
+          report(err);
+        }
       });
     }
   }

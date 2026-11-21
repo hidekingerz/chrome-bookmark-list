@@ -1,5 +1,5 @@
 import { escapeHtml } from '../../scripts/utils.js';
-import { confirmDialog } from '../Dialog/index.js';
+import { confirmDialog, errorDialog } from '../Dialog/index.js';
 
 /** Chrome のタブグループ色 (固定リストから自動割り当て) */
 type TabGroupColor =
@@ -62,8 +62,13 @@ export class TabGroupOpener {
           'タブグループ化をスキップして個別タブとして開きます。' +
           ' permissions 変更後は拡張機能を再読み込みするか再インストールしてください。'
       );
-      for (const url of urls) {
-        await chrome.tabs.create({ url, active: false });
+      try {
+        for (const url of urls) {
+          await chrome.tabs.create({ url, active: false });
+        }
+      } catch (error) {
+        console.error('❌ タブを開けませんでした:', error);
+        void errorDialog('タブを開けませんでした。');
       }
       return;
     }
@@ -86,8 +91,8 @@ export class TabGroupOpener {
       });
     } catch (error) {
       console.error('❌ タブグループの作成に失敗しました:', error);
-      alert(
-        'タブグループの作成に失敗しました。\n拡張機能を再インストールして「タブグループ」権限を承認してください。'
+      void errorDialog(
+        'タブグループの作成に失敗しました。拡張機能を再インストールして「タブグループ」権限を承認してください。'
       );
     }
   }

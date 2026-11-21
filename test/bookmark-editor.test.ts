@@ -215,7 +215,6 @@ describe('BookmarkEditor の保存と Undo', () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => {});
-    const alertSpy = vi.spyOn(globalThis, 'alert').mockImplementation(() => {});
 
     await editor.handleBookmarkEdit(makeEditBtn());
 
@@ -223,7 +222,7 @@ describe('BookmarkEditor の保存と Undo', () => {
       '❌ ブックマークの編集準備に失敗しました:',
       expect.any(Error)
     );
-    expect(alertSpy).toHaveBeenCalledWith(
+    expect(document.getElementById('error-dialog')?.textContent).toContain(
       'ブックマークの編集準備に失敗しました。'
     );
     expect(document.getElementById('edit-dialog')).toBeFalsy();
