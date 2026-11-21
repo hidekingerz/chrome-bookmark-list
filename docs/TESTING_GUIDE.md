@@ -21,21 +21,28 @@
 
 このプロジェクトでは、ユニットテストと統合テストを組み合わせた多層的なテスト戦略を採用しています。
 
-### テスト構成（総計116テスト）
+### テスト構成（総計754テスト・76ファイル）
+
+主なものを挙げる。全ファイルは `test/` を参照。
 
 #### ユニット・コンポーネントテスト
-- **utils.test.ts** (21テスト): データ処理関数、検索・フィルタリング、Faviconキャッシュ
-- **bookmark-delete.test.ts** (6テスト): 削除機能の包括的テスト
+- **utils.test.ts** (34テスト): データ処理関数、検索・フィルタリング、Favicon の URL 生成
+- **bookmark-delete.test.ts** (12テスト): 削除機能の包括的テスト
 - **bookmark-edit.test.ts** (9テスト): 編集機能の包括的テスト
 - **history.test.ts** (9テスト): 履歴API機能のテスト
-- **history-panel.test.ts** (16テスト): 最近の履歴パネルと検索・XSSエスケープのテスト
-- **calendar-history-panel.test.ts** (19テスト): カレンダー履歴パネルのテスト
-- **tab-controller.test.ts** (3テスト): タブ切り替え制御のテスト
+- **history-panel.test.ts** (20テスト): 最近の履歴パネルと検索・XSSエスケープのテスト
+- **calendar-history-panel.test.ts** (30テスト): カレンダー履歴パネルのテスト
+- **tab-controller.test.ts** (7テスト): タブ切り替え制御のテスト
+- **multi-select-order.test.ts**: 複数のブックマークをまとめて移動・並び替え・削除した後と、「元に戻す」の後の並び順
+- **error-notification.test.ts**: 操作の失敗を「エラー」ダイアログで知らせること
+- **duplicate-url-selection.test.ts**: 同じ URL のブックマークが複数あるときの選択と一括操作
+- **a11y-axe.test.ts**: axe-core によるアクセシビリティの自動検査
+- **render-escaping.test.ts**: ブックマーク名・フォルダ名・URL の HTML エスケープ
 
 #### 統合テスト
 - **integration.test.ts** (7テスト): Chrome API連携とDOM操作
 - **newtab-integration.test.ts** (18テスト): フォルダクリック機能と履歴パネルの統合テスト
-- **newtab.test.ts** (3テスト): 基本機能の動作確認
+- **newtab.test.ts** (3テスト): フォルダのクリックによる開閉
 - **3layer-issues.test.ts** (4テスト): 深い階層の特殊ケース
 
 ### テスト戦略の詳細
@@ -79,19 +86,75 @@
 
 ### 環境設定
 
-テスト環境は `test/setup.ts` で初期化されます：
+テスト環境は `test/setup.ts` で初期化されます。`setup.ts` は DOM を用意しません。置くのは次のスタブだけです。
+
+- `chrome`（`bookmarks` / `tabs` / `tabGroups` / `storage` / `runtime` / `sessions`）: 各メソッドが `vi.fn()`
+- `localStorage`、`alert`、`Image`
+- `document`: `createElement('div')` だけを持つ最小のスタブ（HTML エスケープ用）
+
+実際の DOM が要るテストは、テストの中で Happy DOM の `Window`（または JSDOM）を作り、`beforeEach` で `globalThis.document` / `globalThis.window` を差し替えて、`afterEach` で元に戻します。
 
 ```typescript
-// DOM環境の設定
-import { beforeEach } from 'vitest';
-import { JSDOM } from 'jsdom';
+import { Window } from 'happy-dom';
+import { afterEach, beforeEach } from 'vitest';
+
+let win: Window;
+let savedDocument: typeof globalThis.document;
+let savedWindow: typeof globalThis.window;
 
 beforeEach(() => {
-  const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
-  global.document = dom.window.document;
-  global.window = dom.window;
+  win = new Window({ url: 'chrome-extension://test-id/newtab.html' });
+  savedDocument = globalThis.document;
+  savedWindow = globalThis.window;
+  globalThis.document = win.document as unknown as Document;
+  globalThis.window = win as unknown as typeof globalThis.window;
+});
+
+afterEach(() => {
+  globalThis.document = savedDocument;
+  globalThis.window = savedWindow;
 });
 ```
+
+### 並び順を持つ `chrome.bookmarks` の代役
+
+移動・並び替え・削除とその「元に戻す」は、`chrome.bookmarks.move` などの呼び出しの列ではなく、**操作の後にフォルダの中がどう並んでいるか**を確かめます。`test/helpers/fake-bookmarks.ts` の `installFakeBookmarks()` は、`setup.ts` のモックの上に、並び順を持つ代役を載せます。
+
+```typescript
+import { installFakeBookmarks } from './helpers/fake-bookmarks';
+
+const bookmarks = installFakeBookmarks([
+  {
+    id: '1',
+    title: 'ブックマークバー',
+    children: [
+      { id: '10', title: '仕事', children: [{ id: '101', title: 'A', url: 'https://a.example.com/' }] },
+    ],
+  },
+]);
+
+// 画面を操作したあと
+expect(bookmarks.titles('10')).toEqual(['A']);
+```
+
+代役は実際の Chrome と同じ規則で動きます。`move` の `index` は、同じフォルダの中では「動かす前の並びでの位置」です（今より後ろを指すと、最終的な位置は `index - 1`）。子の数を超える `index` は `Index out of bounds.`、無い id は `Can't find bookmark for id.` で失敗します。呼び出しの列だけを確かめるテストは、この規則に起因する並び順の不具合を見逃します。
+
+### アクセシビリティの自動検査（axe-core）
+
+`test/a11y-axe.test.ts` は、実際の `src/newtab.html` に本物のレンダラが描いた一覧を載せ、ダイアログ・ツールバー・メニュー・パネルを本物のコードで開いた状態を [axe-core](https://github.com/dequelabs/axe-core) にかけます。違反が 1 件でもあればテストが失敗します。`npm run test` に含まれます。
+
+```typescript
+import { axeViolations } from './helpers/axe';
+
+expect(await axeViolations(dom.window)).toEqual([]);
+```
+
+- **ここで守れるもの**: 名前（`aria-label` / `aria-labelledby`）、role、aria 属性、ランドマークの違反
+- **ここで守れないもの**: 文字のコントラスト。テスト用の DOM は配色を計算できないため、`color-contrast` のルールは無効にしてあります
+- 画面や部品を足したときは、その状態を開くテストを `a11y-axe.test.ts` に足します
+- axe が検出しない属性（ダイアログ内のエラー文の `role="alert"`、フォルダ見出しの名前、「エラー」ダイアログのフォーカス）は、同じファイルの個別のテストで確かめます
+
+文字のコントラスト（外部仕様「アクセシビリティ」の 4.5:1）は、ビルドした `dist/` を拡張機能として読み込んだ実際の Chrome で axe を実行して確かめます。PR 前の検証（`.claude/skills/dokumi` の実ブラウザ検証）は、`axe-core` がプロジェクトにあるとこの検査を行います。配色（`src/styles.css` のトークン）を変えたときは、ライトとダークの両方で確かめてください。
 
 ---
 
@@ -100,11 +163,11 @@ beforeEach(() => {
 ### 基本的なテストコマンド
 
 ```bash
-# 開発時の監視モード
+# テストを一度だけ実行
 npm test
 
-# テストを一度だけ実行
-npm run test:run
+# 開発時の監視モード
+npm run test:watch
 
 # カバレッジレポートを生成
 npm run test:coverage
@@ -117,13 +180,13 @@ npm run test:ui
 
 ```bash
 # ユーティリティのテストのみ実行
-npm run test:run -- utils.test.ts
+npm test -- utils.test.ts
 
 # 統合テストのみ実行
-npm run test:run -- integration.test.ts
+npm test -- integration.test.ts
 
 # パターンマッチングで複数ファイル実行
-npm run test:run -- --run bookmark-*.test.ts
+npm test -- bookmark-
 ```
 
 ### カバレッジレポートの確認
@@ -140,15 +203,15 @@ npm run test:coverage
 
 ### 1. ユニットテスト詳細
 
-#### utils.test.ts (23テスト)
+#### utils.test.ts (34テスト)
 **対象**: データ処理とヘルパー関数
 - `processBookmarkTree()`: ブックマークツリーの変換
 - `filterBookmarks()`: 検索フィルタリング
 - `findFolderById()`: フォルダID検索
 - `escapeHtml()`: XSS対策
-- `getFavicon()`: Faviconキャッシュシステム
+- `getFavicon()`: Chrome の `_favicon` API の URL 生成
 
-#### bookmark-delete.test.ts (6テスト)
+#### bookmark-delete.test.ts (12テスト)
 **対象**: ブックマーク削除機能
 - 削除確認ダイアログの表示
 - Chrome API との連携
@@ -160,7 +223,8 @@ npm run test:coverage
 - 編集ダイアログの表示
 - フォーム検証
 - Chrome API との連携
-- フォルダ移動機能
+
+保存先フォルダを変えたときの移動は `bookmark-editor.test.ts` で確かめる。
 
 #### history.test.ts (9テスト)
 **対象**: 履歴API機能
@@ -169,7 +233,7 @@ npm run test:coverage
 - データ変換処理
 - API エラーハンドリング
 
-#### history-panel.test.ts (16テスト)
+#### history-panel.test.ts (20テスト)
 **対象**: 最近の履歴パネル
 - パネルの初期化（コンテナ内へのUI構築）
 - 履歴アイテムの表示
@@ -177,14 +241,14 @@ npm run test:coverage
 - XSSエスケープ（悪意あるタイトルの無害化）
 - タイトルクリックでのタブオープン
 
-#### calendar-history-panel.test.ts (19テスト)
+#### calendar-history-panel.test.ts (30テスト)
 **対象**: カレンダー履歴パネル
 - カレンダー描画と月切り替え
 - 日付選択とタイムライン表示
 - ドメイン統計・時間帯ナビゲーション
 - XSSエスケープ・タイトルクリックでのタブオープン
 
-#### tab-controller.test.ts (3テスト)
+#### tab-controller.test.ts (7テスト)
 **対象**: タブ切り替え制御
 - 初期アクティブタブの認識
 - タブ切り替え時の表示・aria属性更新
@@ -197,7 +261,7 @@ npm run test:coverage
 - Chrome Bookmarks API の統合
 - DOM要素の生成と操作
 - イベントリスナーの設定
-- API エラーの処理
+- 空のブックマークツリーと階層構造の処理
 
 #### newtab-integration.test.ts (18テスト)
 **対象**: フォルダクリック機能と履歴パネルの統合
@@ -207,17 +271,16 @@ npm run test:coverage
 - 検索機能の統合
 
 #### newtab.test.ts (3テスト)
-**対象**: 基本機能の動作確認
-- アプリケーションの初期化
-- 基本的なDOM構造
-- エラーハンドリング
+**対象**: フォルダのクリック（本物のレンダラとイベント処理を動かす）
+- サブフォルダを持つフォルダの開閉とアイコンの切り替え
+- ブックマークのリンクをクリックしてもフォルダは折りたたまれない
+- サブフォルダもブックマークも無いフォルダは、クリックしても何も起こらない
 
 #### 3layer-issues.test.ts (4テスト)
 **対象**: 深い階層の特殊ケース
-- 3層以上の深いフォルダ構造
-- 階層レベルの表示
-- パフォーマンス問題の検証
-- エッジケースの処理
+- 3層構造の初期の展開状態と描画
+- 1層目のフォルダをクリックしたときの、2層目以降の表示
+- 2層目のフォルダをクリックしたときに、3層目だけが折りたたまれること
 
 ---
 
@@ -229,7 +292,7 @@ npm run test:coverage
 ```bash
 npm test
 ```
-- 包括的なユニットテストと統合テストを実行（116テスト）
+- 包括的なユニットテストと統合テストを実行（754テスト）
 - フォルダクリック機能、ブックマーク表示、タブ切り替え、履歴パネル、エラーハンドリングをテスト
 
 #### 手動テスト（Chrome拡張機能として）
@@ -310,13 +373,13 @@ npm test
 #### デバッグ方法
 ```bash
 # より詳細なログを出力
-npm run test:run -- --reporter=verbose
+npm test -- --reporter=verbose
 
 # 特定のテストのみ実行
-npm run test:run -- --run specific-test.ts
+npm test -- specific-test.ts
 
 # デバッグモードで実行
-npm run test:run -- --inspect-brk
+npm test -- --inspect-brk
 ```
 
 ### 2. 手動テストで問題が発生した場合
@@ -330,9 +393,8 @@ npm run test:run -- --inspect-brk
 
 #### 大量データでのテスト
 ```bash
-# 大量のブックマークを作成してテスト
-# テストデータは test/fixtures/ に配置
-npm run test:run -- performance.test.ts
+# 大量データ用の自動テストは用意していない。
+# Chrome に大量のブックマークを作成し、拡張機能を読み込んで手動で確認する
 ```
 
 #### メモリリークの確認
@@ -354,8 +416,8 @@ npm run test:run -- performance.test.ts
 プロジェクトのCI/CDパイプラインでは、以下のテストが自動実行されます：
 
 ```yaml
-- name: Run Tests
-  run: npm run test:run
+- name: Run tests
+  run: npm run test
 
 - name: Generate Coverage
   run: npm run test:coverage
@@ -367,8 +429,8 @@ npm run test:run -- performance.test.ts
 ### テストレポート
 
 - **テスト結果**: GitHub Actions の Summary に表示
-- **カバレッジ**: Node.js 20 環境でのみ生成
-- **アーティファクト**: 失敗時のログとスクリーンショット
+- **カバレッジ**: Node.js 22 環境で生成
+- **アーティファクト**: ビルドした拡張機能（`dist/`）
 
 ---
 
