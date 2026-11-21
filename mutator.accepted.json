@@ -1,0 +1,118 @@
+{
+  "10t73fzr80l": {
+    "reason": "等価: 成功 0 件かつ失敗 0 件になる経路が無い（ドラッグした項目自身は、移動先・ドロップ先とは別の項目として必ず対象に入る）",
+    "where": "src/components/BookmarkDragAndDrop/index.ts:764:18 failureCount > 0 -> true"
+  },
+  "127rk85xz0y": {
+    "reason": "型のための既定値と判定。ドロップ先は必ず親要素を持ち、同じ親の子同士を比べるので到達しない",
+    "where": "src/components/BookmarkDragAndDrop/index.ts:962:56 [] -> [\"Stryker was here!\"]"
+  },
+  "154s48o1tte": {
+    "reason": "等価: 選んだ項目は必ず成功か失敗のどちらかに数えるので、成功 0 件かつ失敗 0 件になる経路が無い",
+    "where": "src/components/BookmarkSelection/BookmarkSelection.ts:333:16 failureCount > 0 -> true"
+  },
+  "17vfiyezyss": {
+    "reason": "型が null を返し得るための分岐。ブラウザの document.activeElement はフォーカスが無ければ body を返すので、実行時には到達しない",
+    "where": "src/components/KeyboardShortcuts/index.ts:221:25 false -> true"
+  },
+  "1bpwkk076gw": {
+    "reason": "newtab.html に #bookmarkContainer と #searchInput が必ずあるので到達しない。型（getElementById が null を返し得る）のための分岐",
+    "where": "src/scripts/newtab.ts:37:27 { console.error('❌ bookmarkContainer element not found!'); … -> {}"
+  },
+  "1c0kbtyzdse": {
+    "reason": "型が null を返し得るための分岐。ブラウザの document.activeElement はフォーカスが無ければ body を返すので、実行時には到達しない",
+    "where": "src/components/KeyboardShortcuts/index.ts:245:25 false -> true"
+  },
+  "1enpu8ya1be": {
+    "reason": "型のための既定値と分岐。レンダラは .bookmark-title を必ず出し、一覧の項目を読むのは refresh() でコンテナを設定した後だけなので到達しない",
+    "where": "src/components/BookmarkSelection/BookmarkSelection.ts:434:33 [] -> [\"Stryker was here!\"]"
+  },
+  "1hv0me29tzc": {
+    "reason": "等価: 成功 0 件かつ失敗 0 件になる経路が無い（ドラッグした項目自身は、移動先・ドロップ先とは別の項目として必ず対象に入る）",
+    "where": "src/components/BookmarkDragAndDrop/index.ts:627:18 failureCount > 0 -> failureCount >= 0"
+  },
+  "1nv4he0pzmy": {
+    "reason": "型のための既定値と判定。ドロップ先は必ず親要素を持ち、同じ親の子同士を比べるので到達しない",
+    "where": "src/components/BookmarkDragAndDrop/index.ts:968:50 false -> true"
+  },
+  "1okirzuve64": {
+    "reason": "等価: node は宣言の時点で undefined なので、catch の中の代入を消しても結果は同じ",
+    "where": "src/components/UndoManager/restoreOrder.ts:40:15 { node = undefined; } -> {}"
+  },
+  "1s4a5vzy4": {
+    "reason": "等価: 並びの一覧は範囲選択のたびに読み直してから使うので、初期値が何であっても結果は同じ",
+    "where": "src/components/BookmarkSelection/BookmarkSelection.ts:68:35 [] -> [\"Stryker was here!\"]"
+  },
+  "1v86jjp43fc": {
+    "reason": "型のための既定値と分岐。レンダラは .bookmark-title を必ず出し、一覧の項目を読むのは refresh() でコンテナを設定した後だけなので到達しない",
+    "where": "src/components/BookmarkSelection/BookmarkSelection.ts:170:74 '' -> 'Stryker was here!'"
+  },
+  "1vaywnhl2lz": {
+    "reason": "型のための既定値。レンダラは .bookmark-title と data-url を必ず出し、検索欄はパネル自身が作り、ID の配列は URL の配列と同じ長さで作るので、既定値は使われない",
+    "where": "src/components/BookmarkFolder/BookmarkFolderEvents.ts:590:77 '' -> 'Stryker was here!'"
+  },
+  "1wah83xlw2k": {
+    "reason": "型が null を返し得るための分岐。ブラウザの document.activeElement はフォーカスが無ければ body を返すので、実行時には到達しない",
+    "where": "src/components/KeyboardShortcuts/index.ts:262:25 false -> true"
+  },
+  "1z7kt9wcrbh": {
+    "reason": "等価: 成功 0 件かつ失敗 0 件になる経路が無い（ドラッグした項目自身は、移動先・ドロップ先とは別の項目として必ず対象に入る）",
+    "where": "src/components/BookmarkDragAndDrop/index.ts:764:18 failureCount > 0 -> failureCount >= 0"
+  },
+  "221stn9ckpq": {
+    "reason": "型のための既定値。レンダラは .bookmark-title と data-url を必ず出し、検索欄はパネル自身が作り、ID の配列は URL の配列と同じ長さで作るので、既定値は使われない",
+    "where": "src/components/BookmarkDragAndDrop/index.ts:710:57 '' -> 'Stryker was here!'"
+  },
+  "25dg2cjzukx": {
+    "reason": "等価: 成功 0 件かつ失敗 0 件になる経路が無い（ドラッグした項目自身は、移動先・ドロップ先とは別の項目として必ず対象に入る）",
+    "where": "src/components/BookmarkDragAndDrop/index.ts:627:18 failureCount > 0 -> true"
+  },
+  "272xuakw7er": {
+    "reason": "newtab.html に #bookmarkContainer と #searchInput が必ずあるので到達しない。型（getElementById が null を返し得る）のための分岐",
+    "where": "src/scripts/newtab.ts:42:21 { console.error('❌ searchInput element not found!'); return… -> {}"
+  },
+  "29riajad2sf": {
+    "reason": "型のための既定値。レンダラは .bookmark-title と data-url を必ず出し、検索欄はパネル自身が作り、ID の配列は URL の配列と同じ長さで作るので、既定値は使われない",
+    "where": "src/components/BookmarkDragAndDrop/index.ts:527:33 '' -> 'Stryker was here!'"
+  },
+  "2cq78uu860s": {
+    "reason": "型のための既定値と判定。ドロップ先は必ず親要素を持ち、同じ親の子同士を比べるので到達しない",
+    "where": "src/components/BookmarkDragAndDrop/index.ts:377:9 [] -> [\"Stryker was here!\"]"
+  },
+  "2ecyb4hd0sl": {
+    "reason": "型が null を返し得るための分岐。ブラウザの document.activeElement はフォーカスが無ければ body を返すので、実行時には到達しない",
+    "where": "src/components/KeyboardShortcuts/index.ts:205:59 -1 -> +1"
+  },
+  "5w9lubkmea": {
+    "reason": "呼び出し元はフォルダにだけ呼ぶ。Chrome のフォルダノードは必ず children を持つので到達しない",
+    "where": "src/services/BookmarkService.ts:94:25 { return null; } -> {}"
+  },
+  "850oqx0bmz": {
+    "reason": "等価: 基準の項目は直前に同定済みで必ず取得できるので、?. を外しても結果は同じ",
+    "where": "src/components/BookmarkDragAndDrop/index.ts:603:37 ?. -> ."
+  },
+  "ahc84esk46": {
+    "reason": "等価: 選んだ項目は必ず成功か失敗のどちらかに数えるので、成功 0 件かつ失敗 0 件になる経路が無い",
+    "where": "src/components/BookmarkSelection/BookmarkSelection.ts:414:16 failureCount > 0 -> true"
+  },
+  "d6xy9ilosr": {
+    "reason": "型が null を返し得るための分岐。ブラウザの document.activeElement はフォーカスが無ければ body を返すので、実行時には到達しない",
+    "where": "src/components/ContextMenu/index.ts:224:59 -1 -> +1"
+  },
+  "jvrl6dd24c": {
+    "reason": "型のための既定値。レンダラは .bookmark-title と data-url を必ず出し、検索欄はパネル自身が作り、ID の配列は URL の配列と同じ長さで作るので、既定値は使われない",
+    "where": "src/components/HistoryPanel/HistoryPanel.ts:73:53 '' -> 'Stryker was here!'"
+  },
+  "lt34c9lztw": {
+    "reason": "等価: 選んだ項目は必ず成功か失敗のどちらかに数えるので、成功 0 件かつ失敗 0 件になる経路が無い",
+    "where": "src/components/BookmarkSelection/BookmarkSelection.ts:414:16 failureCount > 0 -> failureCount >= 0"
+  },
+  "ygphzdd228": {
+    "reason": "等価: 選んだ項目は必ず成功か失敗のどちらかに数えるので、成功 0 件かつ失敗 0 件になる経路が無い",
+    "where": "src/components/BookmarkSelection/BookmarkSelection.ts:333:16 failureCount > 0 -> failureCount >= 0"
+  },
+  "yv1k24sf04": {
+    "reason": "等価: 同じ位置への移動は並びを変えない（呼び出しが増えるだけ）",
+    "where": "src/components/UndoManager/restoreOrder.ts:44:11 node.parentId !== parentId || node.index !== position -> true"
+  }
+}
