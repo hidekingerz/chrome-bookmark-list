@@ -109,7 +109,7 @@ describe('Toast', () => {
     expect(handled).toBe(false);
   });
 
-  it('アクション実行が失敗したら失敗通知 Toast を表示する (#105)', async () => {
+  it('アクション実行が失敗したら「エラー」ダイアログで知らせる (#105)', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     Toast.show({
       message: '削除しました',
@@ -124,16 +124,18 @@ describe('Toast', () => {
 
     await Toast.triggerCurrentAction();
 
-    const toast = document.querySelector('.app-toast');
-    expect(toast).not.toBeNull();
-    expect(toast?.textContent).toContain('操作の取り消しに失敗しました。');
-    // 失敗通知にはアクション (元に戻す) が無い
-    expect(document.querySelector('.app-toast-action')).toBeNull();
+    expect(
+      document
+        .querySelector('#error-dialog .error-message')
+        ?.textContent?.trim()
+    ).toBe('❌ 操作の取り消しに失敗しました。');
+    // 元のトーストは消え、「元に戻す」をもう一度押すことはできない
+    expect(document.querySelector('.app-toast')).toBeNull();
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
 
-  it('failureMessage 未指定なら既定の失敗メッセージを表示する (#105)', async () => {
+  it('failureMessage 未指定なら既定の失敗メッセージを「エラー」ダイアログに出す (#105)', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     Toast.show({
       message: '削除しました',
@@ -145,9 +147,12 @@ describe('Toast', () => {
 
     await Toast.triggerCurrentAction();
 
-    const toast = document.querySelector('.app-toast');
-    expect(toast).not.toBeNull();
-    expect(toast?.textContent).toContain('アクションの実行に失敗しました。');
+    expect(
+      document
+        .querySelector('#error-dialog .error-message')
+        ?.textContent?.trim()
+    ).toBe('❌ アクションの実行に失敗しました。');
+    expect(document.querySelector('.app-toast')).toBeNull();
     consoleSpy.mockRestore();
   });
 });

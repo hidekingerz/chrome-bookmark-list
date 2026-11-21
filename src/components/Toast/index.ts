@@ -1,4 +1,5 @@
 import { escapeHtml } from '../../scripts/utils.js';
+import { errorDialog } from '../Dialog/index.js';
 
 export interface ToastAction {
   label: string;
@@ -73,7 +74,7 @@ export class Toast {
     if (!instance?.action) {
       return false;
     }
-    await instance.activateAction();
+    await instance.activateAction(instance.action);
     return true;
   }
 
@@ -110,22 +111,15 @@ export class Toast {
     return this.action !== null;
   }
 
-  private async activateAction(): Promise<void> {
-    const action = this.action;
-    if (!action) {
-      return;
-    }
+  private async activateAction(action: ToastAction): Promise<void> {
     // アクション実行中に Toast がクリアされても問題ないように先に dismiss する
     this.dismiss();
     try {
       await action.onActivate();
     } catch (error) {
       console.error('❌ Toast アクションの実行に失敗:', error);
-      // 失敗を握りつぶさず、ユーザーへ通知する (#105)。
-      // この時点で自分は dismiss 済みなので新しい Toast が現在のインスタンスになる。
-      Toast.show({
-        message: action.failureMessage ?? DEFAULT_ACTION_FAILURE_MESSAGE,
-      });
+      // 失敗を握りつぶさず、「エラー」ダイアログでユーザーへ知らせる (#105)。
+      void errorDialog(action.failureMessage ?? DEFAULT_ACTION_FAILURE_MESSAGE);
     }
   }
 
@@ -167,9 +161,12 @@ export class Toast {
   private attachHandlers(): void {
     const actionBtn =
       this.element.querySelector<HTMLButtonElement>('.app-toast-action');
-    actionBtn?.addEventListener('click', () => {
-      void this.activateAction();
-    });
+    const action = this.action;
+    if (actionBtn && action) {
+      actionBtn.addEventListener('click', () => {
+        void this.activateAction(action);
+      });
+    }
 
     const closeBtn =
       this.element.querySelector<HTMLButtonElement>('.app-toast-close');

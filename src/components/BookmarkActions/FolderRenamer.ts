@@ -3,6 +3,7 @@ import { escapeHtml } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import {
   type DialogHandle,
+  errorDialog,
   openDialog,
   showDialogError,
 } from '../Dialog/index.js';
@@ -12,6 +13,9 @@ import { UndoManager } from '../UndoManager/index.js';
  * フォルダのリネーム機能。
  * 名前入力ダイアログを表示し、Chrome API でフォルダ名を更新する。
  */
+const RENAME_TARGET_MISSING_MESSAGE =
+  '名前を変更するフォルダが見つかりませんでした。';
+
 export class FolderRenamer {
   private dialog: DialogHandle | null = null;
 
@@ -23,6 +27,7 @@ export class FolderRenamer {
       const [target] = await chrome.bookmarks.get(folderId);
       if (!target) {
         console.error('❌ リネーム対象のフォルダが見つかりません:', folderId);
+        void errorDialog(RENAME_TARGET_MISSING_MESSAGE);
         return;
       }
       // 親フォルダの兄弟を取得して同名チェックに使う
@@ -31,7 +36,9 @@ export class FolderRenamer {
         : [];
       this.showDialog(target, siblings);
     } catch (error) {
+      // 実際の Chrome は、id が無いと get を失敗させる（空の配列は返さない）
       console.error('❌ リネームダイアログの表示に失敗:', error);
+      void errorDialog(RENAME_TARGET_MISSING_MESSAGE);
     }
   }
 
@@ -47,7 +54,7 @@ export class FolderRenamer {
               <label for="folder-rename-name">新しいフォルダ名:</label>
               <input type="text" id="folder-rename-name" value="${escapeHtml(target.title)}" />
             </div>
-            <div class="dialog-error folder-rename-error" style="display:none; color: var(--danger); margin-top: 8px;"></div>
+            <div class="dialog-error folder-rename-error" role="alert" style="display:none; color: var(--danger); margin-top: 8px;"></div>
       `,
       buttons: [
         {

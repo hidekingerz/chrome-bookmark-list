@@ -70,8 +70,7 @@ export class HistoryPanel {
   private async loadHistory(): Promise<void> {
     try {
       this.historyItems = await getRecentHistory(50);
-      this.filteredHistoryItems = this.historyItems;
-      this.renderHistory();
+      this.filterHistory(this.searchInput?.value ?? '');
     } catch (error) {
       console.error('履歴の読み込みに失敗しました:', error);
       this.renderError();

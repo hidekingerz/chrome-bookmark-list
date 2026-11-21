@@ -1,7 +1,7 @@
 import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
 import { escapeHtml } from '../../scripts/utils.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
-import { alertDialog, confirmDialog } from '../Dialog/index.js';
+import { confirmDialog, errorDialog } from '../Dialog/index.js';
 import { UndoManager } from '../UndoManager/index.js';
 
 /**
@@ -80,7 +80,7 @@ export class BookmarkDeleter {
               <div class="delete-bookmark-info">
                 <strong>${escapeHtml(title)}</strong>
               </div>
-              <p class="delete-warning">この操作は取り消せません。</p>
+              <p class="delete-warning">削除後 5 秒以内であれば「元に戻す」で復元できます。</p>
             </div>
       `,
       confirmLabel: '削除',
@@ -92,14 +92,6 @@ export class BookmarkDeleter {
    * エラーダイアログを表示する
    */
   private showErrorDialog(message: string): Promise<void> {
-    return alertDialog({
-      id: 'error-dialog',
-      title: 'エラー',
-      bodyHtml: `
-            <div class="error-message">
-              <p>❌ ${escapeHtml(message)}</p>
-            </div>
-      `,
-    });
+    return errorDialog(message);
   }
 }

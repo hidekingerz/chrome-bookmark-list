@@ -10,13 +10,14 @@ import { UndoManager } from '../src/components/UndoManager/index';
  * - ブックマーク間 reorder (#80): handleBookmarkReorderOver / handleBookmarkReorderDrop /
  *   reorderBookmark (Undo の補正分岐・例外含む)
  * - handleDragLeave の bookmark-item 分岐 / handleDrop のガード分岐
- * - moveSingleBookmark / moveMultipleBookmarks のエラー・空ヒット・undo スキップ分岐
+ * - moveSingleBookmark のエラー分岐、moveMultipleBookmarks で 1 件も見つからない場合
+ *   (複数選択の移動・並び替えの並び順と Undo は multi-select-order.test.ts と
+ *   bookmark-multi-drag.test.ts が、並び順を持つ代役の上で確かめる)
  * - makeBookmarksDraggable / destroy
  */
 describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達パス', () => {
   let dom: JSDOM;
   let dnd: BookmarkDragAndDrop;
-  let alertSpy: ReturnType<typeof vi.fn>;
 
   /** 3 ブックマーク (A,B,C) を 1 フォルダ (f1) に、別フォルダ (f2) を並べた DOM。 */
   function buildDom(): void {
@@ -131,12 +132,6 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
         cb();
         return 0;
       },
-      writable: true,
-      configurable: true,
-    });
-    alertSpy = vi.fn();
-    Object.defineProperty(globalThis, 'alert', {
-      value: alertSpy,
       writable: true,
       configurable: true,
     });
@@ -326,145 +321,12 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
     expect(chrome.bookmarks.move).not.toHaveBeenCalled();
   });
 
-  // --- 複数選択 reorder (#105 サブ項目1 bullet 2) ---
-  // 複数選択したブックマークを別アイテム間へドロップすると additionalUrls が
-  // 無視され 1 件しか動かなかった (プレビューは N 件バッジ・通知なし)。選択中の
-  // 全アイテムを reorder 位置へ連続配置する。
+  // --- 複数選択 reorder (#105) ---
+  // 並び順・Undo・選択のうち動かさない項目は、並び順を持つ代役の上で
+  // multi-select-order.test.ts と bookmark-multi-drag.test.ts が確かめる。
+  // ここに残すのは、ドロップ先の親が取れないときの失敗の通知だけ。
 
-  it('複数選択の reorder drop は選択中の全アイテムを連続位置へ move する (#105)', async () => {
-    item(A).classList.add('selected');
-    item(B).classList.add('selected');
-    document.dispatchEvent(createDragEvent('dragstart', link(A)));
-    const target = item(C);
-    stubRect(target);
-    // C(index2) の after → 起点 index 3。A→3, B→4 の連続配置。
-    document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
-    await new Promise((r) => setTimeout(r, 30));
-
-    expect(chrome.bookmarks.move).toHaveBeenCalledTimes(2);
-    expect(chrome.bookmarks.move).toHaveBeenNthCalledWith(1, 'a', {
-      parentId: 'f1',
-      index: 3,
-    });
-    expect(chrome.bookmarks.move).toHaveBeenNthCalledWith(2, 'b', {
-      parentId: 'f1',
-      index: 4,
-    });
-  });
-
-  it('複数選択 reorder の Undo は全アイテムを元位置へ逆順で戻す (#105)', async () => {
-    const registerSpy = vi.spyOn(UndoManager.getInstance(), 'register');
-    item(A).classList.add('selected');
-    item(B).classList.add('selected');
-    document.dispatchEvent(createDragEvent('dragstart', link(A)));
-    const target = item(C);
-    stubRect(target);
-    document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
-    await new Promise((r) => setTimeout(r, 30));
-
-    const op = registerSpy.mock.calls[0][0];
-    (chrome.bookmarks.move as ReturnType<typeof vi.fn>).mockClear();
-    await op.undo();
-    // 逆順で復元: B(元 index1) → A(元 index0)
-    expect(chrome.bookmarks.move).toHaveBeenNthCalledWith(1, 'b', {
-      parentId: 'f1',
-      index: 1,
-    });
-    expect(chrome.bookmarks.move).toHaveBeenNthCalledWith(2, 'a', {
-      parentId: 'f1',
-      index: 0,
-    });
-  });
-
-  it('複数選択 reorder でターゲット自身が選択に含まれても move されない (#105)', async () => {
-    // A と C(ターゲット) を選択し C の before へ drop → C は skip され A のみ動く
-    item(A).classList.add('selected');
-    item(C).classList.add('selected');
-    document.dispatchEvent(createDragEvent('dragstart', link(A)));
-    const target = item(C);
-    stubRect(target);
-    document.dispatchEvent(createDragEvent('drop', target, { clientY: 10 }));
-    await new Promise((r) => setTimeout(r, 30));
-
-    expect(chrome.bookmarks.move).toHaveBeenCalledTimes(1);
-    // before かつ C(index2) → newIndex 2
-    expect(chrome.bookmarks.move).toHaveBeenCalledWith('a', {
-      parentId: 'f1',
-      index: 2,
-    });
-  });
-
-  it('複数選択 reorder で見つからない source は skip し残りを move する (#105)', async () => {
-    item(A).classList.add('selected');
-    item(B).classList.add('selected');
-    (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockImplementation(
-      ({ url }) => {
-        if (url === C) {
-          return Promise.resolve([
-            { id: 'c', parentId: 'f1', index: 2, title: 'C', url },
-          ]);
-        }
-        if (url === B) {
-          return Promise.resolve([
-            { id: 'b', parentId: 'f1', index: 1, title: 'B', url },
-          ]);
-        }
-        // A は見つからない → skip
-        return Promise.resolve([]);
-      }
-    );
-    document.dispatchEvent(createDragEvent('dragstart', link(A)));
-    const target = item(C);
-    stubRect(target);
-    document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
-    await new Promise((r) => setTimeout(r, 30));
-
-    // A は skip、B のみ起点 index 3 へ
-    expect(chrome.bookmarks.move).toHaveBeenCalledTimes(1);
-    expect(chrome.bookmarks.move).toHaveBeenCalledWith('b', {
-      parentId: 'f1',
-      index: 3,
-    });
-  });
-
-  it('複数選択 reorder の Undo は previousParentId が無い項目を skip する (#105)', async () => {
-    const registerSpy = vi.spyOn(UndoManager.getInstance(), 'register');
-    item(A).classList.add('selected');
-    item(B).classList.add('selected');
-    (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockImplementation(
-      ({ url }) => {
-        if (url === C) {
-          return Promise.resolve([
-            { id: 'c', parentId: 'f1', index: 2, title: 'C', url },
-          ]);
-        }
-        if (url === A) {
-          // previousParentId 無し
-          return Promise.resolve([{ id: 'a', index: 0, title: 'A', url }]);
-        }
-        return Promise.resolve([
-          { id: 'b', parentId: 'f1', index: 1, title: 'B', url },
-        ]);
-      }
-    );
-    document.dispatchEvent(createDragEvent('dragstart', link(A)));
-    const target = item(C);
-    stubRect(target);
-    document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
-    await new Promise((r) => setTimeout(r, 30));
-
-    const op = registerSpy.mock.calls[0][0];
-    (chrome.bookmarks.move as ReturnType<typeof vi.fn>).mockClear();
-    await op.undo();
-    // A は previousParentId 無しで skip、B のみ戻す
-    expect(chrome.bookmarks.move).toHaveBeenCalledTimes(1);
-    expect(chrome.bookmarks.move).toHaveBeenCalledWith('b', {
-      parentId: 'f1',
-      index: 1,
-    });
-  });
-
-  it('複数選択 reorder でターゲットの親が取得できないと alert する (#105)', async () => {
+  it('複数選択 reorder でターゲットの親が取得できないとエラーダイアログを出す (#105)', async () => {
     item(A).classList.add('selected');
     item(B).classList.add('selected');
     (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockImplementation(
@@ -488,7 +350,7 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
     stubRect(target);
     document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
     await new Promise((r) => setTimeout(r, 30));
-    expect(alertSpy).toHaveBeenCalledWith(
+    expect(document.getElementById('error-dialog')?.textContent).toContain(
       'ブックマークの並び替えに失敗しました。'
     );
   });
@@ -539,7 +401,7 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
     });
   });
 
-  it('reorder でソースが見つからないと例外 → catch で alert する', async () => {
+  it('reorder でソースが見つからないと例外 → catch でエラーダイアログを出す', async () => {
     startDragA();
     (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockImplementation(
       ({ url }) => {
@@ -556,12 +418,12 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
     stubRect(target);
     document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
     await new Promise((r) => setTimeout(r, 30));
-    expect(alertSpy).toHaveBeenCalledWith(
+    expect(document.getElementById('error-dialog')?.textContent).toContain(
       'ブックマークの並び替えに失敗しました。'
     );
   });
 
-  it('reorder でターゲットの親が取得できないと例外 → catch で alert する', async () => {
+  it('reorder でターゲットの親が取得できないと例外 → catch でエラーダイアログを出す', async () => {
     startDragA();
     (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockImplementation(
       ({ url }) => {
@@ -578,7 +440,7 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
     stubRect(target);
     document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
     await new Promise((r) => setTimeout(r, 30));
-    expect(alertSpy).toHaveBeenCalledWith(
+    expect(document.getElementById('error-dialog')?.textContent).toContain(
       'ブックマークの並び替えに失敗しました。'
     );
   });
@@ -632,7 +494,7 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
 
   // --- moveSingleBookmark のエラー分岐 ---
 
-  it('単一移動でブックマークが見つからないと alert する', async () => {
+  it('単一移動でブックマークが見つからないとエラーダイアログを出す', async () => {
     document.dispatchEvent(createDragEvent('dragstart', link(C)));
     (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     const dstHeader = document.querySelector(
@@ -640,7 +502,9 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
     ) as HTMLElement;
     document.dispatchEvent(createDragEvent('drop', dstHeader));
     await new Promise((r) => setTimeout(r, 30));
-    expect(alertSpy).toHaveBeenCalledWith('ブックマークの移動に失敗しました。');
+    expect(document.getElementById('error-dialog')?.textContent).toContain(
+      'ブックマークの移動に失敗しました。'
+    );
   });
 
   it('単一移動でソースに parentId が無い場合は Undo 登録しない', async () => {
@@ -663,95 +527,6 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
       parentId: 'f2',
     });
     expect(registerSpy).not.toHaveBeenCalled();
-  });
-
-  // --- moveMultipleBookmarks の空ヒット / undo スキップ分岐 ---
-
-  it('一括移動で一部 URL が見つからなくても残りを移動する (空ヒットは skip)', async () => {
-    // A と B を選択状態にする
-    item(A).classList.add('selected');
-    item(B).classList.add('selected');
-    item(A).setAttribute('data-bookmark-url', A);
-    item(B).setAttribute('data-bookmark-url', B);
-
-    (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockImplementation(
-      ({ url }) => {
-        // A はヒット、B は見つからない → skip
-        if (url === A) {
-          return Promise.resolve([
-            { id: 'a', parentId: 'f1', index: 0, title: 'A', url },
-          ]);
-        }
-        return Promise.resolve([]);
-      }
-    );
-
-    document.dispatchEvent(createDragEvent('dragstart', link(A)));
-    const dstHeader = document.querySelector(
-      '[data-folder-id="f2"] .folder-header'
-    ) as HTMLElement;
-    document.dispatchEvent(createDragEvent('drop', dstHeader));
-    await new Promise((r) => setTimeout(r, 30));
-
-    // ヒットした A のみ move される
-    expect(chrome.bookmarks.move).toHaveBeenCalledTimes(1);
-    expect(chrome.bookmarks.move).toHaveBeenCalledWith('a', {
-      parentId: 'f2',
-    });
-  });
-
-  it('一括移動の Undo は previousParentId が無い項目を skip する', async () => {
-    const registerSpy = vi.spyOn(UndoManager.getInstance(), 'register');
-    item(A).classList.add('selected');
-    item(B).classList.add('selected');
-
-    (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockImplementation(
-      ({ url }) => {
-        if (url === A) {
-          // previousParentId 無し
-          return Promise.resolve([{ id: 'a', index: 0, title: 'A', url }]);
-        }
-        if (url === B) {
-          return Promise.resolve([
-            { id: 'b', parentId: 'f1', index: 1, title: 'B', url },
-          ]);
-        }
-        return Promise.resolve([]);
-      }
-    );
-
-    document.dispatchEvent(createDragEvent('dragstart', link(A)));
-    const dstHeader = document.querySelector(
-      '[data-folder-id="f2"] .folder-header'
-    ) as HTMLElement;
-    document.dispatchEvent(createDragEvent('drop', dstHeader));
-    await new Promise((r) => setTimeout(r, 30));
-
-    const op = registerSpy.mock.calls[0][0];
-    (chrome.bookmarks.move as ReturnType<typeof vi.fn>).mockClear();
-    await op.undo();
-    // A は previousParentId 無しで skip、B のみ戻す
-    expect(chrome.bookmarks.move).toHaveBeenCalledTimes(1);
-    expect(chrome.bookmarks.move).toHaveBeenCalledWith('b', {
-      parentId: 'f1',
-      index: 1,
-    });
-  });
-
-  it('一括移動で API が失敗すると alert する', async () => {
-    item(A).classList.add('selected');
-    item(B).classList.add('selected');
-    (chrome.bookmarks.move as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('move failed')
-    );
-
-    document.dispatchEvent(createDragEvent('dragstart', link(A)));
-    const dstHeader = document.querySelector(
-      '[data-folder-id="f2"] .folder-header'
-    ) as HTMLElement;
-    document.dispatchEvent(createDragEvent('drop', dstHeader));
-    await new Promise((r) => setTimeout(r, 30));
-    expect(alertSpy).toHaveBeenCalledWith('ブックマークの移動に失敗しました。');
   });
 
   // --- makeBookmarksDraggable / destroy ---
@@ -883,7 +658,7 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
 
   // --- reorderBookmark の追加分岐 ---
 
-  it('reorder でターゲットが見つからないと例外 → catch で alert する', async () => {
+  it('reorder でターゲットが見つからないと例外 → catch でエラーダイアログを出す', async () => {
     startDragA();
     (chrome.bookmarks.search as ReturnType<typeof vi.fn>).mockImplementation(
       ({ url }) => {
@@ -900,7 +675,7 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
     stubRect(target);
     document.dispatchEvent(createDragEvent('drop', target, { clientY: 90 }));
     await new Promise((r) => setTimeout(r, 30));
-    expect(alertSpy).toHaveBeenCalledWith(
+    expect(document.getElementById('error-dialog')?.textContent).toContain(
       'ブックマークの並び替えに失敗しました。'
     );
   });
@@ -964,7 +739,7 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
 
   // --- moveMultipleBookmarks: 全件見つからない (moveInfos 空) ---
 
-  it('一括移動で全 URL が見つからないと register せず move も呼ばない', async () => {
+  it('一括移動で全 URL が見つからないと、move も Undo の登録もせず、「エラー」ダイアログで知らせる', async () => {
     const registerSpy = vi.spyOn(UndoManager.getInstance(), 'register');
     item(A).classList.add('selected');
     item(B).classList.add('selected');
@@ -979,7 +754,12 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
 
     expect(chrome.bookmarks.move).not.toHaveBeenCalled();
     expect(registerSpy).not.toHaveBeenCalled();
-    expect(alertSpy).not.toHaveBeenCalled();
+    // 見つからなかった分は失敗として、「エラー」ダイアログで知らせる
+    expect(
+      document
+        .querySelector('#error-dialog .error-message')
+        ?.textContent?.trim()
+    ).toBe('❌ 2 件のブックマークを移動できませんでした。');
   });
 
   // ===========================================================================
@@ -1226,7 +1006,7 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
     expect(registerSpy).not.toHaveBeenCalled();
   });
 
-  it('reorderFolder で並び替え対象 (source) が見つからないと alert する', async () => {
+  it('reorderFolder で並び替え対象 (source) が見つからないとエラーダイアログを出す', async () => {
     buildFolderDom();
     // target(p2) はあるが source(child1) は空
     setFolderGet({ p2: { id: 'p2', parentId: 'root', index: 1 } });
@@ -1237,7 +1017,9 @@ describe('BookmarkDragAndDrop — ブックマーク reorder / move の未到達
       createDragEvent('drop', targetHeader, { clientY: 10 })
     );
     await new Promise((r) => setTimeout(r, 30));
-    expect(alertSpy).toHaveBeenCalledWith('フォルダの移動に失敗しました。');
+    expect(document.getElementById('error-dialog')?.textContent).toContain(
+      'フォルダの移動に失敗しました。'
+    );
   });
 
   it('reorderFolder でターゲットに index が無い場合は 0 起点で move する', async () => {

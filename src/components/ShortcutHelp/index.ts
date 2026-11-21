@@ -92,10 +92,10 @@ export class ShortcutHelp {
 
     overlay.innerHTML = `
       <div class="shortcut-help-dialog">
-        <header class="shortcut-help-header">
+        <div class="shortcut-help-header">
           <h2 id="shortcut-help-title" class="shortcut-help-title">⌨️ キーボードショートカット</h2>
           <button type="button" class="shortcut-help-close" aria-label="閉じる">×</button>
-        </header>
+        </div>
         <ul class="shortcut-help-list">
           ${rows}
         </ul>

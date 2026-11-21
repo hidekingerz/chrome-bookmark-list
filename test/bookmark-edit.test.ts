@@ -325,9 +325,6 @@ describe('ブックマーク編集機能のテスト', () => {
       },
     ]);
 
-    // alert のモック
-    const alertSpy = vi.spyOn(globalThis, 'alert').mockImplementation(() => {});
-
     // テスト用の編集ボタン要素を作成
     const editBtn = document.createElement('button');
     editBtn.setAttribute('data-bookmark-url', 'https://example.com');
@@ -346,7 +343,12 @@ describe('ブックマーク編集機能のテスト', () => {
     saveBtn?.click();
 
     // バリデーションエラーが表示されることを確認
-    expect(alertSpy).toHaveBeenCalledWith('名前とURLは必須です。');
+    // 編集ダイアログは開いたまま、その中にエラー文が出る
+    const validationError = document.querySelector(
+      '#edit-dialog .dialog-error'
+    ) as HTMLElement;
+    expect(validationError.textContent).toBe('名前とURLは必須です。');
+    expect(validationError.style.display).toBe('block');
     expect(mockChrome.bookmarks.update).not.toHaveBeenCalled();
   });
 
@@ -387,11 +389,10 @@ describe('ブックマーク編集機能のテスト', () => {
       new Error('更新に失敗しました')
     );
 
-    // console.error と alert のモック
+    // console.error のモック
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => {});
-    const alertSpy = vi.spyOn(globalThis, 'alert').mockImplementation(() => {});
 
     // location.reload のモック
     const reloadSpy = vi.fn();
@@ -405,7 +406,9 @@ describe('ブックマーク編集機能のテスト', () => {
     // 編集処理を実行
     await handleBookmarkEdit(editBtn);
 
-    // 保存ボタンをクリック
+    // 名前を変えて保存ボタンをクリック（更新 API が呼ばれて失敗する）
+    (document.getElementById('edit-title') as HTMLInputElement).value =
+      '変更後の名前';
     const saveBtn = document.querySelector('.edit-dialog-save') as HTMLElement;
     saveBtn?.click();
 
@@ -417,7 +420,10 @@ describe('ブックマーク編集機能のテスト', () => {
       '❌ ブックマークの更新に失敗しました:',
       expect.any(Error)
     );
-    expect(alertSpy).toHaveBeenCalledWith('ブックマークの更新に失敗しました。');
+    // 編集ダイアログは開いたまま、その中にエラー文が出る
+    expect(
+      document.querySelector('#edit-dialog .dialog-error')?.textContent
+    ).toBe('ブックマークの更新に失敗しました。');
     expect(reloadSpy).not.toHaveBeenCalled();
   });
 });

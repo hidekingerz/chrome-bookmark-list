@@ -1,16 +1,21 @@
 import { dispatchBookmarksChanged } from '../../scripts/bookmarkEvents.js';
-import { isEditableElement } from '../../scripts/dom.js';
+import { isEditableElement, overlayHost } from '../../scripts/dom.js';
 import { escapeHtml, getAllFolders } from '../../scripts/utils.js';
 import type { ChromeBookmarkNode } from '../../types/bookmark.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
-import { confirmDialog, openDialog } from '../Dialog/index.js';
-import { Toast } from '../Toast/index.js';
+import { confirmDialog, errorDialog, openDialog } from '../Dialog/index.js';
 import { UndoManager } from '../UndoManager/index.js';
+import {
+  restoreChildOrder,
+  snapshotChildOrder,
+} from '../UndoManager/restoreOrder.js';
 
 /**
  * 選択中のブックマークを表現する情報
  */
 interface SelectedBookmark {
+  /** 選択を区別するキー。ブックマークの ID があれば ID、無ければ URL */
+  key: string;
   url: string;
   title: string;
   /** ブックマーク要素のDOM参照 (DOM更新用) */
@@ -27,6 +32,20 @@ interface BookmarkRestoreInfo {
   url: string;
 }
 
+/** ブックマーク項目の URL（リンクの data-url）。 */
+function urlOfItem(item: HTMLElement): string {
+  return item.querySelector('.bookmark-link')?.getAttribute('data-url') ?? '';
+}
+
+/**
+ * 選択を区別するキー。項目が Chrome のノード ID (`data-bookmark-id`) を持てば ID、
+ * 持たなければ URL を使う。ID と URL が取り違えられないよう接頭辞を付ける。
+ */
+function selectionKey(item: HTMLElement, url: string): string {
+  const id = item.getAttribute('data-bookmark-id');
+  return id ? `id:${id}` : `url:${url}`;
+}
+
 /**
  * ブックマークの複数選択状態を管理し、一括操作 (削除/移動) を提供するクラス。
  *
@@ -37,24 +56,24 @@ interface BookmarkRestoreInfo {
  * - 1件以上選択されているとフローティングツールバーを表示
  * - ESC で選択解除
  *
- * 注意: 個々のブックマークは URL をキーとして管理する。
- *       同じ URL が複数登録されている場合は同一として扱う (Chrome 上は通常一意)。
+ * 選択はブックマークごとに持つ。項目の `data-bookmark-id`（Chrome のノード ID）を
+ * キーにするので、同じ URL のブックマークが複数あっても別々に選べ、一覧が描き直されても
+ * 選んだブックマークが選ばれたままになる。ID を持たない項目だけ、URL をキーにする。
  */
 export class BookmarkSelection {
   private selected = new Map<string, SelectedBookmark>();
-  private lastClickedUrl: string | null = null;
+  private lastClickedKey: string | null = null;
   private container: HTMLElement | null = null;
   private toolbarElement: HTMLElement | null = null;
-  private orderedUrls: string[] = [];
+  private orderedKeys: string[] = [];
   private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
 
   /**
-   * コンテナを再設定し、表示順を更新する。
+   * コンテナを再設定し、選択のハイライトを付け直す。
    * ブックマーク再描画後に呼ぶ。
    */
   refresh(container: HTMLElement): void {
     this.container = container;
-    this.refreshOrderedUrls();
     this.ensureKeydownHandler();
     // 表示中の DOM 要素が変わるので、選択中アイテムにクラスを再適用する
     this.reapplySelectionToDom();
@@ -73,7 +92,7 @@ export class BookmarkSelection {
   ): boolean {
     if (e.shiftKey) {
       this.selectRange(url, title, element);
-      this.lastClickedUrl = url;
+      this.lastClickedKey = selectionKey(element, url);
       return true;
     }
 
@@ -87,11 +106,11 @@ export class BookmarkSelection {
     // (単一選択中で同じアイテムなら解除、別アイテムなら通常のリンク遷移)
     if (this.selected.size > 0) {
       this.clear();
-      this.lastClickedUrl = null;
+      this.lastClickedKey = null;
       // 選択解除のみを消費。リンク遷移は次のクリックで行わせる。
       return true;
     }
-    this.lastClickedUrl = url;
+    this.lastClickedKey = selectionKey(element, url);
     return false;
   }
 
@@ -99,11 +118,12 @@ export class BookmarkSelection {
    * 1件選択を追加/解除する (Cmd/Ctrl+クリック)
    */
   toggle(url: string, title: string, element: HTMLElement): void {
-    if (this.selected.has(url)) {
-      this.selected.delete(url);
+    const key = selectionKey(element, url);
+    if (this.selected.has(key)) {
+      this.selected.delete(key);
       element.classList.remove('selected');
     } else {
-      this.selected.set(url, { url, title, element });
+      this.selected.set(key, { key, url, title, element });
       element.classList.add('selected');
     }
     this.updateToolbar();
@@ -120,17 +140,17 @@ export class BookmarkSelection {
     }
 
     // 表示順序を最新化
-    this.refreshOrderedUrls();
+    this.refreshOrderedKeys();
 
-    const anchor = this.lastClickedUrl;
-    if (!anchor || !this.orderedUrls.includes(anchor)) {
+    const anchor = this.lastClickedKey;
+    if (!anchor || !this.orderedKeys.includes(anchor)) {
       // アンカーがない場合は単一選択
       this.selectOnly(url, title, element);
       return;
     }
 
-    const anchorIdx = this.orderedUrls.indexOf(anchor);
-    const targetIdx = this.orderedUrls.indexOf(url);
+    const anchorIdx = this.orderedKeys.indexOf(anchor);
+    const targetIdx = this.orderedKeys.indexOf(selectionKey(element, url));
     if (anchorIdx === -1 || targetIdx === -1) {
       this.selectOnly(url, title, element);
       return;
@@ -143,18 +163,20 @@ export class BookmarkSelection {
     this.clearInternal();
 
     for (let i = from; i <= to; i++) {
-      const rangeUrl = this.orderedUrls[i];
-      const rangeEl = this.findItemByUrl(rangeUrl);
+      const rangeKey = this.orderedKeys[i];
+      const rangeEl = this.findItemByKey(rangeKey);
       if (!rangeEl) continue;
       const rangeTitle =
         rangeEl.querySelector('.bookmark-title')?.textContent?.trim() ?? '';
-      this.selected.set(rangeUrl, {
-        url: rangeUrl,
+      this.selected.set(rangeKey, {
+        key: rangeKey,
+        url: urlOfItem(rangeEl),
         title: rangeTitle,
         element: rangeEl,
       });
       rangeEl.classList.add('selected');
     }
+
     this.updateToolbar();
   }
 
@@ -163,18 +185,19 @@ export class BookmarkSelection {
    */
   selectOnly(url: string, title: string, element: HTMLElement): void {
     this.clearInternal();
-    this.selected.set(url, { url, title, element });
+    const key = selectionKey(element, url);
+    this.selected.set(key, { key, url, title, element });
     element.classList.add('selected');
     this.updateToolbar();
   }
 
   /**
    * すべての選択を解除する (ESC など)
-   * 範囲選択のアンカー (lastClickedUrl) もリセットして、状態を完全に初期化する。
+   * 範囲選択のアンカー (lastClickedKey) もリセットして、状態を完全に初期化する。
    */
   clear(): void {
     this.clearInternal();
-    this.lastClickedUrl = null;
+    this.lastClickedKey = null;
     this.updateToolbar();
     // ESC を押した瞬間に :focus-visible が活性化し、選択時と似た outline
     // だけが残って崩れて見える問題を防ぐため、ブックマーク項目のフォーカスを外す
@@ -213,7 +236,7 @@ export class BookmarkSelection {
    * 選択中の URL 一覧
    */
   getSelectedUrls(): string[] {
-    return Array.from(this.selected.keys());
+    return Array.from(this.selected.values(), (item) => item.url);
   }
 
   /**
@@ -231,9 +254,10 @@ export class BookmarkSelection {
 
     const restoreInfos: BookmarkRestoreInfo[] = [];
     let failureCount = 0;
-    // 途中で1件失敗しても残りを処理し、成功分だけを記録する (#101)。
-    // ループ全体を try/catch で囲うと最初の失敗で中断し、成功済みの削除が
-    // UI/Undo に反映されず実状態と乖離するため、各件ごとに捕捉する。
+    // 削除する前に、対象をすべて同定して元の位置を控える。1 件ずつ削除しながら
+    // index を読むと、先に削除した分だけ後ろの項目の index がずれ、Undo で元の
+    // 並びに戻せない。
+    const targets: { id: string; info: BookmarkRestoreInfo }[] = [];
     for (const item of items) {
       try {
         // 選択要素が保持する data-bookmark-id で一意に同定する (#97)
@@ -241,16 +265,20 @@ export class BookmarkSelection {
           item.element?.getAttribute('data-bookmark-id') ?? null,
           item.url
         );
-        if (!target) continue;
-        const info: BookmarkRestoreInfo = {
-          parentId: target.parentId,
-          index: target.index,
-          title: target.title,
-          url: target.url ?? item.url,
-        };
-        await chrome.bookmarks.remove(target.id);
-        // 実際に削除できたものだけ Undo 対象にする
-        restoreInfos.push(info);
+        // 既に無くなっていた項目は、失敗として数える
+        if (!target) {
+          failureCount++;
+          continue;
+        }
+        targets.push({
+          id: target.id,
+          info: {
+            parentId: target.parentId,
+            index: target.index,
+            title: target.title,
+            url: target.url ?? item.url,
+          },
+        });
       } catch (error) {
         failureCount++;
         console.error(
@@ -259,6 +287,24 @@ export class BookmarkSelection {
         );
       }
     }
+    // 途中で1件失敗しても残りを処理し、成功分だけを記録する (#101)。
+    // ループ全体を try/catch で囲うと最初の失敗で中断し、成功済みの削除が
+    // UI/Undo に反映されず実状態と乖離するため、各件ごとに捕捉する。
+    for (const target of targets) {
+      try {
+        await chrome.bookmarks.remove(target.id);
+        // 実際に削除できたものだけ Undo 対象にする
+        restoreInfos.push(target.info);
+      } catch (error) {
+        failureCount++;
+        console.error(
+          '❌ 一括削除中にブックマークの削除に失敗しました:',
+          error
+        );
+      }
+    }
+    // Undo では元の index の小さい順に作り直す（前から順に戻せば index がずれない）
+    restoreInfos.sort((x, y) => (x.index ?? 0) - (y.index ?? 0));
 
     // 成否にかかわらず選択を解除し、UI を実状態に同期する
     this.clear();
@@ -285,10 +331,10 @@ export class BookmarkSelection {
         },
       });
     } else if (failureCount > 0) {
-      // 全件失敗時は Undo 対象が無いので、失敗をそのまま通知する
-      Toast.show({
-        message: `${failureCount} 件のブックマークを削除できませんでした`,
-      });
+      // 全件失敗時は Undo 対象が無いので、失敗を「エラー」ダイアログで知らせる
+      void errorDialog(
+        `${failureCount} 件のブックマークを削除できませんでした。`
+      );
     }
   }
 
@@ -299,17 +345,21 @@ export class BookmarkSelection {
     if (this.selected.size === 0) return;
     const items = Array.from(this.selected.values());
 
-    const folders = await getAllFolders();
+    let folders: ChromeBookmarkNode[];
+    try {
+      folders = await getAllFolders();
+    } catch (error) {
+      console.error('❌ 移動先フォルダの一覧を取得できませんでした:', error);
+      void errorDialog('ブックマークの移動を開始できませんでした。');
+      return;
+    }
     const parentId = await this.showMoveDialog(folders, items.length);
     if (!parentId) return;
 
-    const moveInfos: {
-      id: string;
-      previousParentId: string | undefined;
-      previousIndex: number | undefined;
-    }[] = [];
     let failureCount = 0;
-    // 途中で1件失敗しても残りを処理し、成功分だけを記録する (#101)。
+    let count = 0;
+    // 動かす前に、対象をすべて同定して元の並びを控える（Undo で元の並びへ戻すため）
+    const targets: chrome.bookmarks.BookmarkTreeNode[] = [];
     for (const item of items) {
       try {
         // 選択要素が保持する data-bookmark-id で一意に同定する (#97)
@@ -317,15 +367,25 @@ export class BookmarkSelection {
           item.element?.getAttribute('data-bookmark-id') ?? null,
           item.url
         );
-        if (!target) continue;
-        const info = {
-          id: target.id,
-          previousParentId: target.parentId,
-          previousIndex: target.index,
-        };
+        // 既に無くなっていた項目は、失敗として数える
+        if (target) targets.push(target);
+        else failureCount++;
+      } catch (error) {
+        failureCount++;
+        console.error(
+          '❌ 一括移動中にブックマークの移動に失敗しました:',
+          error
+        );
+      }
+    }
+    const snapshot = await snapshotChildOrder(
+      targets.map((target) => target.parentId)
+    );
+    // 途中で1件失敗しても残りを処理し、成功分だけを数える (#101)。
+    for (const target of targets) {
+      try {
         await chrome.bookmarks.move(target.id, { parentId });
-        // 実際に移動できたものだけ Undo 対象にする
-        moveInfos.push(info);
+        count++;
       } catch (error) {
         failureCount++;
         console.error(
@@ -338,7 +398,6 @@ export class BookmarkSelection {
     // 成否にかかわらず選択を解除し、UI を実状態に同期する
     this.clear();
 
-    const count = moveInfos.length;
     if (count > 0) {
       dispatchBookmarksChanged('bulk-move');
       const message =
@@ -348,21 +407,15 @@ export class BookmarkSelection {
       UndoManager.getInstance().register({
         message,
         undo: async () => {
-          for (const info of moveInfos) {
-            if (info.previousParentId === undefined) continue;
-            await chrome.bookmarks.move(info.id, {
-              parentId: info.previousParentId,
-              index: info.previousIndex,
-            });
-          }
+          await restoreChildOrder(snapshot);
           dispatchBookmarksChanged('undo-bulk-move');
         },
       });
     } else if (failureCount > 0) {
       // 全件失敗時は Undo 対象が無いので、失敗をそのまま通知する
-      Toast.show({
-        message: `${failureCount} 件のブックマークを移動できませんでした`,
-      });
+      void errorDialog(
+        `${failureCount} 件のブックマークを移動できませんでした。`
+      );
     }
   }
 
@@ -370,39 +423,34 @@ export class BookmarkSelection {
   // 内部ヘルパー
   // ---------------------------------------------------------------------
 
-  private refreshOrderedUrls(): void {
-    if (!this.container) {
-      this.orderedUrls = [];
-      return;
-    }
-    const links = this.container.querySelectorAll('.bookmark-link');
-    this.orderedUrls = Array.from(links)
-      .map((el) => el.getAttribute('data-url') ?? '')
-      .filter((url) => url.length > 0);
+  private refreshOrderedKeys(): void {
+    this.orderedKeys = this.items()
+      .filter((el) => urlOfItem(el).length > 0)
+      .map((el) => selectionKey(el, urlOfItem(el)));
   }
 
-  private findItemByUrl(url: string): HTMLElement | null {
-    if (!this.container) return null;
-    // CSS.escape が無い環境 (一部のテスト) でも動くようにフォールバック
-    const links = this.container.querySelectorAll('.bookmark-link');
-    for (const link of Array.from(links)) {
-      if (link.getAttribute('data-url') === url) {
-        return (link.closest('.bookmark-item') as HTMLElement | null) ?? null;
-      }
-    }
-    return null;
+  /** 一覧に表示されているブックマーク項目（表示順）。 */
+  private items(): HTMLElement[] {
+    if (!this.container) return [];
+    return Array.from(
+      this.container.querySelectorAll<HTMLElement>('.bookmark-item')
+    );
+  }
+
+  private findItemByKey(key: string): HTMLElement | null {
+    return (
+      this.items().find((el) => selectionKey(el, urlOfItem(el)) === key) ?? null
+    );
   }
 
   private reapplySelectionToDom(): void {
-    if (!this.container) return;
     // 古いハイライトを除去
-    const stale = this.container.querySelectorAll('.bookmark-item.selected');
-    for (const el of Array.from(stale)) {
+    for (const el of this.items()) {
       el.classList.remove('selected');
     }
     // 選択中のものに改めて付与
     for (const item of this.selected.values()) {
-      const el = this.findItemByUrl(item.url);
+      const el = this.findItemByKey(item.key);
       if (el) {
         el.classList.add('selected');
         item.element = el;
@@ -434,7 +482,7 @@ export class BookmarkSelection {
 
     if (!this.toolbarElement) {
       this.toolbarElement = this.createToolbar();
-      document.body.appendChild(this.toolbarElement);
+      overlayHost().appendChild(this.toolbarElement);
     }
 
     const countEl = this.toolbarElement.querySelector(

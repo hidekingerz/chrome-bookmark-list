@@ -13,7 +13,6 @@ import { UndoManager } from '../src/components/UndoManager/index';
 describe('BookmarkDragAndDrop — フォルダ DnD', () => {
   let dom: JSDOM;
   let dnd: BookmarkDragAndDrop;
-  let alertSpy: ReturnType<typeof vi.fn>;
 
   /** 3 フォルダ (f1, f2, f3) を縦に並べた DOM を作る。 */
   function buildDom(): void {
@@ -113,12 +112,6 @@ describe('BookmarkDragAndDrop — フォルダ DnD', () => {
         cb();
         return 0;
       },
-      writable: true,
-      configurable: true,
-    });
-    alertSpy = vi.fn();
-    Object.defineProperty(globalThis, 'alert', {
-      value: alertSpy,
       writable: true,
       configurable: true,
     });
@@ -308,7 +301,7 @@ describe('BookmarkDragAndDrop — フォルダ DnD', () => {
     expect(chrome.bookmarks.move).not.toHaveBeenCalled();
   });
 
-  it('moveFolder で対象フォルダが見つからない場合は alert で通知する', async () => {
+  it('moveFolder で対象フォルダが見つからない場合は エラーダイアログで通知する', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     // get が空配列を返すよう差し替え → moveFolder 内で throw
     (
@@ -323,11 +316,13 @@ describe('BookmarkDragAndDrop — フォルダ DnD', () => {
 
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(alertSpy).toHaveBeenCalledWith('フォルダの移動に失敗しました。');
+    expect(document.getElementById('error-dialog')?.textContent).toContain(
+      'フォルダの移動に失敗しました。'
+    );
     errorSpy.mockRestore();
   });
 
-  it('reorderFolder で並び替え先の親が取得できない場合は alert で通知する', async () => {
+  it('reorderFolder で並び替え先の親が取得できない場合は エラーダイアログで通知する', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     // target (f3) の parentId が undefined → reorderFolder 内で throw
     (
@@ -347,7 +342,9 @@ describe('BookmarkDragAndDrop — フォルダ DnD', () => {
 
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(alertSpy).toHaveBeenCalledWith('フォルダの移動に失敗しました。');
+    expect(document.getElementById('error-dialog')?.textContent).toContain(
+      'フォルダの移動に失敗しました。'
+    );
     errorSpy.mockRestore();
   });
 });

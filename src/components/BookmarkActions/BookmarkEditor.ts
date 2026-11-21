@@ -6,7 +6,12 @@ import type {
   ChromeBookmarkNode,
 } from '../../types/bookmark.js';
 import { resolveBookmarkNode } from '../../utils/bookmarkResolver.js';
-import { type DialogHandle, openDialog } from '../Dialog/index.js';
+import {
+  type DialogHandle,
+  errorDialog,
+  openDialog,
+  showDialogError,
+} from '../Dialog/index.js';
 import { UndoManager } from '../UndoManager/index.js';
 
 /**
@@ -38,6 +43,7 @@ export class BookmarkEditor {
 
       if (!bookmark) {
         console.error('❌ 編集対象のブックマークが見つかりませんでした');
+        void errorDialog('編集するブックマークが見つかりませんでした。');
         return;
       }
 
@@ -48,7 +54,7 @@ export class BookmarkEditor {
       this.showEditDialog(bookmark, allFolders);
     } catch (error) {
       console.error('❌ ブックマークの編集準備に失敗しました:', error);
-      alert('ブックマークの編集準備に失敗しました。');
+      void errorDialog('ブックマークの編集準備に失敗しました。');
     }
   }
 
@@ -87,6 +93,7 @@ export class BookmarkEditor {
                 ${folderOptions}
               </select>
             </div>
+            <div class="dialog-error edit-dialog-error" role="alert" style="display:none; color: var(--danger); margin-top: 8px;"></div>
       `,
       buttons: [
         {
@@ -135,7 +142,7 @@ export class BookmarkEditor {
     const newParentId = folderSelect.value;
 
     if (!newTitle || !newUrl) {
-      alert('名前とURLは必須です。');
+      showDialogError(this.dialog, '名前とURLは必須です。');
       return;
     }
 
@@ -191,7 +198,12 @@ export class BookmarkEditor {
       }
     } catch (error) {
       console.error('❌ ブックマークの更新に失敗しました:', error);
-      alert('ブックマークの更新に失敗しました。');
+      // 編集ダイアログが開いたままならその中に、閉じた後の失敗なら別のダイアログで知らせる
+      if (this.dialog) {
+        showDialogError(this.dialog, 'ブックマークの更新に失敗しました。');
+      } else {
+        void errorDialog('ブックマークの更新に失敗しました。');
+      }
     }
   }
 

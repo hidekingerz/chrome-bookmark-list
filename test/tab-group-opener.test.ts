@@ -153,7 +153,7 @@ describe('TabGroupOpener', () => {
     warnSpy.mockRestore();
   });
 
-  it('グループ作成に失敗した場合は console.error と alert を出す', async () => {
+  it('グループ作成に失敗した場合は console.error とエラーダイアログを出す', async () => {
     const mockChrome = globalThis.chrome as unknown as {
       tabs: { group: ReturnType<typeof vi.fn> };
     };
@@ -161,13 +161,6 @@ describe('TabGroupOpener', () => {
       .fn()
       .mockRejectedValue(new Error('group failed'));
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const alertSpy = vi.fn();
-    Object.defineProperty(globalThis, 'alert', {
-      value: alertSpy,
-      writable: true,
-      configurable: true,
-    });
-
     const opener = new TabGroupOpener();
     await opener.openAsGroup(['https://a.example.com'], 'Work');
 
@@ -175,8 +168,8 @@ describe('TabGroupOpener', () => {
       expect.stringContaining('タブグループの作成に失敗しました'),
       expect.any(Error)
     );
-    expect(alertSpy).toHaveBeenCalledWith(
-      expect.stringContaining('タブグループの作成に失敗しました')
+    expect(document.getElementById('error-dialog')?.textContent).toContain(
+      'タブグループの作成に失敗しました'
     );
 
     errorSpy.mockRestore();

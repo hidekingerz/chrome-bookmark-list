@@ -1,325 +1,204 @@
-import { JSDOM } from 'jsdom';
+import { Window } from 'happy-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { BookmarkFolderEvents } from '../src/components/BookmarkFolder/BookmarkFolderEvents';
+import { BookmarkFolderRenderer } from '../src/components/BookmarkFolder/BookmarkFolderRenderer';
 import type { BookmarkFolder } from '../src/types/bookmark';
 
-// フォルダクリック機能のテスト
+/**
+ * 一覧の上でのクリックの基本動作。
+ *
+ * 本物のレンダラ (BookmarkFolderRenderer) が描いた一覧に、本物のクリック処理
+ * (BookmarkFolderEvents) を付けて、クリックの後の表示と、開かれるタブを確かめる。
+ */
 describe('フォルダクリック機能のテスト', () => {
-  let dom: JSDOM;
-  let document: Document;
-  let window: Window;
+  let win: Window;
+  let savedDocument: typeof globalThis.document;
+  let savedWindow: typeof globalThis.window;
+  let container: HTMLElement;
+
+  const tabsCreate = () =>
+    chrome.tabs.create as unknown as ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    dom = new JSDOM(
-      `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>ブックマーク一覧</title>
-        </head>
-        <body>
-          <div id="bookmarkContainer"></div>
-        </body>
-      </html>
-    `,
-      {
-        url: 'chrome-extension://test/newtab.html',
-        pretendToBeVisual: true,
-        resources: 'usable',
-      }
-    );
+    vi.clearAllMocks();
+    win = new Window({ url: 'chrome-extension://test-id/newtab.html' });
+    savedDocument = globalThis.document;
+    savedWindow = globalThis.window;
+    globalThis.document = win.document as unknown as Document;
+    globalThis.window = win as unknown as typeof globalThis.window;
 
-    document = dom.window.document;
-    window = dom.window as unknown as Window;
-
-    // グローバルオブジェクトを設定
-    Object.defineProperty(globalThis, 'document', {
-      value: document,
-      writable: true,
-      configurable: true,
-    });
-    Object.defineProperty(globalThis, 'window', {
-      value: window,
-      writable: true,
-      configurable: true,
-    });
-
-    // Chrome API のモック設定
-    const mockChrome = globalThis.chrome as any;
-    mockChrome.tabs.create = vi.fn();
+    container = document.createElement('div');
+    container.id = 'bookmarkContainer';
+    document.body.appendChild(container);
   });
 
   afterEach(() => {
-    dom.window.close();
-    vi.clearAllMocks();
+    globalThis.document = savedDocument;
+    globalThis.window = savedWindow;
   });
 
-  it('サブフォルダがあるフォルダヘッダーをクリックすると展開・折りたたみが切り替わる', async () => {
-    // テスト用のブックマークデータ
-    const testBookmarks: BookmarkFolder[] = [
+  function show(folders: BookmarkFolder[]): void {
+    container.innerHTML = new BookmarkFolderRenderer().renderFolders(folders);
+    new BookmarkFolderEvents().setupFolderClickHandler(container, folders);
+  }
+
+  function click(target: HTMLElement): MouseEvent {
+    const event = new win.MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+    }) as unknown as MouseEvent;
+    target.dispatchEvent(event);
+    return event;
+  }
+
+  function header(folderId: string): HTMLElement {
+    return container.querySelector(
+      `[data-folder-id="${folderId}"] > .folder-header`
+    ) as HTMLElement;
+  }
+
+  /** フォルダの見た目の状態（アイコン、サブフォルダ領域、ブックマークのリスト）。 */
+  function folderView(folderId: string) {
+    const folder = container.querySelector(
+      `[data-folder-id="${folderId}"]`
+    ) as HTMLElement;
+    const icon = folder.querySelector(
+      ':scope > .folder-header .expand-icon'
+    ) as HTMLElement | null;
+    const subfolders = folder.querySelector(
+      ':scope > .subfolders-container'
+    ) as HTMLElement | null;
+    const list = folder.querySelector(
+      ':scope > .bookmark-list'
+    ) as HTMLElement | null;
+    return {
+      icon: icon?.textContent,
+      iconExpanded: icon?.classList.contains('expanded'),
+      ariaExpanded: header(folderId).getAttribute('aria-expanded'),
+      subfoldersExpanded: subfolders?.classList.contains('expanded'),
+      subfoldersCollapsed: subfolders?.classList.contains('collapsed'),
+      subfoldersDisplay: subfolders?.style.display,
+      listDisplay: list?.style.display,
+    };
+  }
+
+  it('サブフォルダがあるフォルダヘッダーをクリックすると展開・折りたたみが切り替わる', () => {
+    const folders: BookmarkFolder[] = [
       {
-        id: 'folder-1',
+        id: '10',
         title: 'テストフォルダ',
         bookmarks: [],
+        expanded: false, // 初期状態は折りたたみ
         subfolders: [
           {
-            id: 'subfolder-1',
+            id: '20',
             title: 'サブフォルダ1',
+            expanded: true,
+            subfolders: [],
             bookmarks: [
               {
+                id: '201',
                 title: 'テストブックマーク',
-                url: 'https://example.com',
+                url: 'https://example.com/',
                 favicon: null,
               },
             ],
-            subfolders: [],
-            expanded: false,
           },
         ],
-        expanded: false, // 初期状態は折りたたみ
       },
     ];
-
-    // モックHTML構造を作成
-    const bookmarkContainer = document.getElementById('bookmarkContainer')!;
-    bookmarkContainer.innerHTML = `
-      <div class="bookmark-folder" data-folder-id="folder-1">
-        <div class="folder-header has-subfolders">
-          <div class="folder-info">
-            <span class="expand-icon">📁</span>
-            <h2 class="folder-title">テストフォルダ</h2>
-          </div>
-        </div>
-        <div class="subfolders-container collapsed">
-          <div class="bookmark-folder" data-folder-id="subfolder-1">
-            <!-- サブフォルダの内容 -->
-          </div>
-        </div>
-      </div>
-    `;
-
-    // findFolderByIdのモック
-    const findFolderById = vi.fn((_folders: BookmarkFolder[], id: string) => {
-      if (id === 'folder-1') return testBookmarks[0];
-      if (id === 'subfolder-1') return testBookmarks[0].subfolders[0];
-      return null;
+    show(folders);
+    expect(folderView('10')).toMatchObject({
+      icon: '📁',
+      ariaExpanded: 'false',
+      subfoldersDisplay: 'none',
     });
 
-    // グローバル変数のモック
-    Object.defineProperty(globalThis, 'allBookmarks', {
-      value: testBookmarks,
-      writable: true,
-      configurable: true,
+    // 1 回目のクリックで展開する
+    click(header('10'));
+
+    expect(folders[0].expanded).toBe(true);
+    expect(folderView('10')).toMatchObject({
+      icon: '📂',
+      iconExpanded: true,
+      ariaExpanded: 'true',
+      subfoldersExpanded: true,
+      subfoldersCollapsed: false,
+      subfoldersDisplay: 'block',
     });
 
-    // イベントリスナーを設定（実際のコードから抽出）
-    bookmarkContainer.addEventListener('click', (e: Event) => {
-      const target = e.target as HTMLElement;
-      const folderHeader = target.closest(
-        '.folder-header'
-      ) as HTMLElement | null;
-      const bookmarkLink = target.closest(
-        '.bookmark-link'
-      ) as HTMLElement | null;
+    // 2 回目のクリックで折りたたむ
+    click(header('10'));
 
-      if (bookmarkLink) {
-        e.preventDefault();
-        // ブックマーククリックの処理はここでは省略
-      } else if (folderHeader && !target.closest('.bookmark-link')) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const folderElement = folderHeader.closest(
-          '.bookmark-folder'
-        ) as HTMLElement;
-        const folderId = folderElement?.getAttribute('data-folder-id');
-
-        if (folderId) {
-          const folder = findFolderById(testBookmarks, folderId);
-          if (folder && folder.subfolders.length > 0) {
-            // 展開状態を切り替え
-            folder.expanded = !folder.expanded;
-
-            // UI要素を更新
-            const expandIcon = folderHeader.querySelector(
-              '.expand-icon'
-            ) as HTMLElement;
-            const subfoldersContainer = folderElement.querySelector(
-              '.subfolders-container'
-            ) as HTMLElement;
-
-            if (expandIcon) {
-              expandIcon.textContent = folder.expanded ? '📂' : '📁';
-              if (folder.expanded) {
-                expandIcon.classList.add('expanded');
-              } else {
-                expandIcon.classList.remove('expanded');
-              }
-            }
-
-            if (subfoldersContainer) {
-              if (folder.expanded) {
-                subfoldersContainer.classList.add('expanded');
-                subfoldersContainer.classList.remove('collapsed');
-              } else {
-                subfoldersContainer.classList.add('collapsed');
-                subfoldersContainer.classList.remove('expanded');
-              }
-            }
-          }
-        }
-      }
+    expect(folders[0].expanded).toBe(false);
+    expect(folderView('10')).toMatchObject({
+      icon: '📁',
+      iconExpanded: false,
+      ariaExpanded: 'false',
+      subfoldersExpanded: false,
+      subfoldersCollapsed: true,
+      subfoldersDisplay: 'none',
     });
-
-    // テスト実行：フォルダヘッダーをクリック
-    const folderHeader = bookmarkContainer.querySelector(
-      '.folder-header'
-    ) as HTMLElement;
-    expect(folderHeader).toBeDefined();
-
-    // クリックイベントを発火
-    const clickEvent = new dom.window.Event('click', { bubbles: true });
-    folderHeader.dispatchEvent(clickEvent);
-
-    // 結果を検証
-    const folder = findFolderById(testBookmarks, 'folder-1');
-    expect(folder?.expanded).toBe(true); // フォルダが展開されている
-
-    const expandIcon = folderHeader.querySelector(
-      '.expand-icon'
-    ) as HTMLElement;
-    const subfoldersContainer = document.querySelector(
-      '.subfolders-container'
-    ) as HTMLElement;
-
-    expect(expandIcon.textContent).toBe('📂'); // アイコンが展開状態
-    expect(expandIcon.classList.contains('expanded')).toBe(true);
-    expect(subfoldersContainer.classList.contains('expanded')).toBe(true);
-    expect(subfoldersContainer.classList.contains('collapsed')).toBe(false);
-
-    // 再度クリックして折りたたみをテスト
-    folderHeader.dispatchEvent(clickEvent);
-
-    expect(folder?.expanded).toBe(false); // フォルダが折りたたまれている
-    expect(expandIcon.textContent).toBe('📁'); // アイコンが折りたたみ状態
-    expect(expandIcon.classList.contains('expanded')).toBe(false);
-    expect(subfoldersContainer.classList.contains('expanded')).toBe(false);
-    expect(subfoldersContainer.classList.contains('collapsed')).toBe(true);
+    // フォルダのヘッダをクリックしてもタブは開かない
+    expect(tabsCreate()).not.toHaveBeenCalled();
   });
 
-  it('ブックマークリンクをクリックすると新しいタブが開かれる', async () => {
-    const bookmarkContainer = document.getElementById('bookmarkContainer')!;
-    bookmarkContainer.innerHTML = `
-      <div class="bookmark-folder">
-        <ul class="bookmark-list">
-          <li class="bookmark-item">
-            <a href="#" class="bookmark-link" data-url="https://example.com">
-              <span class="bookmark-title">テストブックマーク</span>
-            </a>
-          </li>
-        </ul>
-      </div>
-    `;
-
-    // イベントリスナーを設定
-    bookmarkContainer.addEventListener('click', (e: Event) => {
-      const target = e.target as HTMLElement;
-      const bookmarkLink = target.closest(
-        '.bookmark-link'
-      ) as HTMLElement | null;
-
-      if (bookmarkLink) {
-        e.preventDefault();
-        const url = bookmarkLink.getAttribute('data-url');
-        if (url) {
-          chrome.tabs.create({ url: url });
-        }
-      }
-    });
-
-    // ブックマークリンクをクリック
-    const bookmarkLink = bookmarkContainer.querySelector(
-      '.bookmark-link'
-    ) as HTMLElement;
-    expect(bookmarkLink).toBeDefined();
-
-    const clickEvent = new dom.window.Event('click', { bubbles: true });
-    bookmarkLink.dispatchEvent(clickEvent);
-
-    // Chrome API が呼ばれたことを確認
-    expect(chrome.tabs.create).toHaveBeenCalledWith({
-      url: 'https://example.com',
-    });
-  });
-
-  it('サブフォルダがないフォルダをクリックしても何も起こらない', async () => {
-    const testBookmarks: BookmarkFolder[] = [
+  it('ブックマークリンクをクリックすると新しいタブが開かれ、フォルダは折りたたまれない', () => {
+    const folders: BookmarkFolder[] = [
       {
-        id: 'folder-no-sub',
-        title: 'サブフォルダなしフォルダ',
+        id: '10',
+        title: 'テストフォルダ',
+        expanded: true,
+        subfolders: [],
         bookmarks: [
           {
+            id: '101',
             title: 'テストブックマーク',
-            url: 'https://example.com',
+            url: 'https://example.com/',
             favicon: null,
           },
         ],
-        subfolders: [],
-        expanded: false,
       },
     ];
+    show(folders);
 
-    const bookmarkContainer = document.getElementById('bookmarkContainer')!;
-    bookmarkContainer.innerHTML = `
-      <div class="bookmark-folder" data-folder-id="folder-no-sub">
-        <div class="folder-header">
-          <div class="folder-info">
-            <span class="folder-icon">📄</span>
-            <h2 class="folder-title">サブフォルダなしフォルダ</h2>
-          </div>
-        </div>
-      </div>
-    `;
+    const event = click(
+      container.querySelector(
+        '.bookmark-item[data-bookmark-id="101"] .bookmark-title'
+      ) as HTMLElement
+    );
 
-    const findFolderById = vi.fn((_folders: BookmarkFolder[], id: string) => {
-      if (id === 'folder-no-sub') return testBookmarks[0];
-      return null;
+    expect(tabsCreate().mock.calls).toEqual([
+      [{ url: 'https://example.com/', active: true }],
+    ]);
+    // <a href="#"> の既定動作（ページ内リンクへの移動）は起こさない
+    expect(event.defaultPrevented).toBe(true);
+    // リンクのクリックは、それを含むフォルダの開閉には使われない
+    expect(folders[0].expanded).toBe(true);
+    expect(folderView('10')).toMatchObject({
+      icon: '📂',
+      ariaExpanded: 'true',
+      listDisplay: 'block',
     });
+  });
 
-    const initialExpanded = testBookmarks[0].expanded;
+  it('サブフォルダもブックマークも無いフォルダをクリックしても何も起こらない', () => {
+    const folders: BookmarkFolder[] = [
+      {
+        id: '10',
+        title: '空のフォルダ',
+        expanded: false,
+        subfolders: [],
+        bookmarks: [],
+      },
+    ];
+    show(folders);
+    const before = container.innerHTML;
 
-    // イベントリスナーを設定
-    bookmarkContainer.addEventListener('click', (e: Event) => {
-      const target = e.target as HTMLElement;
-      const folderHeader = target.closest(
-        '.folder-header'
-      ) as HTMLElement | null;
+    click(header('10'));
 
-      if (folderHeader && !target.closest('.bookmark-link')) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const folderElement = folderHeader.closest(
-          '.bookmark-folder'
-        ) as HTMLElement;
-        const folderId = folderElement?.getAttribute('data-folder-id');
-
-        if (folderId) {
-          const folder = findFolderById(testBookmarks, folderId);
-          if (folder && folder.subfolders.length > 0) {
-            folder.expanded = !folder.expanded;
-          }
-        }
-      }
-    });
-
-    // フォルダヘッダーをクリック
-    const folderHeader = bookmarkContainer.querySelector(
-      '.folder-header'
-    ) as HTMLElement;
-    const clickEvent = new dom.window.Event('click', { bubbles: true });
-    folderHeader.dispatchEvent(clickEvent);
-
-    // 状態が変わらないことを確認
-    expect(testBookmarks[0].expanded).toBe(initialExpanded);
+    expect(folders[0].expanded).toBe(false);
+    expect(container.innerHTML).toBe(before);
+    expect(tabsCreate()).not.toHaveBeenCalled();
   });
 });
