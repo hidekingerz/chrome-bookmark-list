@@ -79,10 +79,10 @@ export class FolderRenamer {
       '#folder-rename-name'
     );
     input?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        void this.handleConfirm(target, siblings);
-      }
+      // 日本語入力の変換を確定する Enter（isComposing）では決定しない
+      if (e.key !== 'Enter' || e.isComposing) return;
+      e.preventDefault();
+      void this.handleConfirm(target, siblings);
     });
     input?.focus();
     input?.select();

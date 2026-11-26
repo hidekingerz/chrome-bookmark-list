@@ -26,6 +26,7 @@ import { Toast } from '../src/components/Toast/index';
 import { UndoManager } from '../src/components/UndoManager/index';
 import type { BookmarkFolder } from '../src/types/bookmark';
 import { axeViolations } from './helpers/axe';
+import { installDialogPolyfill } from './helpers/dialog-polyfill';
 import { installFakeBookmarks } from './helpers/fake-bookmarks';
 
 const html = readFileSync(resolve(process.cwd(), 'src/newtab.html'), 'utf8');
@@ -103,6 +104,7 @@ describe('アクセシビリティの自動検査（axe-core）', () => {
       url: 'chrome-extension://test-id/newtab.html',
       runScripts: 'outside-only',
     });
+    installDialogPolyfill(dom.window);
     for (const key of GLOBAL_KEYS) {
       saved.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
       Object.defineProperty(globalThis, key, {

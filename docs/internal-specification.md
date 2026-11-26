@@ -130,7 +130,8 @@ chrome-bookmark-list/
 │   ├── setup.ts                 # テスト設定（chrome / localStorage / document のスタブ）
 │   └── helpers/                 # テスト用の共通部品
 │       ├── fake-bookmarks.ts    # 並び順を持つ chrome.bookmarks の代役
-│       └── axe.ts               # axe-core をテスト用の DOM で実行する
+│       ├── axe.ts               # axe-core をテスト用の DOM で実行する
+│       └── dialog-polyfill.ts   # JSDOM に無い <dialog> の showModal() / close() の代役
 ├── docs/                        # ドキュメント
 │   ├── internal-specification.md # 内部仕様書
 │   ├── external-specification.md # 外部仕様書
@@ -282,7 +283,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 **複数選択のキー**: `BookmarkSelection` は選択をブックマークごとに持つ。キーは項目の `data-bookmark-id`（Chrome のノード ID）で、ID を持たない項目だけ URL を使う。同じ URL のブックマークが複数あっても別々に選択でき、再描画後の `refresh()` は同じ ID の項目へハイライトを付け直す。
 
-**ダイアログとキーボードショートカット**: `.edit-dialog-overlay` または `.shortcut-help-overlay` が開いている間、`KeyboardShortcuts` は ↑/↓・Enter・Delete・F2・? を処理しない（背後の一覧を操作しない）。`alertDialog` は開いたときに OK ボタンへフォーカスを移す。
+**ダイアログとキーボードショートカット**: `.edit-dialog-overlay` があるか `.shortcut-help-dialog[open]` が開いている間、`KeyboardShortcuts` は ↑/↓・Enter・Delete・F2・? を処理しない（背後の一覧を操作しない）。`alertDialog` は開いたときに OK ボタンへフォーカスを移す。
+
+**ショートカット一覧**: `ShortcutHelp` だけは `Dialog` の基盤を使わず、ネイティブの `<dialog closedby="any">` を `showModal()` で開く。`Esc` と外側のクリックで閉じる動作、背後を操作できなくすること、閉じた後のフォーカスの戻しはブラウザに任せる。要素の後始末は `close` イベントで行う（閉じるボタン・`Esc`・外側のクリックのどれでも同じ経路）。ダイアログの中の `Esc` は `stopPropagation()` して、`BookmarkSelection` の選択解除に届かせない（閉じる既定の動作は止めない）。
+
+**名前の入力欄の Enter**: `FolderCreator` / `FolderRenamer` の入力欄は、`keydown` の `Enter` で決定する。`event.isComposing` が true のとき（日本語入力の変換確定）は何もしない。
 
 #### 2.4 BookmarkDragAndDrop コンポーネント
 
@@ -592,8 +597,8 @@ try {
 ## テスト概要
 
 ### テスト構成
-- **総計754テスト**（テストファイル76件）: ユニットテスト・コンポーネントテスト・統合テストで構成
-- **カバレッジ**: 文 98.22% / 分岐 90.92%（`npm run test:coverage` のしきい値は文 95% / 分岐 85%）
+- **総計760テスト**（テストファイル76件）: ユニットテスト・コンポーネントテスト・統合テストで構成
+- **カバレッジ**: 文 98.26% / 分岐 91.16%（`npm run test:coverage` のしきい値は文 95% / 分岐 85%）
 - **テストツール**: Vitest + Happy DOM/JSDOM
 - **CI/CD**: GitHub Actions での自動実行
 

@@ -27,40 +27,33 @@ const DIALOG_ID = 'shortcut-help-dialog';
 
 /**
  * キーボードショートカット一覧を表示するダイアログ。
- * ? キーで開かれる。Esc・背景クリック・閉じるボタンで閉じる。
+ * ? キーで開かれる。ネイティブの <dialog> をモーダルで開き、
+ * Esc・外側のクリック（closedby="any"）はブラウザに任せる。閉じるボタンでも閉じる。
  */
 export class ShortcutHelp {
-  private dialogElement: HTMLElement | null = null;
-  private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+  private dialogElement: HTMLDialogElement | null = null;
 
   /**
    * ダイアログを開く。すでに開いていれば何もしない。
    */
   open(): void {
     if (this.dialogElement) return;
-    this.dialogElement = this.render();
-    document.body.appendChild(this.dialogElement);
-    this.attachHandlers();
+    const dialog = this.render();
+    this.dialogElement = dialog;
+    document.body.appendChild(dialog);
+    this.attachHandlers(dialog);
+    dialog.showModal();
 
     // 閉じるボタンにフォーカス
-    const closeBtn = this.dialogElement.querySelector<HTMLButtonElement>(
-      '.shortcut-help-close'
-    );
-    closeBtn?.focus();
+    dialog.querySelector<HTMLButtonElement>('.shortcut-help-close')?.focus();
   }
 
   /**
    * ダイアログを閉じる。
    */
   close(): void {
-    if (this.keydownHandler) {
-      document.removeEventListener('keydown', this.keydownHandler, true);
-      this.keydownHandler = null;
-    }
-    if (this.dialogElement) {
-      this.dialogElement.remove();
-      this.dialogElement = null;
-    }
+    // 後始末は close イベント（handleClosed）で行う
+    this.dialogElement?.close();
   }
 
   /**
@@ -70,13 +63,19 @@ export class ShortcutHelp {
     return this.dialogElement !== null;
   }
 
-  private render(): HTMLElement {
-    const overlay = document.createElement('div');
-    overlay.id = DIALOG_ID;
-    overlay.className = 'shortcut-help-overlay';
-    overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-modal', 'true');
-    overlay.setAttribute('aria-labelledby', 'shortcut-help-title');
+  private handleClosed(dialog: HTMLDialogElement): void {
+    dialog.remove();
+    if (this.dialogElement === dialog) {
+      this.dialogElement = null;
+    }
+  }
+
+  private render(): HTMLDialogElement {
+    const dialog = document.createElement('dialog');
+    dialog.id = DIALOG_ID;
+    dialog.className = 'shortcut-help-dialog';
+    dialog.setAttribute('aria-labelledby', 'shortcut-help-title');
+    dialog.setAttribute('closedby', 'any');
 
     const rows = SHORTCUTS.map((s) => {
       const keys = s.keys
@@ -90,43 +89,32 @@ export class ShortcutHelp {
       `;
     }).join('');
 
-    overlay.innerHTML = `
-      <div class="shortcut-help-dialog">
-        <div class="shortcut-help-header">
-          <h2 id="shortcut-help-title" class="shortcut-help-title">⌨️ キーボードショートカット</h2>
-          <button type="button" class="shortcut-help-close" aria-label="閉じる">×</button>
-        </div>
-        <ul class="shortcut-help-list">
-          ${rows}
-        </ul>
+    dialog.innerHTML = `
+      <div class="shortcut-help-header">
+        <h2 id="shortcut-help-title" class="shortcut-help-title">⌨️ キーボードショートカット</h2>
+        <button type="button" class="shortcut-help-close" aria-label="閉じる">×</button>
       </div>
+      <ul class="shortcut-help-list">
+        ${rows}
+      </ul>
     `;
-    return overlay;
+    return dialog;
   }
 
-  private attachHandlers(): void {
-    if (!this.dialogElement) return;
+  private attachHandlers(dialog: HTMLDialogElement): void {
+    dialog
+      .querySelector<HTMLButtonElement>('.shortcut-help-close')
+      ?.addEventListener('click', () => this.close());
 
-    const closeBtn = this.dialogElement.querySelector<HTMLButtonElement>(
-      '.shortcut-help-close'
-    );
-    closeBtn?.addEventListener('click', () => this.close());
+    // Esc・外側のクリック・閉じるボタンのどれで閉じても、ここで片付ける
+    dialog.addEventListener('close', () => this.handleClosed(dialog));
 
-    // 背景クリックで閉じる
-    this.dialogElement.addEventListener('click', (e) => {
-      if (e.target === this.dialogElement) {
-        this.close();
+    // ダイアログの中で押した Esc を、背後の一覧（選択の解除など）に届かせない。
+    // 閉じる動作はブラウザの既定の動作なので、preventDefault はしない
+    dialog.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
       }
     });
-
-    // Esc で閉じる
-    this.keydownHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        this.close();
-      }
-    };
-    document.addEventListener('keydown', this.keydownHandler, true);
   }
 }

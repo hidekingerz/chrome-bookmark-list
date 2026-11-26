@@ -1,6 +1,7 @@
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KeyboardShortcuts } from '../src/components/KeyboardShortcuts/index';
+import { installDialogPolyfill } from './helpers/dialog-polyfill';
 
 describe('KeyboardShortcuts', () => {
   let dom: JSDOM;
@@ -42,6 +43,7 @@ describe('KeyboardShortcuts', () => {
       </body></html>`,
       { url: 'chrome-extension://test/newtab.html' }
     );
+    installDialogPolyfill(dom.window);
 
     Object.defineProperty(globalThis, 'document', {
       value: dom.window.document,
@@ -192,6 +194,33 @@ describe('KeyboardShortcuts', () => {
 
     const dialog = document.getElementById('shortcut-help-dialog');
     expect(dialog).not.toBeNull();
+  });
+
+  it('ショートカット一覧が開いている間は、↓ で背後の一覧のフォーカスを動かさない', () => {
+    KeyboardShortcuts.getInstance().initialize();
+    const items = document.querySelectorAll<HTMLElement>('.bookmark-item');
+    items[0].focus();
+    fireKey('?');
+    // ブラウザでは一覧に戻ったフォーカスに対して ↓ が届く場合を想定する
+    items[0].focus();
+
+    fireKey('ArrowDown');
+
+    expect(document.activeElement).toBe(items[0]);
+  });
+
+  it('ショートカット一覧が閉じた直後（後始末の前）なら、↓ でフォーカスが動く', () => {
+    KeyboardShortcuts.getInstance().initialize();
+    // Esc で閉じると open は外れるが、要素は close イベントで取り除くまで残る
+    const closed = document.createElement('dialog');
+    closed.className = 'shortcut-help-dialog';
+    document.body.appendChild(closed);
+    const items = document.querySelectorAll<HTMLElement>('.bookmark-item');
+    items[0].focus();
+
+    fireKey('ArrowDown');
+
+    expect(document.activeElement).toBe(items[1]);
   });
 
   it('入力欄にフォーカスがあるとき矢印キーは抑制される', () => {
