@@ -45,6 +45,12 @@ npm run build:extension
 4. **`dist`フォルダ**を選択（ビルド成果物が含まれています）
 5. 新しいタブを開くと、ブックマーク一覧が表示されます
 
+### 4. Chrome ウェブストアに提出する ZIP を作る
+```bash
+npm run package
+```
+`chrome-bookmark-list-v<version>.zip` ができます。Finder の「圧縮」で作ると、動作に要らないファイル（`__MACOSX/` など）が入るので使わないでください。
+
 ## 使用方法
 
 1. 新しいタブを開く

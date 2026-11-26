@@ -3,7 +3,7 @@
   "name": "Chrome Bookmark List",
   "version": "4.3.1",
   "minimum_chrome_version": "156",
-  "description": "新しいタブでブックマークをフォルダ別に表示し、履歴も検索できる拡張機能",
+  "description": "新しいタブにブックマークをフォルダ別に表示し、編集や並べ替えもできる。履歴の検索と、最近閉じたタブの復元にも対応",
   "permissions": [
     "bookmarks",
     "history",

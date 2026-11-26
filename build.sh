@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # TypeScript型定義とTypeScriptコンパイラをインストール
 echo "Installing dependencies..."

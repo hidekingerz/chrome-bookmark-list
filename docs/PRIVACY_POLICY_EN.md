@@ -2,6 +2,8 @@
 
 **Last Updated**: July 2026
 
+日本語版: [PRIVACY_POLICY.md](PRIVACY_POLICY.md)
+
 ## 1. Data Collection
 
 This Chrome extension "Chrome Bookmark List" respects user privacy and is committed to protecting personal information.

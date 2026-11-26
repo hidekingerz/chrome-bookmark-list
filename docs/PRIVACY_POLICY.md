@@ -1,94 +1,96 @@
-# Privacy Policy
+# プライバシーポリシー
 
-**Last Updated**: July 2026
+**最終更新日**: 2026年7月
 
-## 1. Data Collection
+English version: [PRIVACY_POLICY_EN.md](PRIVACY_POLICY_EN.md)
 
-This Chrome extension "Chrome Bookmark List" respects user privacy and is committed to protecting personal information.
+## 1. 扱うデータ
 
-### Data We Access
+Chrome 拡張機能「Chrome Bookmark List」（以下「本拡張機能」）は、利用者のプライバシーを尊重し、個人情報の保護に努めます。
 
-This extension accesses the following data:
+### 本拡張機能が読み取るデータ
 
-- **Bookmark Data**: For displaying, editing, deleting, and moving bookmarks stored in your browser
-- **Browsing History**: For the history tab (past 7 days) and calendar tab (current month)
-- **Recently Closed Tabs**: For displaying the list of recently closed tabs and restoring them on click (via `chrome.sessions.getRecentlyClosed`; up to approximately 25 entries). Synced device sessions (`getDevices`) are never accessed.
-- **Closed Tab URL and Title**: Required to display the URL and title of recently closed tabs returned by the sessions API. This permission is not used to monitor or read the content of open tabs.
-- **Website Favicons**: Retrieved locally via Chrome's internal `_favicon` API (`chrome.runtime.getURL('/_favicon/...')`). No external network requests are made; hostnames are not exposed to any external service.
+本拡張機能は、次のデータを読み取ります。
 
-### Purpose of Data Usage
+- **ブックマーク**: ブラウザに保存されているブックマークの表示・編集・削除・移動のため
+- **閲覧履歴**: 「最近の履歴」タブ（過去 7 日間）と「カレンダー履歴」タブ（表示中の月）のため
+- **最近閉じたタブ**: 最近閉じたタブの一覧（最大で約 25 件）を表示し、クリックで復元するため。同期している他の端末のセッションは読み取りません
+- **閉じたタブの URL とタイトル**: 最近閉じたタブの一覧に URL とタイトルを表示するため。開いているタブの監視や、タブの内容の読み取りには使いません
+- **サイトのアイコン（favicon）**: ブラウザの中にあるアイコンを使って表示します。外部への通信は行わず、サイトのホスト名が外部のサービスに送られることはありません
 
-The accessed data is used solely for the following purposes:
+### データを使う目的
 
-- Organized display, search, editing, and management of bookmarks
-- Search and display of browsing history
-- Display and one-click restoration of recently closed tabs
-- Enhancement of user experience
+読み取ったデータは、次の目的にだけ使います。
 
-## 2. Data Storage and Processing
+- ブックマークの整理した表示、検索、編集、管理
+- 閲覧履歴の検索と表示
+- 最近閉じたタブの表示と、クリックでの復元
+- 使い勝手の向上
 
-### Local Processing
+## 2. データの保存と処理
 
-- **All data is processed locally**
-- No data is transmitted to external servers
-- No internet connection required (works offline)
+### 端末の中での処理
 
-### Data Storage
+- **すべてのデータは利用者の端末の中だけで処理します**
+- 外部のサーバーにデータを送ることはありません
+- インターネット接続は不要です（オフラインでも動作します）
 
-- This extension does not use `chrome.storage` or create its own database
-- Only reads existing bookmark, history, and session data from your browser
-- No settings, folder expansion states, or favicon caches are stored by the extension
+### データの保存
 
-## 3. Third-Party Sharing
+- 本拡張機能は、独自の保存領域やデータベースを使いません
+- ブラウザにあるブックマーク・履歴・最近閉じたタブを読み取るだけです
+- 設定、フォルダの開閉の状態、アイコンのキャッシュなども保存しません
 
-This extension does NOT:
+## 3. 第三者への提供
 
-- Share data with third parties
-- Send data to external services
-- Use analytics tools
-- Connect to advertising networks
+本拡張機能は、次のことを行いません。
 
-## 4. Permission Explanations
+- 第三者へのデータの提供
+- 外部のサービスへのデータの送信
+- アクセス解析ツールの利用
+- 広告ネットワークへの接続
 
-Permissions required by this extension and their purposes:
+## 4. 権限の説明
 
-### Required Permissions
+本拡張機能が求める権限と、その用途は次のとおりです。
 
-- **bookmarks**: Reading, displaying, editing, deleting, and moving bookmarks
-- **history**: Reading and displaying browsing history in the history tab and calendar tab
-- **tabGroups**: Opening bookmark folders as tab groups
-- **favicon**: Accessing Chrome's internal `_favicon` API to display favicons locally (no external communication)
-- **sessions**: Retrieving the list of recently closed tabs (`getRecentlyClosed`, up to approximately 25 entries) and restoring a selected tab to its original position (`restore`). Synced device sessions (`getDevices`) are never accessed.
-- **tabs**: Required for Chrome to include URL and title information in the session entries returned by the sessions API. Without this permission, Chrome strips those fields and the recently closed tabs list cannot be displayed. This permission is not used to monitor open tabs or read their content.
+### 必要な権限
 
-## 5. Security
+- **bookmarks**: ブックマークの読み取り、表示、編集、削除、移動
+- **history**: 「最近の履歴」タブと「カレンダー履歴」タブでの閲覧履歴の読み取りと表示
+- **tabGroups**: ブックマークのフォルダをタブグループにまとめて開くため
+- **favicon**: ブラウザの中にあるサイトのアイコンを表示するため（外部への通信なし）
+- **sessions**: 最近閉じたタブの一覧（最大で約 25 件）の取得と、選んだタブを元の位置に復元するため。同期している他の端末のセッションは読み取りません
+- **tabs**: 最近閉じたタブの情報に URL とタイトルを含めるために必要です。この権限がないと、ブラウザが URL とタイトルを取り除くため、一覧を表示できません。開いているタブの監視や、タブの内容の読み取りには使いません
 
-### Security Measures
+## 5. セキュリティ
 
-- Code is publicly available, ensuring transparency
-- No external communications
-- Contains no malware or spyware
+### 安全のための取り組み
 
-### Vulnerability Response
+- ソースコードを公開しており、誰でも中身を確かめられます
+- 外部との通信を行いません
+- マルウェアやスパイウェアを含みません
 
-If you discover a security vulnerability, please report it via GitHub Issues.
+### 脆弱性の報告
 
-## 6. Children's Privacy
+セキュリティ上の問題を見つけた場合は、GitHub Issues でお知らせください。
 
-This extension does not knowingly collect personal information from children under 13.
+## 6. 子どものプライバシー
 
-## 7. Policy Changes
+本拡張機能は、13 歳未満の子どもの個人情報を意図して集めることはありません。
 
-This privacy policy may be updated without prior notice. Important changes will be announced in the extension's update notes.
+## 7. ポリシーの変更
 
-## 8. Contact
+本ポリシーは、予告なく変更することがあります。重要な変更は、本拡張機能の更新のお知らせで伝えます。
 
-For privacy-related questions or concerns, please contact us via GitHub Issues (https://github.com/hidekingerz/chrome-bookmark-list/issues).
+## 8. お問い合わせ
 
-## 9. Governing Law
+プライバシーに関するご質問は、GitHub Issues（https://github.com/hidekingerz/chrome-bookmark-list/issues）でお問い合わせください。
 
-This privacy policy is governed by the laws of Japan.
+## 9. 準拠法
+
+本ポリシーは、日本法に準拠します。
 
 ---
 
-**Important**: This extension is completely open source. The source code is publicly available on GitHub, allowing anyone to verify the functionality and privacy implementation.
+**補足**: 本拡張機能はオープンソースです。ソースコードは GitHub で公開しており、機能とプライバシーの扱いを誰でも確かめられます。

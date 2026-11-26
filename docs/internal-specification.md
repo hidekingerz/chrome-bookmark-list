@@ -633,6 +633,7 @@ try {
 
 - `npm run build` - TypeScriptをコンパイル
 - `npm run build:extension` - 拡張機能をビルド（dist/フォルダに出力）
+- `npm run package` - ビルドし直して、Chrome ウェブストアに提出する `chrome-bookmark-list-v<version>.zip` を作る（ソースマップと macOS の付属ファイルを除き、`manifest.json` を ZIP の一番上に置く）
 - `npm run dev` - TypeScriptの監視モード（ファイル変更時に自動再コンパイル）
 - `npm run clean` - ビルド成果物をクリーンアップ
 - `npm run lint` - Biomeによるlint実行
@@ -657,7 +658,8 @@ try {
 ```bash
 npm run dev          # 監視モード
 npm run build        # TypeScriptコンパイル
-npm run build:extension  # 拡張機能パッケージング
+npm run build:extension  # 拡張機能をビルド（dist/）
+npm run package      # ストア提出用の ZIP を作る
 npm test            # テスト実行
 ```
 

@@ -49,6 +49,7 @@ coverage/
 # Optional eslint cache
 .eslintcache
 dist.zip
+chrome-bookmark-list-v*.zip
 
 # Mutation testing (mutator) のキャッシュとレポート
 .mutator/
