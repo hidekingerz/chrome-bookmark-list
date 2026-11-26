@@ -83,10 +83,10 @@ export class FolderCreator {
       '#folder-create-name'
     );
     nameInput?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        void this.handleConfirm();
-      }
+      // 日本語入力の変換を確定する Enter（isComposing）では決定しない
+      if (e.key !== 'Enter' || e.isComposing) return;
+      e.preventDefault();
+      void this.handleConfirm();
     });
     nameInput?.focus();
   }

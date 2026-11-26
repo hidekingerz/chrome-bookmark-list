@@ -208,6 +208,29 @@ describe('FolderCreator', () => {
     });
   });
 
+  it('日本語入力の変換を確定する Enter では作成しない', async () => {
+    const creator = new FolderCreator();
+    await creator.openCreateDialog('1');
+
+    const nameInput = document.getElementById(
+      'folder-create-name'
+    ) as HTMLInputElement;
+    nameInput.value = 'へんかんちゅう';
+
+    // 変換確定の Enter は isComposing が true の keydown として届く
+    nameInput.dispatchEvent(
+      new dom.window.KeyboardEvent('keydown', {
+        key: 'Enter',
+        isComposing: true,
+        bubbles: true,
+      })
+    );
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(chrome.bookmarks.create).not.toHaveBeenCalled();
+    expect(document.getElementById('folder-create-dialog')).not.toBeNull();
+  });
+
   it('ESC キーでダイアログが閉じる', async () => {
     const creator = new FolderCreator();
     await creator.openCreateDialog('1');

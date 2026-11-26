@@ -92,7 +92,9 @@ export class KeyboardShortcuts {
     // ダイアログ（確認・編集・エラー・ショートカット一覧）が開いている間は、
     // 背後の一覧を操作しない。Esc で閉じる処理はダイアログ側が持つ
     if (
-      document.querySelector('.edit-dialog-overlay, .shortcut-help-overlay')
+      document.querySelector(
+        '.edit-dialog-overlay, .shortcut-help-dialog[open]'
+      )
     ) {
       return;
     }

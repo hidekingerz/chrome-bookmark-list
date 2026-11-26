@@ -202,6 +202,29 @@ describe('FolderRenamer', () => {
     });
   });
 
+  it('日本語入力の変換を確定する Enter では保存しない', async () => {
+    const renamer = new FolderRenamer();
+    await renamer.openRenameDialog('f1');
+
+    const input = document.getElementById(
+      'folder-rename-name'
+    ) as HTMLInputElement;
+    input.value = 'へんかんちゅう';
+
+    // 変換確定の Enter は isComposing が true の keydown として届く
+    input.dispatchEvent(
+      new dom.window.KeyboardEvent('keydown', {
+        key: 'Enter',
+        isComposing: true,
+        bubbles: true,
+      })
+    );
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(chrome.bookmarks.update).not.toHaveBeenCalled();
+    expect(document.getElementById('folder-rename-dialog')).not.toBeNull();
+  });
+
   it('ESC キーでダイアログが閉じる', async () => {
     const renamer = new FolderRenamer();
     await renamer.openRenameDialog('f1');

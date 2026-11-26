@@ -1,42 +1,58 @@
 /* =========================================================================
-   デザイントークン（ライト / ダークはOS設定に連動）
+   デザイントークン（ライト / ダークはOS設定に連動。light-dark() の左がライト、右がダーク）
    ========================================================================= */
 :root {
+  /* ライトとダークの両方に対応する。フォームの部品やスクロールバーも OS の設定に合わせる */
+  color-scheme: light dark;
+
   /* アクセント（ブルー系） */
-  --accent: #5b6ee8;
-  --accent-strong: #4453d6;
-  --accent-2: #8a5cf6;
-  --accent-contrast: #ffffff;
-  --accent-soft: rgba(91, 110, 232, 0.1);
-  --accent-soft-strong: rgba(91, 110, 232, 0.16);
+  --accent: light-dark(#5b6ee8, #8493ff);
+  --accent-strong: light-dark(#4453d6, #6f80ff);
+  --accent-2: light-dark(#8a5cf6, #b58cff);
+  --accent-contrast: light-dark(#ffffff, #0f1117);
+  --accent-soft: light-dark(
+    rgba(91, 110, 232, 0.1),
+    rgba(132, 147, 255, 0.14)
+  );
+  --accent-soft-strong: light-dark(
+    rgba(91, 110, 232, 0.16),
+    rgba(132, 147, 255, 0.22)
+  );
   /* 白い文字を載せる。両端とも白に対して 4.5:1 以上（WCAG 2 AA） */
-  --accent-gradient: linear-gradient(135deg, #4f61e0 0%, #7a4cee 100%);
+  --accent-gradient: linear-gradient(
+    135deg,
+    light-dark(#4f61e0, #6f80ff) 0%,
+    light-dark(#7a4cee, #a06bff) 100%
+  );
   /* 文字に使うアクセント色。淡いアクセント背景の上でも 4.5:1 以上 */
-  --accent-text: #4250d0;
+  --accent-text: light-dark(#4250d0, #a2adff);
 
   /* サーフェス */
-  --bg: #eef1f8;
+  --bg: light-dark(#eef1f8, #0f1117);
   --bg-accent: radial-gradient(
     1200px 600px at 50% -10%,
-    rgba(138, 92, 246, 0.18),
+    light-dark(rgba(138, 92, 246, 0.18), rgba(132, 147, 255, 0.16)),
     transparent 60%
   );
-  --surface: #ffffff;
-  --surface-2: #f6f7fb;
-  --surface-hover: #f0f2fb;
+  --surface: light-dark(#ffffff, #181b24);
+  --surface-2: light-dark(#f6f7fb, #1f2330);
+  --surface-hover: light-dark(#f0f2fb, #232838);
 
   /* テキスト */
-  --text: #1f2433;
+  --text: light-dark(#1f2433, #e7e9f0);
   /* 補助の文字色。白・淡い背景のどちらの上でも 4.5:1 以上 */
-  --text-muted: #555c6b;
-  --text-subtle: #5f6675;
+  --text-muted: light-dark(#555c6b, #9ba3b4);
+  --text-subtle: light-dark(#5f6675, #8d95a4);
 
   /* ボーダー・影 */
-  --border: #e4e7f0;
-  --border-strong: #d4d8e6;
-  --shadow-sm: 0 1px 2px rgba(20, 24, 51, 0.06);
-  --shadow-md: 0 6px 18px rgba(20, 24, 51, 0.08);
-  --shadow-lg: 0 14px 40px rgba(20, 24, 51, 0.12);
+  --border: light-dark(#e4e7f0, #2a2f3d);
+  --border-strong: light-dark(#d4d8e6, #3a4151);
+  --shadow-sm: 0 1px 2px
+    light-dark(rgba(20, 24, 51, 0.06), rgba(0, 0, 0, 0.4));
+  --shadow-md: 0 6px 18px
+    light-dark(rgba(20, 24, 51, 0.08), rgba(0, 0, 0, 0.45));
+  --shadow-lg: 0 14px 40px
+    light-dark(rgba(20, 24, 51, 0.12), rgba(0, 0, 0, 0.55));
 
   /* 形状・モーション */
   --radius-sm: 8px;
@@ -46,44 +62,8 @@
   --transition: 0.2s ease;
 
   /* 状態色 */
-  --danger: #dc2626;
-  --danger-strong: #991b1b;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --accent: #8493ff;
-    --accent-strong: #6f80ff;
-    --accent-2: #b58cff;
-    --accent-contrast: #0f1117;
-    --accent-soft: rgba(132, 147, 255, 0.14);
-    --accent-soft-strong: rgba(132, 147, 255, 0.22);
-    --accent-gradient: linear-gradient(135deg, #6f80ff 0%, #a06bff 100%);
-    --accent-text: #a2adff;
-
-    --bg: #0f1117;
-    --bg-accent: radial-gradient(
-      1200px 600px at 50% -10%,
-      rgba(132, 147, 255, 0.16),
-      transparent 60%
-    );
-    --surface: #181b24;
-    --surface-2: #1f2330;
-    --surface-hover: #232838;
-
-    --text: #e7e9f0;
-    --text-muted: #9ba3b4;
-    --text-subtle: #8d95a4;
-
-    --border: #2a2f3d;
-    --border-strong: #3a4151;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.45);
-    --shadow-lg: 0 14px 40px rgba(0, 0, 0, 0.55);
-
-    --danger: #f87171;
-    --danger-strong: #ef4444;
-  }
+  --danger: light-dark(#dc2626, #f87171);
+  --danger-strong: light-dark(#991b1b, #ef4444);
 }
 
 * {
@@ -346,13 +326,10 @@ header h1 {
   margin-top: 14px;
   padding-left: 14px;
   border-left: 2px solid var(--border);
-  transition: all 0.3s ease;
   overflow: hidden;
-  max-height: 1000px;
 }
 
 .subfolders-container.collapsed {
-  max-height: 0 !important;
   margin-top: 0 !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
@@ -363,7 +340,6 @@ header h1 {
 }
 
 .subfolders-container.expanded {
-  max-height: none !important;
   opacity: 1 !important;
   visibility: visible !important;
   display: block !important;
@@ -1537,13 +1513,15 @@ body.dragging-folder {
   /* デフォルトはライトモード想定。
      ページ背景 (#eef1f8) ・カード (#ffffff) のどちらとも区別がつくよう、
      純白に強い影と明確な border で立体感を出す。 */
-  background-color: #ffffff;
+  background-color: light-dark(#ffffff, #262b3a);
   background-image: none;
-  border: 1px solid #d4d8e6;
+  border: 1px solid light-dark(#d4d8e6, #3f475a);
   border-radius: 10px;
+  /* ダークでは影の代わりに内側の細い縁で浮き上がらせる */
   box-shadow:
-    0 16px 48px rgba(20, 24, 51, 0.18),
-    0 2px 8px rgba(20, 24, 51, 0.1);
+    0 16px 48px light-dark(rgba(20, 24, 51, 0.18), rgba(0, 0, 0, 0.7)),
+    0 2px 8px light-dark(rgba(20, 24, 51, 0.1), transparent),
+    0 0 0 1px light-dark(transparent, rgba(255, 255, 255, 0.04)) inset;
   padding: 6px;
   z-index: 10000;
   display: flex;
@@ -1556,16 +1534,6 @@ body.dragging-folder {
   isolation: isolate;
 }
 
-/* ダークモードでも明確に浮き上がらせる */
-@media (prefers-color-scheme: dark) {
-  .context-menu {
-    background-color: #262b3a;
-    border-color: #3f475a;
-    box-shadow:
-      0 16px 48px rgba(0, 0, 0, 0.7),
-      0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-  }
-}
 
 .context-menu-item {
   display: flex;
@@ -1624,18 +1592,11 @@ body.dragging-folder {
 /* =========================================================================
    ショートカットヘルプダイアログ
    ========================================================================= */
-.shortcut-help-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(8, 10, 20, 0.55);
-  backdrop-filter: blur(2px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1100;
-}
-
 .shortcut-help-dialog {
+  /* 全体の margin: 0 を打ち消して、ブラウザ既定の中央寄せ（margin: auto）に戻す */
+  margin: auto;
+  padding: 0;
+  color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -1643,9 +1604,25 @@ body.dragging-folder {
   max-width: 560px;
   max-height: 80vh;
   overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+/* 閉じているときに表示しないよう、display は開いているときだけ指定する */
+.shortcut-help-dialog[open] {
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-lg);
+}
+
+/* ダイアログの中や背景でのスクロールが、背後のページに伝わらないようにする */
+.shortcut-help-dialog:modal {
+  overscroll-behavior: contain;
+}
+
+.shortcut-help-dialog::backdrop {
+  background-color: rgba(8, 10, 20, 0.55);
+  backdrop-filter: blur(2px);
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .shortcut-help-header {
