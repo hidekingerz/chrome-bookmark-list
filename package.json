@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsc",
     "build:extension": "./build.sh",
+    "package": "./package.sh",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "test": "vitest run",
